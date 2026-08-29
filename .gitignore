@@ -1,4 +1,5 @@
 .env
+.env.mongo
 ypervaino.db
 server.log
 __pycache__/
