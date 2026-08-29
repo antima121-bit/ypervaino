@@ -1,0 +1,181 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Ypervaíno — Explore &amp; Approve</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#0c1116;--surface:#131a21;--surface-2:#1a2229;--surface-3:#232c34;
+    --ink:#e7edf1;--ink-2:#93a3b1;--ink-3:#657585;--line:#232d36;--line-strong:#303c46;
+    --signal:#3fe0d6;--signal-strong:#6beae1;--signal-soft:rgba(63,224,214,.12);
+    --success:#58c793;--success-soft:rgba(88,199,147,.14);
+    --warning:#e3a94a;--critical:#e2685f;--info:#7d97af;--info-soft:rgba(125,151,175,.14);
+  }
+  *{box-sizing:border-box;} html,body{margin:0;}
+  body{background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,sans-serif;font-size:13.5px;}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,monospace;}
+  .main{max-width:900px;margin:0 auto;padding:28px 32px 60px;}
+  .eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);display:block;}
+  .live-pill{display:inline-flex;align-items:center;gap:6px;background:var(--success-soft);color:var(--success);border-radius:999px;padding:4px 10px 4px 8px;font-size:11px;font-weight:600;margin-bottom:14px;}
+  .live-dot{width:6px;height:6px;border-radius:50%;background:var(--success);animation:pulse 1.4s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+  .desc{color:var(--ink-2);font-size:13px;margin:6px 0 22px;line-height:1.5;}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-bottom:16px;}
+  .card-head{display:flex;justify-content:space-between;align-items:center;padding:13px 18px;border-bottom:1px solid var(--line);font-size:13.5px;font-weight:600;}
+  .card-pad{padding:16px 18px;}
+  .pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:600;background:var(--info-soft);color:var(--info);}
+  .loading{color:var(--ink-3);padding:24px;text-align:center;}
+  .ai-note{display:flex;gap:12px;}
+  .ai-avatar{width:28px;height:28px;border-radius:8px;background:var(--signal-soft);color:var(--signal-strong);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .ai-text{font-size:13px;color:var(--ink-2);line-height:1.65;}
+  .row-scroll{display:flex;gap:12px;overflow-x:auto;padding-bottom:2px;}
+  .sample-card{background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:11px 13px;width:250px;flex-shrink:0;}
+  .sample-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0;}
+  .dot.RED{background:var(--critical);} .dot.YELLOW{background:var(--warning);} .dot.GREEN{background:var(--success);}
+  .sample-id{font-size:10.5px;color:var(--ink-3);}
+  .sample-line{font-size:11.5px;line-height:1.5;margin-bottom:4px;}
+  .sample-line b{color:var(--ink-3);}
+  .aspect-row{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);}
+  .aspect-row:last-child{border-bottom:none;}
+  .aspect-title{font-size:13px;font-weight:600;}
+  .aspect-desc{font-size:12px;color:var(--ink-2);margin-top:1px;}
+  .hyp-card{background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:14px 16px;margin-bottom:10px;}
+  .hyp-card.rejected{opacity:.55;}
+  .hyp-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
+  .hyp-title{font-size:13.5px;font-weight:600;margin-bottom:5px;}
+  .hyp-claim{font-size:12.5px;color:var(--ink-2);line-height:1.55;max-width:520px;}
+  .hyp-meta{font-size:11px;color:var(--ink-3);margin-top:8px;}
+  .hyp-rates{display:flex;gap:18px;flex-shrink:0;text-align:right;}
+  .rate-col{display:flex;flex-direction:column;}
+  .rate-label{font-size:9.5px;text-transform:uppercase;color:var(--ink-3);letter-spacing:.03em;}
+  .rate-val{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .rate-val.sig{color:var(--critical);}
+  .rate-val.notsig{color:var(--ink-3);font-size:12px;font-weight:600;}
+  .btn{background:var(--signal);color:#06201f;border:none;border-radius:7px;padding:11px 20px;font-size:13.5px;font-weight:600;font-family:inherit;cursor:pointer;text-decoration:none;display:inline-block;}
+  .error-box{background:var(--critical);color:#2a0b08;border-radius:8px;padding:14px 16px;font-size:13px;}
+  .topnav{display:flex;gap:4px;padding:14px 32px;border-bottom:1px solid var(--line);background:var(--surface);}
+  .topnav-link{color:var(--ink-2);text-decoration:none;font-size:12.5px;padding:6px 12px;border-radius:6px;}
+  .topnav-link:hover{background:var(--surface-2);color:var(--ink);}
+  .topnav-link.active{background:var(--signal-soft);color:var(--signal-strong);font-weight:600;}
+</style>
+</head>
+<body>
+<div class="topnav">
+  <a href="/" class="topnav-link">New Study</a>
+  <a href="/explore" class="topnav-link active">Explore</a>
+  <a href="/results" class="topnav-link">Results</a>
+  <a href="/sessions" class="topnav-link">Sessions</a>
+</div>
+<div class="main">
+  <span class="eyebrow">Ypervaíno</span>
+  <div class="live-pill"><span class="live-dot"></span>Live — Gemini analyzing real seeded transcripts now</div>
+  <h1 style="font-size:22px;margin:0 0 4px;">Exploration &amp; Plan Approval</h1>
+  <p class="desc" id="desc">Sampling conversations and asking the LLM to propose a plan…</p>
+
+  <div id="content"></div>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const description = params.get('description') || '';
+
+function escapeHtml(s){
+  const d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+}
+
+async function load(){
+  document.getElementById('content').innerHTML = '<div class="card"><div class="loading">Calling Gemini with real sample transcripts… (can take 10-20s)</div></div>';
+  const apiParams = new URLSearchParams({
+    description,
+    mode: params.get('mode') || 'comparative',
+    n_explore: params.get('n_explore') || '10',
+    min_support: params.get('min_support') || '30',
+    significance_level: params.get('significance_level') || '0.05',
+  });
+  const res = await fetch('/api/v1/ypervaino/explore?' + apiParams.toString());
+  const data = await res.json();
+
+  if (data.llm.error){
+    document.getElementById('content').innerHTML = `<div class="error-box"><b>LLM call failed:</b> ${escapeHtml(data.llm.error)}</div>`;
+    return;
+  }
+
+  document.getElementById('desc').textContent = data.mode === 'discovery'
+    ? 'Pure discovery mode — no before/after split, no change descriptor.'
+    : (description ? `Investigating: "${description}"` : 'Comparative mode — no change description given.');
+
+  const samplesHtml = data.samples.map(s => `
+    <div class="sample-card">
+      <div class="sample-head"><span class="sample-id mono">${s.session_id} · ${s.cohort}</span><span class="dot ${s.classification}"></span></div>
+      ${s.transcript.slice(0,3).map(t => `<div class="sample-line"><b>${t.speaker}:</b> ${escapeHtml(t.text)}</div>`).join('')}
+    </div>
+  `).join('');
+
+  const aspectsHtml = (data.llm.aspects || []).map(a => `
+    <div class="aspect-row">
+      <div><div class="aspect-title">${escapeHtml(a.name)}</div><div class="aspect-desc">${escapeHtml(a.description)}</div></div>
+    </div>
+  `).join('');
+
+  const hypHtml = (data.llm.hypotheses || []).map(h => {
+    const r = h.result || {};
+    const isDiscovery = r.metric === 'match_rate';
+    let ratesHtml;
+    if (isDiscovery) {
+      const label = r.rejected ? `below min support (${r.support_count} < ${r.min_support})` : `${r.support_count} matches`;
+      ratesHtml = `
+        <div class="rate-col"><span class="rate-label">Match rate</span><span class="rate-val">${r.match_rate ?? '—'}%</span></div>
+        <div class="rate-col"><span class="rate-label">Support</span><span class="rate-val ${r.rejected ? 'notsig' : ''}">${label}</span></div>
+      `;
+    } else {
+      const sigClass = r.rejected ? 'notsig' : (r.significant ? 'sig' : 'notsig');
+      const sigLabel = r.rejected ? `below min support (${(r.support_before||0) + (r.support_after||0)} < ${r.min_support})` : (r.significant ? `p = ${r.p_value}` : `not significant (p = ${r.p_value})`);
+      ratesHtml = `
+        <div class="rate-col"><span class="rate-label">Before</span><span class="rate-val">${r.rate_before ?? '—'}%</span></div>
+        <div class="rate-col"><span class="rate-label">After</span><span class="rate-val">${r.rate_after ?? '—'}%</span></div>
+        <div class="rate-col"><span class="rate-label">Significance</span><span class="rate-val ${sigClass}">${sigLabel}</span></div>
+      `;
+    }
+    return `
+    <div class="hyp-card ${r.rejected ? 'rejected' : ''}">
+      <div class="hyp-head">
+        <div>
+          <div class="hyp-title">${escapeHtml(h.title)}</div>
+          <div class="hyp-claim">${escapeHtml(h.claim)}</div>
+          <div class="hyp-meta">Tested on all sessions · predicate: ${escapeHtml(JSON.stringify(h.predicate || {}))}</div>
+        </div>
+        <div class="hyp-rates">${ratesHtml}</div>
+      </div>
+    </div>
+  `;
+  }).join('');
+
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <div class="card-head">What we found<span class="pill">Gemini-generated</span></div>
+      <div class="card-pad ai-note">
+        <div class="ai-avatar">✦</div>
+        <div class="ai-text">${escapeHtml(data.llm.exploration_summary || '')}</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">Sample conversations<span class="pill">${data.samples.length} sampled</span></div>
+      <div class="card-pad"><div class="row-scroll">${samplesHtml}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head">Proposed aspects</div>
+      <div class="card-pad" style="padding-top:2px;padding-bottom:2px;">${aspectsHtml}</div>
+    </div>
+    <div class="card">
+      <div class="card-head">Proposed hypotheses</div>
+      <div class="card-pad">${hypHtml}</div>
+    </div>
+    <a class="btn" href="/results">Approve &amp; Run Full Analysis →</a>
+  `;
+}
+load();
+</script>
+</body>
+</html>

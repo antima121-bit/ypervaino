@@ -1,0 +1,127 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Ypervaíno — New Study</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#0c1116;--surface:#131a21;--surface-2:#1a2229;--surface-3:#232c34;
+    --ink:#e7edf1;--ink-2:#93a3b1;--ink-3:#657585;--line:#232d36;--line-strong:#303c46;
+    --signal:#3fe0d6;--signal-strong:#6beae1;--signal-soft:rgba(63,224,214,.12);
+    --success:#58c793;--success-soft:rgba(88,199,147,.14);
+  }
+  *{box-sizing:border-box;} html,body{margin:0;}
+  body{background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,sans-serif;font-size:13.5px;}
+  .main{max-width:760px;margin:0 auto;padding:28px 32px 60px;}
+  .eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);display:block;}
+  .live-pill{display:inline-flex;align-items:center;gap:6px;background:var(--success-soft);color:var(--success);border-radius:999px;padding:4px 10px 4px 8px;font-size:11px;font-weight:600;margin-bottom:14px;}
+  .live-dot{width:6px;height:6px;border-radius:50%;background:var(--success);animation:pulse 1.4s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+  .desc{color:var(--ink-2);font-size:13px;margin:6px 0 22px;line-height:1.5;}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-bottom:16px;}
+  .card-head{padding:13px 18px;border-bottom:1px solid var(--line);font-size:13.5px;font-weight:600;}
+  .card-pad{padding:16px 18px;}
+  .textarea,.input{width:100%;background:var(--surface-2);border:1px solid var(--line-strong);color:var(--ink);border-radius:6px;padding:9px 11px;font-size:13px;font-family:inherit;}
+  .textarea{min-height:70px;resize:vertical;}
+  .field-label{font-size:11px;color:var(--ink-2);display:block;margin-bottom:6px;}
+  .btn{background:var(--signal);color:#06201f;border:none;border-radius:7px;padding:11px 20px;font-size:13.5px;font-weight:600;font-family:inherit;cursor:pointer;}
+  .btn:disabled{opacity:.5;cursor:default;}
+  .topnav{display:flex;gap:4px;padding:14px 32px;border-bottom:1px solid var(--line);background:var(--surface);}
+  .topnav-link{color:var(--ink-2);text-decoration:none;font-size:12.5px;padding:6px 12px;border-radius:6px;}
+  .topnav-link:hover{background:var(--surface-2);color:var(--ink);}
+  .topnav-link.active{background:var(--signal-soft);color:var(--signal-strong);font-weight:600;}
+
+  .segmented{display:inline-flex;background:var(--surface-2);border:1px solid var(--line-strong);border-radius:9px;padding:3px;gap:2px;}
+  .segmented-btn{padding:8px 16px;border-radius:6px;font-size:12.5px;color:var(--ink-2);background:none;font-family:inherit;border:none;cursor:pointer;}
+  .segmented-btn.active{background:var(--signal);color:#06201f;font-weight:600;}
+  .row{display:flex;gap:14px;flex-wrap:wrap;}
+  .field{flex:1;min-width:140px;}
+  .accordion-header{display:flex;justify-content:space-between;align-items:center;width:100%;padding:14px 18px;background:none;border:none;cursor:pointer;text-align:left;color:inherit;font-family:inherit;font-size:13.5px;font-weight:600;}
+  .accordion-body{padding:0 18px 16px;display:none;}
+  .accordion-body.open{display:block;}
+  .hint{font-size:11px;color:var(--ink-3);margin-top:4px;}
+</style>
+</head>
+<body>
+<div class="topnav">
+  <a href="/" class="topnav-link active">New Study</a>
+  <a href="/explore" class="topnav-link">Explore</a>
+  <a href="/results" class="topnav-link">Results</a>
+  <a href="/sessions" class="topnav-link">Sessions</a>
+</div>
+<div class="main">
+  <span class="eyebrow">Ypervaíno</span>
+  <div class="live-pill"><span class="live-dot"></span>Live — Gemini-powered</div>
+  <h1 style="font-size:22px;margin:0 0 4px;">New Study</h1>
+  <p class="desc">Describe what changed (optional) — the LLM will read a sample of real seeded conversations and propose what to measure.</p>
+
+  <div class="card card-pad">
+    <label class="field-label">Study type</label>
+    <div class="segmented" id="mode-toggle">
+      <button class="segmented-btn active" data-mode="comparative">Comparative (Before / After)</button>
+      <button class="segmented-btn" data-mode="discovery">Pure Discovery</button>
+    </div>
+    <div class="hint">Comparative splits the 360 sessions into before/after Aug 24 and compares them. Pure Discovery looks at all sessions as one pool with no comparison — for finding patterns without a known change.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">What changed? <span style="font-weight:400;color:var(--ink-3);font-size:11.5px;">(optional — ignored in Pure Discovery mode)</span></div>
+    <div class="card-pad">
+      <textarea class="textarea" id="description" placeholder="e.g. Moved traffic to Qwen for main_stream, or leave blank">Something changed on main_stream around Aug 24 — investigate.</textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <button class="accordion-header" onclick="document.getElementById('adv').classList.toggle('open')">
+      Advanced settings
+    </button>
+    <div class="accordion-body open" id="adv">
+      <div class="row">
+        <div class="field">
+          <label class="field-label">Exploration sample size (n_explore)</label>
+          <input class="input" type="number" id="n_explore" value="10" min="4" max="40" step="2">
+          <div class="hint">How many conversations the LLM reads before proposing a plan.</div>
+        </div>
+        <div class="field">
+          <label class="field-label">Minimum support</label>
+          <input class="input" type="number" id="min_support" value="30" min="1">
+          <div class="hint">A hypothesis needs at least this many matches to count as proven.</div>
+        </div>
+        <div class="field">
+          <label class="field-label">Significance level</label>
+          <input class="input" type="number" id="significance_level" value="0.05" min="0.001" max="0.5" step="0.01">
+          <div class="hint">p-value threshold below which a difference is "significant".</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn" id="start-btn" onclick="start()">Start Analysis →</button>
+</div>
+<script>
+let mode = 'comparative';
+document.querySelectorAll('#mode-toggle .segmented-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#mode-toggle .segmented-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    mode = btn.dataset.mode;
+  });
+});
+
+function start(){
+  const desc = document.getElementById('description').value;
+  const n_explore = document.getElementById('n_explore').value;
+  const min_support = document.getElementById('min_support').value;
+  const significance_level = document.getElementById('significance_level').value;
+  document.getElementById('start-btn').disabled = true;
+  document.getElementById('start-btn').textContent = 'Starting…';
+  const params = new URLSearchParams({
+    description: mode === 'discovery' ? '' : desc,
+    mode, n_explore, min_support, significance_level,
+  });
+  window.location.href = '/explore?' + params.toString();
+}
+</script>
+</body>
+</html>
