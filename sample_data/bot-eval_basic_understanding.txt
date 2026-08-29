@@ -1,0 +1,388 @@
+BOT-EVAL — BASIC UNDERSTANDING (KT DOCUMENT)
+=============================================
+Repo: ~/src/bot-eval
+Companion bot repo: ~/src/bot (kb_bot/) — runtime that produces the data eval reads
+Related KT: ~/src/ypervaíno/bot_highlevel_understanding.txt (bot-side perspective)
+
+Purpose of this document
+------------------------
+Explain how the eval framework consumes data that the bot runtime saves: what format
+the bot writes, where it lives, how eval fetches and transforms it, how evaluation
+logic differs by bot architecture, and which metrics use which inputs.
+
+
+HIGH-LEVEL RELATIONSHIP
+-----------------------
+
+  ┌─────────────────────┐         HTTP (VA Blueprint)        ┌─────────────────────┐
+  │   bot-eval          │ ◄──────────────────────────────── │   bot (kb_bot)       │
+  │   eval_framework/   │                                   │   runtime            │
+  └─────────┬───────────┘                                   └──────────┬──────────┘
+            │                                                            │
+            │ WebSocket /service/ws/eval-run (simulation)                │
+            │ POST /simulation/generate-mock-tool-response (mock tools)  │
+            ├──────────────────────────────────────────────────────────►│
+            │                                                            │
+            │ Mongo read (SessionRequest, AssistantEvent, …)           │
+            ◄────────────────────────────────────────────────────────────┤
+            │                     bot writes per turn                    │
+            │                                                            │
+            ▼                                                            ▼
+  ┌─────────────────────┐                                   ┌─────────────────────┐
+  │ SimulationRunInfo   │  metadata.session_id links ──────►│ SessionRequest      │
+  │ (eval-owned Mongo)  │                                   │ AssistantEvent      │
+  │ + metrics results   │                                   │ AssistantSession    │
+  └─────────────────────┘                                   └─────────────────────┘
+
+Eval does NOT call get-bot-response HTTP. Simulations talk to the bot over WebSocket.
+Eval reads turn-level conversation data from Mongo collections written by the bot.
+
+
+PART 1 — WHAT THE BOT SAVES (FORMAT & LOCATION)
+------------------------------------------------
+
+Primary store: MongoDB (same cluster/env as bot; eval connects via MONGO_URI_MAP in
+eval_framework/test_config.py — dev/staging/prod DB names like bot_prod, bot_development).
+
+Collections eval cares about (schemas defined in bot-eval, populated by bot runtime):
+
+1) SessionRequest  (eval_framework/session_context.py)
+   - One document per user turn in a session.
+   - Collection name: session_request (Beanie default).
+   - Key fields:
+       session_id          — links all turns in one conversation
+       request_id          — optional; used to join AssistantEvents in dialog-flow
+       query               — user message
+       contextual_query    — rewritten query (router/CQ output)
+       responses[]         — bot partial responses (if any)
+       final_response      — user-facing bot text for the turn
+       agent_name          — skill/node that answered (e.g. Authentication, Main_Auth)
+       tool_call_list[]    — [{name, arguments, result, error}]
+       knowledge_metadata  — {point_ids[]} Qdrant IDs for KB retrieval
+       channel             — WEBCHAT (chat sim)
+       created_at, responsed_at
+   - “Complete” turn for eval: final_response set OR non-empty responses[].
+
+2) AssistantEvent  (eval_framework/session_context.py)
+   - Dialog-flow runtime telemetry; one row per event.
+   - Collection: assistant_event.
+   - Key fields:
+       session_id, request_id, turn_id
+       event_type  — e.g. DIALOG_FLOW_TRANSITION*, TOOL_CALL, TOOL_CALL_RESULT,
+                     VECTOR_SEARCH, RESPONSE_PARTIAL, RESPONSE_FINAL
+       event_value — JSON blob (node name, tool_call, point_ids, partial text, …)
+       created_at
+   - Bot pipeline: structured events → NDJSON log → Fluent Bit → writer_service → Mongo.
+   - Not all sessions have events (chat/local dev may have SessionRequest only).
+
+3) AssistantSession  (eval_framework/evaluate_past_convos/models.py)
+   - Session header: _id = session_id, voice_session_id, recording_url,
+     simulation_correlation_id, tenant, etc.
+   - Used for past-conversation eval and voice latency linkage.
+
+4) VoiceSessionMetrics  (eval_framework/document_models.py)
+   - Per-voice-session latency breakdown (e2e_latency per turn).
+   - Read by latency metric when voice_session_id is present.
+
+What eval writes (not bot):
+
+5) SimulationRunInfo  (eval_framework/document_models.py)
+   - One row per scenario simulation or past-session eval job.
+   - metadata: {session_id, va_blueprint, bot_info, environment, voice_session_id, …}
+   - result.metrics_trace[]     — turn-level metric outputs
+   - result.conversation_metrics{} — conversation-level metric outputs
+
+6) TestSession, TestCaseInfo
+   - Batch container (test_session_id UUID) and generated scenario definitions.
+
+VA Blueprint (fetched from bot, cached on SimulationRunInfo)
+   - HTTP POST bot /service/va-blueprint/extract_blueprint
+   - Parsed as VABlueprint (eval_framework/va_blueprint/models.py):
+       assistant_info.skill_list, tools, KB flags, dialog_flow graph
+       structured_skill_description_map — per-skill instructions for LLM judges
+       is_dialog_flow — effective_orchestration_type == DIALOG_FLOW OR dialog_flow graph present
+
+Secondary / enrichment stores (not written by bot turn loop):
+
+   - Qdrant — KB chunk text resolved from SessionRequest.knowledge_metadata.point_ids
+     via eval_framework/qdrant_utils.py (get_extracts_string_from_ids).
+   - Knowledge Management Platform — document IDs/URLs for retrieval correctness metrics.
+
+Local files (eval exports only; bot does not depend on these):
+   - kb_bot/output_folder/ — CSV conversation dumps, checklist JSON, pipeline JSON
+     (paths in eval_framework/test_config.py). No bot Python source in bot-eval repo.
+
+
+PART 2 — HOW EVAL FETCHES DATA
+------------------------------
+
+Entry: eval_framework/pipeline_main.py
+  → BotTestingPipeline.initialize_mongo() sets MONGO_URI / MONGO_DB_NAME
+  → init_mongo_models() (eval_framework/mongo_conn.py) registers Beanie models
+  → evaluate_simulations() → QuickInferenceEvaluator / RealtimeVoiceEvaluator
+  → BaseEvaluator._evaluate_single_simulation()
+
+Per simulation fetch chain (eval_framework/evaluation/base_evaluator.py):
+
+  1. Load SimulationRunInfo by Mongo _id (simulation correlation id)
+  2. session_id = simulation_run_info.metadata["session_id"]
+  3. Load TestCaseInfo (scenario title, ground_truth_manual, target doc IDs, safety fields)
+  4. Refresh/load VABlueprint (bot capabilities + instructions)
+  5. _load_conversation_trace(session_id, retries=3):
+       - If bot_info.is_dialog_flow → load_dialog_flow_trace()
+       - Else → legacy SessionRequest-only loader
+  6. Build ConversationData bundle for MetricsRunner
+
+Retry behavior (both loaders):
+  - Up to 3 attempts, 5s sleep between attempts if SessionRequest rows are incomplete
+    (simulation may still be flushing writes to Mongo).
+
+Dialog-flow loader (eval_framework/dialog_flow/turn_loader.py):
+  - SessionRequest.find(session_id).sort(created_at)
+  - AssistantEvent.find(session_id).sort(created_at)
+  - AssistantEventIndex.from_events() groups events by request_id
+  - Per complete SR: build EvalTurn + node_segments, fetch Qdrant extracts
+  - eval_turn_to_trace_item() → List[ConversationTraceItem]
+
+Legacy/skill-based loader (base_evaluator._load_conversation_trace legacy branch):
+  - SessionRequest only — no AssistantEvent, no node_segments
+  - Map each SR directly → ConversationTraceItem
+  - Inline Qdrant fetch; inject retriever_tool.result with extract text
+
+Past conversation eval:
+  - API creates SimulationRunInfo with metadata.session_id + source flag
+  - Same load path once session_id is known
+
+
+PART 3 — HOW EVAL CONSUMES / TRANSFORMS DATA
+--------------------------------------------
+
+Unified turn model: ConversationTraceItem (eval_framework/evaluation/models.py)
+
+  Field                  Source
+  -----                  ------
+  user_query             SessionRequest.query
+  bot_response           final_response or last responses[]
+  contextual_query       SessionRequest.contextual_query
+  skill_name             SessionRequest.agent_name
+  tool_call_list         SessionRequest.tool_call_list (+ retriever results filled)
+  retrieved_extracts     Qdrant text from point_ids
+  is_dialog_flow         true when loaded via dialog-flow path
+  node_segments          built from AssistantEvent (dialog-flow only)
+  request_id             SessionRequest.request_id
+
+Dialog-flow segment model: NodeSegment (eval_framework/dialog_flow/models.py)
+  - node_name, partial_response, tool_calls[], point_ids[], request_id
+  - Built by AssistantEventIndex.build_segments() (eval_framework/dialog_flow/event_index.py):
+      transitions → current node
+      TOOL_CALL* → append tool to segment
+      VECTOR_SEARCH → point_ids
+      RESPONSE_* → partial_response text
+  - Fallback (no events): single segment from SR agent_name + tools + final_response
+
+Welcome turn filtering (dialog-flow only):
+  - Drops turns where agent_name is welcome_message/welcome/welcome_agent
+    or empty user query with bot greeting.
+
+Turn classification (metrics_runner.py):
+  - KB turn: information agent OR retrieved_extracts OR retriever_tool in tools
+  - Skill turn: has skill_name, not welcome, not pure KB turn
+
+Eval output written back:
+  - SimulationRunInfo.result.metrics_trace[] — one entry per eval turn with per-metric scores
+  - SimulationRunInfo.result.conversation_metrics{} — whole-conversation metrics
+  - Optional CSV/JSON under kb_bot/output_folder/
+
+
+PART 4 — SIMULATION PATH (HOW DATA GETS INTO MONGO)
+---------------------------------------------------
+
+Quick inference sim (eval_framework/simulation/quick_inference_simulator.py):
+
+  1. Scenario saved as TestCaseInfo
+  2. SimulationRunInfo created with metadata.va_blueprint snapshot
+  3. ConversationSimulator.run_conversation_ws() (user_simulation_llm.py):
+       - Connects ws://<bot>/service/ws/eval-run?tenant=…&origin_id=…
+         &simulation_correlation_id=<SimulationRunInfo._id>
+         &mock_tool_response=true&testing_mode=true&channel=chat|voice
+       - Bot returns {"status":"ready","session_id":"..."}
+       - Each turn: send {"query": "..."}; receive bot JSON (response, messages, tools)
+       - parse_messages() extracts skill_name, tool_calls, contextual_query, extracts
+  4. Bot runtime writes SessionRequest (+ AssistantEvent for dialog-flow) per turn
+  5. On sim end: metadata["session_id"] = session_id on SimulationRunInfo
+  6. Eval phase reads SessionRequest by that session_id
+
+Mock tool responses (eval_framework/simulation/api.py):
+  - During sim, bot POSTs /simulation/generate-mock-tool-response instead of real APIs
+  - Payload: tool_schema (LLM-visible params), args (LLM + static merged params), session_id,
+    simulation_correlation_id
+  - Eval loads VA blueprint tool.last_run_response + conversation cache → LLM generates JSON mock
+  - Static params (e.g. xNgSessionId) may appear in args but not in schema; eval uses fallback
+    description so mock generation does not crash
+
+Safety sim: AdversarialUserSimulator replaces ConversationSimulator when testing_mode=SAFETY.
+
+
+PART 5 — ARCHITECTURE BRANCHING (HOW EVAL LOGIC DIFFERS)
+--------------------------------------------------------
+
+Bot type detection uses VABlueprint flags:
+  - has_knowledge, has_skills, is_dialog_flow, has_policy_based_skill
+
+Orchestration types (bot side; eval branches on is_dialog_flow + capability flags):
+
+  A) DIALOG_FLOW (scripted flow graph)
+     - Trace: SessionRequest + AssistantEvent → node_segments per turn
+     - Metrics evaluate per node segment where applicable (tool/param/agent adherence)
+     - skill_call_accuracy: SKIPPED (routing is graph-driven, not LLM router)
+     - tool_recall_accuracy: N/A for dialog-flow v1
+     - valid_tool_name_rate: union of segment nodes + blueprint tool owners
+
+  B) DELEGATOR / MULTI-SKILL (legacy production default)
+     - Trace: SessionRequest only; skill_name = router-chosen skill
+     - skill_call_accuracy: did the right skill respond?
+     - tool_recall_accuracy: conversation-level expected vs actual tools
+     - Per-turn metrics keyed on skill_name
+
+  C) KNOWLEDGE-ONLY (information agent / KB bot)
+     - KB turns dominate; skill/tool metrics mostly N/A
+     - kb_fact_score via separate traceback LLM eval in base_evaluator (not MetricsRunner)
+     - kb_goal_adherence, kb_retrieval_correctness, checklist_eval
+
+  D) HYBRID (skills + KB)
+     - MetricsRunner for skill/tool/escalation metrics on skill turns
+     - KB fact eval + KB metrics on KB turns (filter_turns=True in hybrid path)
+
+Eval path selection in base_evaluator._evaluate_single_simulation:
+  - Skills only  → MetricsRunner
+  - Knowledge only → MetricsRunner + KB fact eval (all turns)
+  - Hybrid       → MetricsRunner + KB fact eval (KB turns only)
+
+Past evaluation mode: skips sim-specific KB metrics; may run safety metrics.
+
+
+PART 6 — METRICS: WHAT IS COMPUTED WITH WHAT DATA
+-------------------------------------------------
+
+Turn-level metrics (stored in metrics_trace[].metrics; parallel per turn):
+
+  Metric                         Primary inputs
+  ------                         --------------
+  hallucination_score            Conversation prefix, turn user_query + bot_response,
+                                 skill instructions, retrieved_extracts, tool results
+  skill_call_accuracy            Expected skill (blueprint triggers) vs turn.skill_name
+                                 [delegator only; skipped for dialog-flow]
+  tool_call_accuracy             Tools called vs skill instructions; per-segment for DF
+  valid_tool_name_rate           Tool names vs blueprint-declared tools (+ segment owners)
+  param_accuracy                 Tool argument values vs transcript + prior tool results
+                                 (LLM judge; per-segment for DF)
+  agent_instruction_adherence    Skill instructions, tools used, bot response;
+                                 context_adherence + skill_goal_adherence sub-scores;
+                                 per node segment partial_response for DF
+  escalation_needed              Skill escalation rules + conversation state
+  escalation_accuracy            escalation_needed result + whether transfer tool called
+  kb_retrieval_correctness       turn point_ids vs TestCaseInfo target document IDs
+
+  kb_fact_score / scores         [base_evaluator, not MetricsRunner] KB traceback LLM eval:
+                                 user_query, bot_response, retrieved_extracts, ground truth
+
+Turn aggregate score: mean of applicable turn metrics (escalation N/A excluded —
+see compute_turn_aggregate_score in metrics_runner.py).
+
+Conversation-level metrics (conversation_metrics{}):
+
+  Metric                         Primary inputs
+  ------                         --------------
+  tool_recall_accuracy           All tools across skill turns vs expected set
+                                 [not dialog-flow v1]
+  skill_goal_adherence           Full trace + skill goals from blueprint (LLM)
+  kb_goal_adherence              Full trace + ground_truth_manual
+  kb_retrieval_correctness       Union of retrieved doc IDs vs all scenario target docs
+  checklist_eval                 KB/information-agent turns vs guidelines checklist
+  empathy                          Full conversation tone (LLM)
+  profanity_compliance_rate      Full conversation
+  attack_success                   Full trace + safety scenario metadata (SAFETY mode)
+  latency                          VoiceSessionMetrics by voice_session_id (informational)
+  turn_aggregation_stats         Dialog-flow SR filtering stats (welcome discarded, etc.)
+
+Mode gating:
+  - SAFETY testing_mode → primarily attack_success
+  - Welcome turns → metrics auto-pass (score 1)
+  - Voice channel → latency metric when voice_session_id present
+
+LLM judges: most metrics use GPT-4.1 (temp ~0.2); checklist uses GPT-5.
+
+
+PART 7 — KEY FILES (QUICK REFERENCE)
+------------------------------------
+
+  eval_framework/pipeline_main.py          End-to-end orchestrator
+  eval_framework/mongo_conn.py             Mongo init + model registration
+  eval_framework/test_config.py            Env URIs, output paths
+  eval_framework/session_context.py        SessionRequest, AssistantEvent, ToolCall
+  eval_framework/document_models.py        SimulationRunInfo, TestSession, TestCaseInfo
+  eval_framework/va_blueprint/models.py    VABlueprint, is_dialog_flow, skills/tools
+  eval_framework/dialog_flow/turn_loader.py       DF trace loading
+  eval_framework/dialog_flow/event_index.py       Event → node_segments
+  eval_framework/dialog_flow/adapter.py           EvalTurn → ConversationTraceItem
+  eval_framework/dialog_flow/segment_helpers.py   Per-segment metric helpers
+  eval_framework/evaluation/base_evaluator.py     Load trace, KB fact eval, save results
+  eval_framework/evaluation/metrics_runner.py     Metric orchestration + branching
+  eval_framework/evaluation/models.py             ConversationTraceItem, ConversationData
+  eval_framework/evaluation/metrics/*.py          Individual metric implementations
+  eval_framework/simulation/user_simulation_llm.py WebSocket sim + session linking
+  eval_framework/simulation/api.py                Mock tool response endpoint
+  eval_framework/simulation/quick_inference_simulator.py  Sim batch runner
+  eval_framework/qdrant_utils.py                  KB extract resolution
+  eval_framework/gradio_app_new.py                UI; loads SessionRequest for transcripts
+
+
+PART 8 — END-TO-END FLOW (CHEAT SHEET)
+--------------------------------------
+
+  Pipeline start
+    → fetch VA Blueprint from bot
+    → generate/load TestCaseInfo scenarios
+    → create TestSession + SimulationRunInfo rows
+
+  Simulation
+    → WebSocket chat/voice with bot (mock_tool_response=true)
+    → bot writes SessionRequest (+ AssistantEvent) to Mongo
+    → link session_id on SimulationRunInfo.metadata
+
+  Evaluation
+    → read SessionRequest (+ AssistantEvent if dialog-flow)
+    → enrich with Qdrant extracts from point_ids
+    → ConversationTraceItem[] → MetricsRunner
+    → write metrics_trace + conversation_metrics to SimulationRunInfo.result
+
+  Reporting
+    → Gradio UI / CSV exports / pipeline_results JSON
+
+
+PART 9 — COMMON PITFALLS FOR NEW AGENTS
+---------------------------------------
+
+  1. session_id lives on SimulationRunInfo.metadata, not on SimulationRunInfo._id
+     (correlation id used in WebSocket ≠ Mongo session id).
+
+  2. Eval reads bot_prod (or env-specific DB) — must match where bot wrote SessionRequest.
+
+  3. AssistantEvent may be empty locally; dialog-flow metrics fall back to single segment
+     from SessionRequest only.
+
+  4. agent_instruction_adherence sees tool results in conversation history (prior turns)
+     but the “latest tools” block may omit result fields — judge mostly reads final_response.
+
+  5. Static tool params (xNgSessionId, etc.) appear in mock args but not LLM schema —
+     mock endpoint must tolerate them (see simulation/api.py).
+
+  6. Chat sim often has empty phoneNumber — param_accuracy fails fairly; separate from mock 500s.
+
+  7. valid_tool_name_rate for dialog-flow must union tools across segment nodes + blueprint
+     owners (auth tools in Main_Auth may be called from billing turns).
+
+  8. kb_bot/ in bot-eval repo is output artifacts only — bot persistence code is in ~/src/bot.
+
+
+Document generated for agent KT handoff — bot-eval repo, Aug 2026.

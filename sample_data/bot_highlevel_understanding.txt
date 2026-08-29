@@ -1,0 +1,349 @@
+BOT REPOSITORY — HIGH-LEVEL UNDERSTANDING (KT)
+================================================
+Repo path: ~/src/bot
+Main app: kb_bot/ (Python 3.11, FastAPI, Uvicorn)
+Entry point: kb_bot/kb_bot/bot.py
+
+Purpose
+-------
+Multi-channel conversational AI backend for thelevel.ai's Virtual Assistant (VA)
+product. Powers knowledge + skills + workflow bots over chat and voice. Handles
+LLM orchestration (LangGraph), RAG, telephony (Twilio/Retell/Vapi/SignalWire),
+CRM connectors, guardrails, analytics, and internal service APIs.
+
+
+REPOSITORY LAYOUT (top level)
+-----------------------------
+kb_bot/              Main FastAPI application (this is "the bot")
+  kb_bot/            Python package — all runtime modules live here
+  tests/             Pytest suite (mirrors module structure)
+  env_kb_bot/        Local venv (use env_kb_bot/bin/python, not system python)
+
+gcp_functions/       Serverless (e.g. llm_probe — out-of-band LLM health checks)
+writer_service/      Out-of-process event persistence (Fluent Bit pipeline)
+bot_mcp/             Model Context Protocol servers
+model_serving/       ML model serving infra
+crawl_server/        Document/web crawling for KB ingestion
+dialogue-search/     Search/retrieval auxiliary service
+k8s/                 Helm charts (bot-deployment, bot-voice, writer-service, …)
+e2e_tests/           End-to-end voice/chat smoke tests
+docs/architecture/   Deep-dive architecture docs (read these for module work)
+.context/            AI/coding-assistant knowledge base (index.md, project.md)
+
+Related but separate repo: bot-eval/ — simulation/eval pipeline (Gradio, scenarios,
+metrics). Talks to bot via WebSocket + VA Blueprint HTTP API.
+
+
+RUNTIME ENTRY POINTS (bot.py)
+-----------------------------
+Four FastAPI apps are created from one codebase:
+
+  app            Main customer-facing app (WebSocket chat/voice, deployed UI paths)
+  public_app     Public HTTP routes
+  protected_app  Authenticated tenant routes
+  service_app    Internal/service routes (service auth token), includes:
+                 - /service/va-blueprint/extract_blueprint
+                 - /service/ws/eval-run (eval WebSocket)
+                 - voice webhooks, debug flows, bot ops, canary, etc.
+
+Local dev:
+  cd kb_bot && env_kb_bot/bin/uvicorn kb_bot.bot:app --host 0.0.0.0 --port 8000
+
+Key env vars (kb_bot/kb_bot/.env):
+  MONGO_URI, MONGO_DB_NAME, REDIS_CACHE_URL, OPENAI_API_KEY, QDRANT_API_URL,
+  CUSTOM_LLM_BASE_URL / CUSTOM_LLM_API_KEY (in-house or Fireworks vLLM endpoints),
+  LANGFUSE_*, telephony keys (TWILIO_*, RETELL_*, etc.)
+
+
+DATA STORES — WHERE THINGS LIVE
+-------------------------------
+
+MongoDB (primary, Beanie ODM)
+  - Assistant config: Assistant, AssistantSettings, LLMAgent (skills), Tool,
+    Flow (dialog/workflow graphs), Workflow, VariableDefinition, RetrievalConfig
+  - Runtime sessions: AssistantSession, SessionRequest, AssistantEvent
+  - LLM overrides: LLMConfiguration (per assistant_id + channel + purpose)
+  - Auth/connectors: Credentials, AuthConfig, Connector, Connection
+  - Testing/debug: BotTestingConversation, PreviewSession, MockToolProviderConfig
+  - Full model list: kb_bot/kb_bot/database/mongo_conn_v2.py → ALL_MONGO_MODELS
+
+PostgreSQL
+  - Used for some analytics / legacy paths (psycopg2); not the main config store.
+
+Redis
+  - Caching, rate limiting, LLM circuit breaker / BreakerFilter (failover skip list)
+
+Qdrant
+  - Vector store for RAG (knowledge base chunks). Embedding + retrieval configured
+    per assistant via RetrievalConfig.
+
+Local / pipeline files (prod)
+  - EventBatchLogger writes NDJSON to /var/log/va/events.<pid>.log
+  - Fluent Bit sidecar → writer_service POST /batch → Mongo AssistantEvent
+
+
+HOW THE BOT READS CONFIG AT RUNTIME
+-----------------------------------
+
+1. Assistant identity
+   - WebSocket/HTTP passes tenant + origin_id (or assistant_id).
+   - get_published_or_draft_assistant() loads Assistant + settings from Mongo.
+   - Channel (chat vs voice) drives prompts, tools, and LLM resolution.
+
+2. Skills & tools
+   - LLMAgent documents = skills (trigger, general_prompt, tools, knowledge_base).
+   - Tool documents hang off agent_id; ToolsAPI.enrich_tools() loads API configs.
+   - Flow-bound agents have flow_id set; standalone skills have flow_id=null.
+
+3. Dialog / workflow graphs
+   - Flow collection: nodes (CONVERSATION_NODE, API, Code, …), edges, triggers.
+   - SESSION_START flow can override legacy orchestration to DIALOG_FLOW at runtime.
+
+4. LLM routing (llm_config/)
+   - ConfigResolver merges Mongo LLMConfiguration with hardcoded defaults.
+   - Keyed by: assistant_id + channel + LLMPurpose (router, main_stream, kb_stream,
+     contextual_query, standalone_query, closing_msg, …).
+   - LLMFactory → LLMChainBuilder → provider (OpenAI, Vertex, Groq, custom_langchain, …).
+   - Per-assistant overrides via Mongo or script:
+     kb_bot/kb_bot/scripts/upsert_custom_llm_config.py
+     (maps transactional_bot → main_stream, kb_bot → kb_stream).
+
+5. Knowledge / RAG
+   - Assistant.knowledge_base.resource_ids + per-skill KB.
+   - RetrievalConfig per assistant_origin_id; Qdrant collection per tenant/env.
+   - Atlas path optional (enable_atlas in orchestration_config).
+
+6. Prompts
+   - PromptFactory / Langfuse matrix prompts (PromptNames enum).
+   - Orchestrator-specific PromptManager subclasses assemble system prompts.
+
+
+ORCHESTRATION ARCHITECTURES (the “kinds of bots”)
+-------------------------------------------------
+
+OrchestrationType enum (assistants/models/orchestration_settings.py):
+
+NEW archetypes (for newly created assistants):
+  SINGLE_AGENT    → LanggraphSingleAgent — one agent, minimal routing
+  MULTI_AGENT     → LanggraphMultiAgent — multiple agents with routing
+  WORKFLOW_AGENT  → LanggraphWorkflowAgent — workflow-centric graph
+
+LEGACY (still in prod for existing bots):
+  DELEGATOR_V2_VOICE → LanggraphDelegator_V2_Voice_KB (DEFAULT for most live bots)
+  SIMPLE             → LanggraphSimple — single react node, no router
+  DIALOG_FLOW        → LanggraphDialogFlow — scripted flow graph drives turns
+
+OrchestratorFactory (assistants/langgraph/base.py) picks the class.
+
+--- 1) DELEGATOR_V2_VOICE (production default) ---
+Graph shape (simplified):
+  START → route_to_workflow (proxy)
+    → single skill? go direct
+    → return to last active node? resume
+    → else LLM router + contextual_query → pick skill or information_agent
+  INFORMATION_AGENT → KB-grounded answers (retriever tool)
+  Each SKILL → sub_agent_react_node (tools + optional general_query_handler)
+  HUMAN_HANDOVER (optional) → FINISH
+  FINISH → exit_node (standalone query rewrite + closing-msg detection)
+
+Best for: multi-skill bots with KB + transactional skills + router.
+
+--- 2) DIALOG_FLOW ---
+Session-start Flow graph defines nodes (conversation nodes bound to LLMAgents),
+edges, and transitions ([[node: id]] references in prompts).
+LanggraphDialogFlow orchestrator walks the flow instead of free-form routing.
+Runtime may set effective_orchestration_type = DIALOG_FLOW when a session-start
+flow exists (except SINGLE_AGENT / MULTI_AGENT / WORKFLOW_AGENT).
+
+Best for: scripted call/chat flows (auth → billing → payment, etc.).
+
+--- 3) SIMPLE ---
+Single LangGraph react agent — no router, no information_agent split.
+One node with tools + optional KB retriever.
+
+Best for: small FAQ or single-skill bots.
+
+(New types SINGLE_AGENT / MULTI_AGENT / WORKFLOW_AGENT are self-contained
+orchestrators added in Milestone 2; legacy paths remain for backward compatibility.)
+
+
+REQUEST / TURN LIFECYCLE (chat or voice)
+----------------------------------------
+
+1. Client opens WebSocket (or voice webhook establishes session).
+2. SessionContext set (tenant, session_id, assistant_id, channel).
+3. AssistantFactory creates LanggraphAssistant:
+   - Loads Mongo models (assistant, agents, tools, flows, LLM configs).
+   - OrchestratorFactory builds orchestrator + compiles LangGraph with checkpointer.
+4. User message arrives → USER_QUERY event logged.
+5. Per turn (run_node in base.py):
+   a. Voice only: handle_voice_interruption() if user barged in mid-response.
+   b. RevertController.capture() — snapshot checkpoint before new work.
+   c. orchestrator graph astream() runs until stop condition.
+   d. Tokens/events streamed to client via IOHandler / WebSocketContext.
+   e. Events written to EventBatchLogger → writer_service → Mongo.
+6. Session end → checkpoint handlers (metrics, flows, webhooks) via writer_service.
+
+
+STREAMING
+---------
+
+Chat WebSocket:
+  - LangGraph astream() with multiple stream modes (messages, custom, updates).
+  - Skill react subgraphs: AIMessageChunk on "messages" stream → client.
+  - Information agent (delegator): uses stream_prompt_llm_runnable() + StreamWriter
+    (custom stream path); base.py skips duplicate "messages" chunks for that node.
+  - Tool calls: streamed as structured events; mock tools in eval mode.
+
+Voice:
+  - Similar graph streaming; TTS path (Retell/LiveKit) consumes token chunks.
+  - preamble_streamed sentinel after KB stream so TTS can flush before FINISH.
+  - Filler audio optional (enable_filler in orchestration_config).
+
+LLM streaming providers:
+  - LangChain providers (OpenAI, Vertex, custom_langchain) support streaming.
+  - SDK-only providers (openai_sdk, vertexai_sdk) are non-streaming fallbacks.
+
+
+INTERRUPTIONS (primarily voice)
+-------------------------------
+
+Config: orchestration_config.enable_interrupted_response (default true).
+
+Mechanism:
+  - Client sends interruption snapshot (agent_state, backend_state, partial response).
+  - handle_voice_interruption() in interruption_flow/handler.py:
+    • May revert LangGraph checkpoint via RevertController (RevertibleCheckpointer).
+    • Cleans orphaned tool messages from aborted turn.
+    • Merges user query with partial assistant speech when appropriate.
+  - PromptManager injects interruption block into KB/skill prompts when
+    is_interrupted_message=true (INTERRUPTED_PROMPT_PROCESSED event in logs).
+
+Chat: lighter interruption support via prompt blocks; voice is the primary path.
+
+RevertController: captures pre-turn checkpoint; revert on barge-in so the bot
+does not commit half-finished tool loops to history.
+
+
+LLM RESILIENCE (two independent layers)
+---------------------------------------
+
+1. In-band fallback (llm_fallback.md)
+   - Per request: primary model → fallback_chain with .with_retry() + .with_fallbacks().
+   - Configured in LLMConfiguration or defaults.py per LLMPurpose.
+
+2. Out-of-band failover (llm_failover.md + gcp_functions/llm_probe/)
+   - Scheduled probes hit deployments; unhealthy endpoints skipped via Redis BreakerFilter.
+   - deployments.yaml maps model_id → env vars for base_url/api_key (custom models).
+
+Custom / in-house / Fireworks models:
+  - Provider: custom_langchain (ChatOpenAI + openai_api_base).
+  - Registry keys: main_model, router_model, cq_model, input-guardrail-model, …
+  - Session affinity header (x-session-affinity) for sticky vLLM routing.
+
+
+KEY MODULES (kb_bot/kb_bot/)
+----------------------------
+
+assistants/          Assistant lifecycle, factory, LanggraphAssistant, WebSocket I/O
+  langgraph/           Orchestrators, base.py (graph run, streaming), prompts_manager
+  models/              Assistant, settings, orchestration enums
+
+llm_config/          Provider routing, config resolution, observability callbacks
+agentic_flows/       LLMAgent, Tool models, ToolsAPI
+flows/               Flow graph (dialog flow builder UI backend)
+dialog/              API builder, OAuth, workflow execution nodes
+knowledge_base/      RAG ingestion, retriever, Qdrant integration
+voice/               Twilio, Retell, Vapi, SignalWire, LiveKit handover
+connectors/          Salesforce, Google, HubSpot, MCP configs
+messaging/           Pub/Sub subscribers (flow execution, metrics, testing)
+eval_framework/      VA Blueprint extraction API (for bot-eval integration)
+guardrails/          Input/output safety models
+analytics/           Session metrics, dashboards
+auth/                Tenant context, service tokens, middleware
+cache/               Redis helpers
+variables/           Runtime variable resolution (session + flow variables)
+interruption_flow/   Voice barge-in handler + checkpoint revert
+logger/              Structlog, EventBatchLogger, event types (EventType enum)
+
+
+EVENTS & OBSERVABILITY
+----------------------
+
+Structured events (EventType): USER_QUERY, LLM_INVOCATION_START/SUCCESS/ERROR,
+TOOL_CALL_RESULT, SKILL_NODE_TRIGGERED, TOKEN_USAGE_DETAILS, SESSION_END, etc.
+
+Tracing: Langfuse (prompt source), Datadog / Elastic APM.
+
+Pipeline: bot → NDJSON log file → Fluent Bit → writer_service → Mongo AssistantEvent
+         → checkpoint handlers on SESSION_END (metrics, webhooks, post-session flows).
+
+Debug: debug_flows API replays sessions; logs often written to ~/eval_runs/ locally.
+
+
+VA BLUEPRINT & EVAL (cross-service)
+----------------------------------
+
+In bot (eval_framework/va_blueprint/):
+  POST /service/va-blueprint/extract_blueprint
+  Input: tenant, origin_id, channel, runtime_mode (DEBUG/PUBLISHED)
+  Output: VABlueprint JSON — assistant_info, skill_list, dialog_flow, KB flags,
+          structured_skill_description_map (LLM-generated for eval scenarios).
+
+In bot-eval (separate repo):
+  - collect_bot_data() calls blueprint API at pipeline start.
+  - WebSocket /service/ws/eval-run with mock_tool_response=true for simulations.
+  - ScenarioFactory routes by has_knowledge / has_skills / is_dialog_flow.
+
+Per-assistant LLM override for eval experiments:
+  upsert_custom_llm_config.py apply <model_id> --purpose transactional_bot \
+    --assistant-id <uuid> --base-url https://api.fireworks.ai/inference/v1
+
+
+WORKFLOWS vs SKILLS vs FLOWS (terminology)
+-------------------------------------------
+
+Skill (LLMAgent): LLM agent with prompt + tools; shown in UI "Skills" section.
+Workflow (Workflow doc): API-builder workflow (multi-node: API, Code, Return);
+  exposed as a Tool with action_type=FLOWS.
+Flow (Flow doc): Dialog flow graph (conversation nodes, session triggers);
+  drives DIALOG_FLOW / WORKFLOW_AGENT orchestration.
+Knowledge: resource_ids on assistant or skill → Qdrant/Atlas retrieval.
+
+
+KUBERNETES DEPLOYMENTS (k8s/)
+-----------------------------
+bot-deployment              Main FastAPI
+bot-voice-deployment        Voice-optimized instance
+bot-api-deployment          API-only variant
+bot-flow-execution-subscriber
+bot-session-metrics-subscriber
+bot-testing-subscriber
+writer-service              Event persistence sidecar target
+
+Prod hosts: bot.thelevel.ai, bot-staging.thelevel.ai, bot-development.thelevel.ai
+
+
+COMMON DEBUGGING PATTERNS (from ops)
+------------------------------------
+- LLM 401 on custom endpoint → check CUSTOM_LLM_API_KEY in .env (restart bot).
+- Mongo LLM override → LLMConfiguration collection; use upsert script or revert.
+- Tool loop / recursion limit 25 → model keeps calling tools (Nemotron on Fireworks
+  observed); not missing tool output — graph hits LangGraph step cap.
+- contextual_query vs main_stream → different LLMPurpose; cq uses gpt-4.1-mini
+  by default; main_stream can be overridden to custom/Fireworks separately.
+- Check logs for: LLM_CONFIG_RESOLVED, LLM_INVOCATION_*, TOOL_CALL_RESULT,
+  REQUEST_FAILED_WITH_ERROR, Recursion limit.
+
+
+DOCS TO READ NEXT (by task)
+---------------------------
+.context/index.md                    Index of all context
+docs/architecture/orchestrators.md   Graph shapes, streaming, delegator
+docs/architecture/llm_config.md      Providers, purposes, custom deployments
+docs/architecture/llm_fallback.md    In-band retry/fallback
+docs/architecture/llm_failover.md    Probe-driven failover
+docs/architecture/writer_service.md  Event pipeline
+.context/development.md              Local setup, pytest, env vars
+
+Generated for KT handoff — Aug 2026.
