@@ -308,7 +308,7 @@ Cutting these is a feature of the design, not a gap to fill later without discus
 - In-app session/transcript browser (that's BotProbe's job)
 - Plan editing, hypothesis approve/reject, re-planning, or a feedback loop on Explore
 - Exposing `min_support` / `significance_level` / `pairing_turn_tolerance` as user controls
-- Any Postgres/Argus-backed data path — v1 reads Mongo directly
+- Any Postgres/Argus-backed data path — v1 uses Mongo for session index and BotProbe `/trace` for event logs
 
 ---
 
@@ -319,7 +319,7 @@ Cutting these is a feature of the design, not a gap to fill later without discus
   Study" from Explore except via the failure banner's escape hatch (§2.4).
 - **No optimistic UI**: every state transition (submit, execute) waits for the backend's actual
   status field rather than assuming success client-side — Phase 0–3 durations are unpredictable
-  (Mongo query size, LLM latency), so a fake "done" would be actively misleading.
+  (Mongo session query size, BotProbe trace fetch, LLM latency), so a fake "done" would be actively misleading.
 - **Numbers are never invented client-side**: percentages, deltas, and significance labels are
   rendered exactly as computed server-side in `EvaluationResult` — no client-side rounding
   decisions beyond display formatting (e.g. 1 decimal place for percentages).

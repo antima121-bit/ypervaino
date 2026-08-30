@@ -212,9 +212,9 @@ Maintainer-authored platform rules. Same for all studies.
 
 ---
 
-### 2.2 Mongo connection (environment)
+### 2.2 Data connections (environment)
 
-Direct Mongo access for v1 (no Argus Postgres pipeline required).
+**Mongo (session index only)** — read-only; no Argus Postgres pipeline.
 
 | Env var | Purpose |
 |---------|---------|
@@ -225,11 +225,25 @@ Direct Mongo access for v1 (no Argus Postgres pipeline required).
 
 | Collection | Use |
 |------------|-----|
-| `assistant_event` | Primary event trace per session |
-| `AssistantSession` or session index | List sessions by tenant, time, assistant; outcome fields |
-| Optional: `session_request` | Enrichment if needed for tool/outcome (Phase 0+) |
+| `AssistantSession` | List/filter sessions by tenant, time, assistant, channel; `voice_session_id` (BotProbe UUID) + outcome fields |
+| Optional: `SessionRequest` | Turn-level transcript enrichment only — not primary event source |
 
-Session list query uses scope fields from `CreateStudyRequest`; events loaded per `session_id`.
+Session list query uses scope fields from `CreateStudyRequest`. **Do not load events from `AssistantEvent`** — incomplete type subset.
+
+**BotProbe trace API (full event logs)**
+
+| Env var | Purpose |
+|---------|---------|
+| `BOTPROBE_TRACE_BASE_URL` | e.g. `http://10.128.0.34:3333` |
+| `BOTPROBE_TRACE_ENV` | `prod` \| `stage` \| `dev` — passed as `env` query param |
+
+```
+GET {BOTPROBE_TRACE_BASE_URL}/trace?session_id={voice_session_id}&env={BOTPROBE_TRACE_ENV}
+```
+
+Returns all event types from Elasticsearch (LLM, token, guardrail, debug, …). Details: [MONGO_LOOKUP.md](./MONGO_LOOKUP.md) §4.
+
+Per session: resolve `voice_session_id` from Mongo candidate → curl `/trace` → materialize `ConversationRecord`.
 
 ---
 
@@ -400,4 +414,5 @@ Phase 2 produces `AnalysisPlan`. User **Execute** on Explore tab → `analysis_p
 
 | Version | Date | Notes |
 |---------|------|-------|
-| v1 | 2026-08-29 | Initial input schema; v1 scope: no plan loop, 3 tabs, Mongo direct, file storage |
+| v1 | 2026-08-29 | Initial input schema; v1 scope: no plan loop, 3 tabs, file storage |
+| v1.1 | 2026-08-30 | Dual-source: Mongo session index + BotProbe `/trace` for events |

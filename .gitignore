@@ -1,5 +1,8 @@
 .env
 .env.mongo
+config/_event_schema_probe.json
+config/_trace_schema_probe.json
+config/_schema_detailed.json
 ypervaino.db
 server.log
 __pycache__/

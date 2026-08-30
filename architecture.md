@@ -73,7 +73,7 @@ Owns status transitions (`created` → `explored` → `running` → `complete` |
 ```
 ypervaino/
   orchestrator/       study_runner.py, study_store.py
-  data/               mongo_loader.py, conversation_materializer.py, event_deduper.py
+  data/               mongo_session_loader.py, trace_fetcher.py, conversation_materializer.py, event_deduper.py
   cohort/             cohort_resolver.py, filter_atom_compiler.py
   features/           feature_computer.py, intent_classifier.py, intent_lexicon.py
   sampling/           exploration_sampler.py
@@ -155,6 +155,18 @@ FeatureVector {
 }
 ```
 
+### 3.4 Data sources
+
+| Component | Source | Notes |
+|-----------|--------|-------|
+| Session index / scope filter | Mongo `AssistantSession` | Read-only; see [`fetch_filtered_session_ids.py`](./fetch_filtered_session_ids.py) |
+| Event traces | BotProbe `GET /trace` | Full ES-backed log stream; see [MONGO_LOOKUP.md](./MONGO_LOOKUP.md) §4 |
+| VA Blueprint | Bot API or Mongo | Unchanged |
+
+`TraceFetcher` wraps HTTP calls to BotProbe (`BOTPROBE_TRACE_BASE_URL`, `BOTPROBE_TRACE_ENV`). Cache raw traces under `studies/{slug}/cache/traces/{session_id}.json` when fingerprinting features.
+
+Mongo `AssistantEvent` is **not** used for materialization — subset of types only; missing LLM/token events required for cost/latency primitives.
+
 ---
 
 ## 4. Phase 0 — Cohort resolution
@@ -162,7 +174,7 @@ FeatureVector {
 ### 4.1 Steps
 
 1. Query Mongo session index by `ScopeFilter` (tenant, assistant, channel, date range, traffic split).
-2. For each candidate: materialize `ConversationRecord`, dedupe events, run `FeatureComputer` (cache).
+2. For each candidate: `TraceFetcher` → `/trace` → materialize `ConversationRecord`, dedupe events, run `FeatureComputer` (cache).
 3. Compile `cohort_filters[]` → `conversation_predicate` via static filter-atom registry ([input_schema.md](./input_schema.md) §2.3).
 4. Evaluate cohort predicate using `PredicateEvaluator` over primitives / cheap signals.
 5. Fetch VA Blueprint → `VABlueprintSummary` → `intermediate/blueprint_summary.json`.
@@ -512,7 +524,7 @@ Submit CreateStudyRequest
 │
 ├─ Phase 0
 │   ├─ Mongo session index → candidates
-│   ├─ Materialize + dedupe + FeatureComputer [cache]
+│   ├─ BotProbe /trace → materialize + dedupe + FeatureComputer [cache]
 │   ├─ Cohort predicate filter → D_filtered
 │   ├─ BlueprintFetcher → blueprint_summary.json
 │   ├─ ChangeContextResolver (if change fields) → change_context.json
@@ -572,3 +584,4 @@ Submit CreateStudyRequest
 | Version | Date | Notes |
 |---------|------|-------|
 | v1 | 2026-08-30 | Initial architecture from modelling doc + implementation design discussions |
+| v1.1 | 2026-08-30 | Dual-source data layer: Mongo session index + BotProbe `/trace` for events |

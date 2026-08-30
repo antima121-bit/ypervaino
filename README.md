@@ -17,10 +17,10 @@ This is a **lightweight, self-contained implementation** built for demo purposes
   exploration and hypothesis generation.
 - `new_study.html`, `explore.html`, `dashboard.html`, `sessions.html` — the 4 pages of the flow.
 
-**Important:** the underlying conversation data is synthetic (seeded), not real production
-traffic — we don't yet have access to va-argus's real Mongo/Postgres. The engine (sampling,
-statistics, LLM calls, hypothesis testing) is real; swap the data source once real credentials
-are available.
+**Important:** the demo backend still uses synthetic SQLite data. Production wiring uses **Mongo
+for session discovery** and **BotProbe `/trace` for full event logs** — see
+[`MONGO_LOOKUP.md`](./MONGO_LOOKUP.md). The engine (sampling, statistics, LLM calls,
+hypothesis testing) is real; swap the data layer per architecture docs.
 
 ## Running it
 
@@ -48,4 +48,4 @@ Get a free Gemini API key (no credit card needed) at **aistudio.google.com/apike
 - No real ScopeFilter (tenant/assistant/date range don't actually filter data yet)
 - No real embedding-based clustering for exploration sampling (approximated with scenario/health stratification)
 - Approving a plan on `/explore` doesn't yet feed back into what `/results` computes
-- Not connected to real va-argus data (no Mongo/Postgres access yet)
+- Not connected to real production pipeline yet (`server.py` still uses SQLite; production path documented in `MONGO_LOOKUP.md`)

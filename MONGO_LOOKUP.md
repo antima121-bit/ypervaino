@@ -1,10 +1,21 @@
-# Mongo Session Lookup — automating BotProbe → MongoDB
+# Session discovery & event loading
 
-**Solves:** the "Mongo thing figure out" task — how to go from a production call's
-Session/Conversation ID to its full conversation data, without manually going through
-BotProbe's UI and MongoDB Compass every time.
+**Solves:** how Ypervaíno gets from a scoped study (tenant, dates, assistant) to full
+conversation event logs — without manually using BotProbe's UI or MongoDB Compass.
 
-**Script:** [`lookup_session.py`](./lookup_session.py)
+**v1 data split (confirmed 2026-08-30):**
+
+| Step | Source | What |
+|------|--------|------|
+| Session discovery | **Mongo** `AssistantSession` | List/filter candidates; resolve UUID ↔ internal id |
+| Event trace | **BotProbe `/trace` API** | Full ordered event log (Elasticsearch-backed) |
+
+Mongo `AssistantEvent` holds only a **subset** of event types (kb_bot's
+`MONGO_PERSISTED_EVENT_TYPES`). LLM/token/cost events (`LLM_INVOCATION_SUCCESS`,
+`TOKEN_USAGE_DETAILS`, `LLM_CONFIG_RESOLVED`, …) reach Elasticsearch via stdout but are
+**not** reliably in Mongo. BotProbe Trace Viewer reads ES — same path we use via curl.
+
+**Scripts:** [`lookup_session.py`](./lookup_session.py), [`fetch_filtered_session_ids.py`](./fetch_filtered_session_ids.py)
 
 ---
 
@@ -54,11 +65,55 @@ Session UUID (e.g. from the production dashboard)
   → get every turn: query, final_response, agent_name, tool_call_list, created_at
 ```
 
-Two MongoDB queries. No BotProbe UI, no Compass, no copy-pasting between tools.
+Two MongoDB queries for **turn-level transcript preview** (`SessionRequest`). For the full
+event trace used by the pipeline, use the BotProbe API (§4).
 
 ---
 
-## 4. Using it
+## 4. Loading full event traces (BotProbe `/trace` API)
+
+BotProbe's Trace Viewer UI calls the same backend endpoint we use programmatically:
+
+```
+GET {BOTPROBE_TRACE_BASE_URL}/trace?session_id={uuid_or_voice_id}&env=prod
+```
+
+**Example:**
+
+```bash
+curl "http://10.128.0.34:3333/trace?session_id=7d92388f-f9bc-4add-a272-59e0ab935879&env=prod"
+```
+
+**Response shape:**
+
+```json
+{
+  "session_id": "6a928126e6d9cf4192db007d",
+  "resolved_from": "voice",
+  "events": [ { "event_type": "...", "timestamp": "...", "content": "...", "event_value": {} }, ... ]
+}
+```
+
+- **`session_id` param:** BotProbe UUID (`voice_session_id`) **or** 24-char hex internal id — BotProbe resolves UUID → internal id via Mongo server-side.
+- **No type filter on the API** — returns the full ES stream (~100+ event types). The Trace Viewer UI hides most types client-side (`CRITICAL_EVENT_TYPES`); curl does not.
+- **Server-side exclusions only:** `KEEPALIVE_SENT`, `VAD_METRICS`, and one noisy queue log line.
+
+Verified on a reconnect session (2026-08-29 resound): curl returned **846 events / 107 types**
+including all required LLM types; Mongo `AssistantEvent` for the same session had **87 events /
+11 types** and zero LLM rows.
+
+**Env (Ypervaíno backend):**
+
+| Var | Example | Purpose |
+|-----|---------|---------|
+| `BOTPROBE_TRACE_BASE_URL` | `http://10.128.0.34:3333` | Base URL for `/trace` |
+| `BOTPROBE_TRACE_ENV` | `prod` | `env` query param |
+
+Implementation reference: BotProbe `server/trace_builder.py` (`fetch_trace` → Elasticsearch scroll).
+
+---
+
+## 5. Using session lookup
 
 ### Setup (one-time)
 
@@ -107,12 +162,12 @@ result = get_session_transcript(mongo_uri, db_name, "ed8b1161-b5ed-450a-8a93-fa2
 # }
 ```
 
-This is the shape `server.py` would consume once Ypervaíno is wired to real production data
-instead of the seeded SQLite demo data — see `README.md`'s "Known gaps" section.
+For pipeline materialization, prefer `/trace` events over `AssistantEvent` or `SessionRequest`
+alone — only `/trace` includes LLM cost/latency and the full debug stream.
 
 ---
 
-## 5. Handling with care
+## 6. Handling with care
 
 `bot_prod` is a **real production database** with real customer conversations (names, phone
 numbers, case details). Rules for anyone using this:
@@ -126,8 +181,9 @@ numbers, case details). Rules for anyone using this:
 
 ---
 
-## 6. Document history
+## 7. Document history
 
 | Version | Date | Notes |
 |---------|------|-------|
 | v1 | 2026-08-29 | Initial writeup after reverse-engineering the BotProbe id mapping via a live lookup |
+| v2 | 2026-08-30 | Dual-source model: Mongo for session index/ids; BotProbe `/trace` (ES) for full events; Mongo `AssistantEvent` documented as incomplete subset |

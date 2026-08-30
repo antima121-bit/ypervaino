@@ -1,7 +1,7 @@
 # Ypervaíno — Formal Model (Draft 3)
 
 **Status:** Modeling only. No system design, architecture, or implementation details beyond v1 persistence and data-access boundaries described here.  
-**Scope:** Data objects, query language, measurement layers, pipeline phases, knowledge injection, proof criteria, v1 UI surface, Mongo event access, and file-based study persistence for conversation-level impact and discovery analysis over bot event logs.
+**Scope:** Data objects, query language, measurement layers, pipeline phases, knowledge injection, proof criteria, v1 UI surface, session discovery (Mongo) + event trace loading (BotProbe `/trace` API), and file-based study persistence for conversation-level impact and discovery analysis over bot event logs.
 
 **Related:** User-facing and system-facing input contracts are specified in [input_schema.md](./input_schema.md).
 
@@ -24,12 +24,12 @@ Phase 2:  Plan generation → AnalysisPlan (single pass)
 Phase 3:  Evaluation on D_eval → EvaluationResult
 ```
 
-**Ground truth:** Event logs read **directly from MongoDB** (primary) + **VA Blueprint** for the same tenant/assistant. Transcripts are derived from events, not fetched separately.
+**Ground truth:** Session list from **MongoDB** (`AssistantSession`); full event traces from **BotProbe `/trace` API** (Elasticsearch). VA Blueprint for the same tenant/assistant. Transcripts derived from events.
 
 **v1 constraints:**
 
 - **No plan revision loop** — Phase 2 runs once; user approves by clicking **Execute** on the Explore tab.
-- **No Argus Postgres pipeline** — sessions and events are fetched from Mongo collections.
+- **No Argus Postgres pipeline** — Mongo for session index only; events via BotProbe `/trace`, not Mongo `AssistantEvent`.
 - **File-based persistence** — all study inputs, intermediates, and outputs live under a directory keyed by `study_title`.
 
 ---
@@ -106,26 +106,28 @@ failed    — unrecoverable error; error detail in meta.json
 
 ## 4. Data access (v1)
 
-Event logs are read **directly from MongoDB**. VA-Argus (Postgres extraction pipeline) is **not** a runtime dependency in v1.
+VA-Argus (Postgres extraction pipeline) is **not** a runtime dependency in v1.
 
-### 4.1 Mongo collections
+### 4.1 Two-source model
 
-| Collection | Role |
-|------------|------|
-| Session index (e.g. `AssistantSession`) | List `session_id` values by tenant, assistant, channel, date range, traffic split |
-| `AssistantEvent` (or equivalent) | Load ordered event trace per `session_id` |
+| Source | Role |
+|--------|------|
+| Mongo `AssistantSession` | Session index: list/filter by tenant, assistant, channel, date range, traffic split; expose `voice_session_id` (BotProbe UUID) and internal `_id` |
+| BotProbe `GET /trace` | Full ordered event trace per session (backed by Elasticsearch, not Mongo) |
 
-Optional enrichment collections (Phase 0+): `session_request`, tool metadata — use when session index fields are insufficient.
+Optional Mongo enrichment: `SessionRequest` for turn-level transcript fields when event-derived transcript is insufficient.
+
+**Not used for event loading:** Mongo `AssistantEvent` — incomplete subset of types; missing LLM/token/cost events present in BotProbe/ES.
 
 ### 4.2 Phase 0 fetch flow
 
-1. Query session index with `ScopeFilter` fields (tenant, `assistant_origin_id`, optional `assistant_id`, channel, `date_range`, `traffic_split`).
-2. For each candidate `session_id`, load events from `AssistantEvent`, ordered by `created_at`.
-3. Materialize `ConversationRecord`; apply deduplication (§5.4).
+1. Query `AssistantSession` with `ScopeFilter` fields (tenant, `assistant_origin_id`, optional `assistant_id`, channel, `date_range`, `traffic_split`).
+2. For each candidate, call BotProbe `/trace?session_id={voice_session_id}&env=prod` (or internal hex id); materialize `ConversationRecord` from returned `events[]`.
+3. Apply deduplication (§5.4) — e.g. first `SESSION_END` only on reconnect sessions (`voice_session.reconnects >= 1`).
 4. Apply `conversation_predicate` if present (§6.3).
 5. Apply `n_eval` subsampling if configured (§7.3).
 
-Connection configuration (`MONGO_URI`, `MONGO_DB_NAME`) is system-facing — see [input_schema.md](./input_schema.md) §2.2.
+Connection configuration: Mongo (`MONGO_URI`, `MONGO_DB_NAME`) + BotProbe trace base URL — see [input_schema.md](./input_schema.md) §2.2 and [MONGO_LOOKUP.md](./MONGO_LOOKUP.md).
 
 ---
 
@@ -137,14 +139,14 @@ ConversationRecord C = ordered, deduplicated event trace for one session_id
 
 ### 5.1 Event log structure
 
-Events are Mongo documents. Core fields:
+Events come from BotProbe `/trace` (normalized ES log documents). Core fields:
 
 | Field | Description |
 |-------|-------------|
 | `event_type` | Enum (e.g. `LLM_INVOCATION_SUCCESS`, `USER_QUERY`, `TOOL_CALL_RESULT`) |
-| `session_id` | Conversation identifier |
+| `session_id` | Internal voice id (24-char hex) — resolved by BotProbe when UUID passed |
 | `request_id` | Turn-level grouping (optional for session events) |
-| `created_at` | Timestamp |
+| `timestamp` | Event time (ISO string or datetime after normalization) |
 | `content` | Text (user query, bot response, log message) |
 | `event_value` | JSON metadata |
 
@@ -252,7 +254,7 @@ Same syntax, different lifecycle. Cohort predicates are optional user/query inpu
 **Phase 0 filter flow:**
 
 1. Resolve sessions by scope from Mongo (tenant, dates, channel, …)
-2. Materialize ConversationRecords + dedupe events
+2. Fetch traces via BotProbe `/trace`; materialize ConversationRecords + dedupe events
 3. Compute **minimal primitive set** required by `conversation_predicate`
 4. Filter to `D_filtered = { C | conversation_predicate(C) }`
 5. Phase 1 sampling and Phase 3 evaluation operate on `D_filtered`
@@ -677,7 +679,7 @@ Output:  D | (D_before, D_after) after predicate filter
 
 Steps:
   1. Query Mongo session index by ScopeFilter (tenant, dates, channel, traffic_split)
-  2. Load AssistantEvent traces per session_id; materialize ConversationRecords
+  2. Fetch full traces via BotProbe /trace per session_id; materialize ConversationRecords
   3. Fetch VA Blueprint → VABlueprintSummary; persist to intermediate/
   4. If ChangeDescriptor set: run ChangeContextResolver; persist to intermediate/
   5. Dedupe events; if conversation_predicate: compute required primitives; filter cohort
@@ -883,7 +885,7 @@ Hypotheses: `match_rate_before`, `match_rate_after`, `delta`, significance on ra
 12. **SystemKnowledge** overrides naive cost inference (e.g. main_model = $0).
 13. **ChangeContext** from PR/docs — dynamic, not hardcoded.
 14. **Phase 3 requires explicit user approval** — `user_approved` set by Execute on Explore tab; no automatic evaluation after Phase 2.
-15. **v1 data source is Mongo direct** — not Argus Postgres.
+15. **v1 session index is Mongo; event traces are BotProbe `/trace` (ES)** — not Argus Postgres; not Mongo `AssistantEvent`.
 16. **v1 persistence is file-based** per study directory; no study artifact database.
 
 ---
@@ -915,7 +917,8 @@ Hypotheses: `match_rate_before`, `match_rate_after`, `delta`, significance on ra
 
 | Version | Date | Notes |
 |---------|------|-------|
-| draft3 | 2026-08-29 | v1 scope: single plan + Execute (no revision loop); 3-tab UI; Mongo direct; file-based study persistence; `study_title`; self-contained model |
+| draft3 | 2026-08-29 | v1 scope: single plan + Execute (no revision loop); 3-tab UI; file-based study persistence; `study_title`; self-contained model |
+| draft3.1 | 2026-08-30 | Dual-source data access: Mongo session index + BotProbe `/trace` for events |
 
 ---
 
