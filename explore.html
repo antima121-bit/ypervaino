@@ -37,10 +37,12 @@
   .sample-id{font-size:10.5px;color:var(--ink-3);}
   .sample-line{font-size:11.5px;line-height:1.5;margin-bottom:4px;}
   .sample-line b{color:var(--ink-3);}
-  .aspect-row{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);}
+  .aspect-row{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);align-items:flex-start;}
   .aspect-row:last-child{border-bottom:none;}
+  .aspect-icon{font-size:14px;line-height:1.4;flex-shrink:0;width:20px;text-align:center;}
   .aspect-title{font-size:13px;font-weight:600;}
   .aspect-desc{font-size:12px;color:var(--ink-2);margin-top:1px;}
+  .section-label{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:700;}
   .hyp-card{background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:14px 16px;margin-bottom:10px;}
   .hyp-card.rejected{opacity:.55;}
   .hyp-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
@@ -111,10 +113,9 @@ async function load(){
     return;
   }
 
-  const sizes = data.cohort_sizes || {};
   document.getElementById('desc').textContent = data.mode === 'discovery'
-    ? `Pure discovery mode — ${sizes.before ?? 0} sessions in the pool.`
-    : `Comparative — ${sizes.before ?? 0} before / ${sizes.after ?? 0} after` + (description ? ` — investigating: "${description}"` : '');
+    ? 'Pure discovery mode — proposed plan from a sample of the pool.'
+    : 'Comparative mode' + (description ? ` — investigating: "${description}"` : ' — proposed plan from a before/after sample.');
 
   const samplesHtml = data.samples.map(s => `
     <div class="sample-card">
@@ -129,58 +130,56 @@ async function load(){
     </div>
   `).join('');
 
-  const hypHtml = (data.llm.hypotheses || []).map(h => {
-    const r = h.result || {};
-    const isDiscovery = r.metric === 'match_rate';
-    let ratesHtml;
-    if (isDiscovery) {
-      const label = r.rejected ? `below min support (${r.support_count} < ${r.min_support})` : `${r.support_count} matches`;
-      ratesHtml = `
-        <div class="rate-col"><span class="rate-label">Match rate</span><span class="rate-val">${r.match_rate ?? '—'}%</span></div>
-        <div class="rate-col"><span class="rate-label">Support</span><span class="rate-val ${r.rejected ? 'notsig' : ''}">${label}</span></div>
-      `;
-    } else {
-      const sigClass = r.rejected ? 'notsig' : (r.significant ? 'sig' : 'notsig');
-      const sigLabel = r.rejected ? `below min support (${(r.support_before||0) + (r.support_after||0)} < ${r.min_support})` : (r.significant ? `p = ${r.p_value}` : `not significant (p = ${r.p_value})`);
-      ratesHtml = `
-        <div class="rate-col"><span class="rate-label">Before</span><span class="rate-val">${r.rate_before ?? '—'}%</span></div>
-        <div class="rate-col"><span class="rate-label">After</span><span class="rate-val">${r.rate_after ?? '—'}%</span></div>
-        <div class="rate-col"><span class="rate-label">Significance</span><span class="rate-val ${sigClass}">${sigLabel}</span></div>
-      `;
-    }
-    return `
-    <div class="hyp-card ${r.rejected ? 'rejected' : ''}">
-      <div class="hyp-head">
-        <div>
-          <div class="hyp-title">${escapeHtml(h.title)}</div>
-          <div class="hyp-claim">${escapeHtml(h.claim)}</div>
-          <div class="hyp-meta">Tested on all sessions · predicate: ${escapeHtml(JSON.stringify(h.predicate || {}))}</div>
-        </div>
-        <div class="hyp-rates">${ratesHtml}</div>
-      </div>
+  const plotsHtml = (data.llm.suggested_plots || []).map(p => `
+    <div class="aspect-row">
+      <div class="aspect-icon">▲</div>
+      <div><div class="aspect-title">${escapeHtml(p.title)}</div><div class="aspect-desc">${escapeHtml(p.description)}</div></div>
     </div>
-  `;
-  }).join('');
+  `).join('') || '<div class="aspect-desc" style="padding:11px 0;">No plots proposed for this sample.</div>';
+
+  const tablesHtml = (data.llm.suggested_tables || []).map(t => `
+    <div class="aspect-row">
+      <div class="aspect-icon">▦</div>
+      <div><div class="aspect-title">${escapeHtml(t.title)}</div><div class="aspect-desc">${escapeHtml(t.description)}</div></div>
+    </div>
+  `).join('') || '<div class="aspect-desc" style="padding:11px 0;">No tables proposed for this sample.</div>';
+
+  const hypHtml = (data.llm.hypotheses || []).map(h => `
+    <div class="hyp-card">
+      <div class="hyp-title">${escapeHtml(h.title)}</div>
+      <div class="hyp-claim">${escapeHtml(h.claim)}</div>
+    </div>
+  `).join('');
 
   document.getElementById('content').innerHTML = `
     <div class="card">
-      <div class="card-head">What we found<span class="pill">Gemini-generated</span></div>
+      <div class="card-head">What we found<span class="pill">Claude-generated</span></div>
       <div class="card-pad ai-note">
         <div class="ai-avatar">✦</div>
         <div class="ai-text">${escapeHtml(data.llm.exploration_summary || '')}</div>
       </div>
     </div>
     <div class="card">
-      <div class="card-head">Sample conversations<span class="pill">${data.samples.length} sampled</span></div>
+      <div class="card-head">Sample conversations</div>
       <div class="card-pad"><div class="row-scroll">${samplesHtml}</div></div>
     </div>
     <div class="card">
-      <div class="card-head">Proposed aspects</div>
-      <div class="card-pad" style="padding-top:2px;padding-bottom:2px;">${aspectsHtml}</div>
+      <div class="card-head">Quantitative analysis</div>
+      <div class="card-pad" style="padding-bottom:4px;">
+        <div class="section-label">Aspect proposal</div>
+        <div style="padding-top:2px;">${aspectsHtml}</div>
+        <div class="section-label" style="margin-top:14px;">Plots proposal</div>
+        <div>${plotsHtml}</div>
+        <div class="section-label" style="margin-top:14px;">Table proposal</div>
+        <div>${tablesHtml}</div>
+      </div>
     </div>
     <div class="card">
-      <div class="card-head">Proposed hypotheses</div>
-      <div class="card-pad">${hypHtml}</div>
+      <div class="card-head">Qualitative analysis</div>
+      <div class="card-pad">
+        <div class="section-label" style="margin-bottom:8px;">Hypothesis proposal</div>
+        ${hypHtml}
+      </div>
     </div>
     <a class="btn" id="run-btn" href="#">Approve &amp; Run Full Analysis →</a>
   `;

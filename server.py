@@ -91,6 +91,8 @@ Reply with ONLY a single JSON object (no markdown fences, no commentary) matchin
 {
   "exploration_summary": "2-4 sentence narrative of what you observed",
   "aspects": [ {"name": "short aspect name", "description": "one sentence"} ],
+  "suggested_plots": [ {"title": "short plot title", "description": "one sentence on what it would show"} ],
+  "suggested_tables": [ {"title": "short table title", "description": "one sentence on what it would show"} ],
   "hypotheses": [
     {
       "title": "short title",
@@ -107,7 +109,8 @@ Reply with ONLY a single JSON object (no markdown fences, no commentary) matchin
 Every hypothesis MUST include a "predicate" using ONLY the fields above (any subset, others null) --
 these are the only fields we can mechanically test against the full dataset. Do not invent other
 predicate fields (no "scenario", no "classification" -- those don't exist in this data).
-Propose 3-5 aspects and 2-4 hypotheses, grounded only in what you actually see above."""
+Propose 3-5 aspects, 1-3 suggested plots, 1-2 suggested tables, and 2-4 hypotheses, grounded only
+in what you actually see above."""
     )
     return "\n".join(lines)
 
@@ -321,14 +324,9 @@ class Handler(BaseHTTPRequestHandler):
 
                     prompt = build_prompt(samples, description, mode)
                     llm_out = call_llm(prompt)
-                    if "hypotheses" in llm_out:
-                        resolved_before = resolve_voice_ids_batch(db, ids_before)
-                        resolved_after = resolve_voice_ids_batch(db, ids_after)
-                        for h in llm_out["hypotheses"]:
-                            predicate = h.get("predicate") or {}
-                            h["result"] = evaluate_predicate(
-                                db, predicate, mode, resolved_before, resolved_after, min_support, significance_level
-                            )
+                    # Deliberately no hypothesis-predicate evaluation here -- Explore is a
+                    # read-only plan display (draft3.md sec 2, UI_design.md sec 2.3). Numbers
+                    # only appear on Results, after Execute.
                     self._json({"samples": samples, "llm": llm_out, "mode": mode,
                                 "cohort_sizes": {"before": len(ids_before), "after": len(ids_after)}})
                 finally:
