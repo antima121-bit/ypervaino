@@ -13,7 +13,9 @@ import sys
 
 from pymongo import MongoClient
 
-from lookup_session import load_mongo_env, resolve_voice_id
+from bson import ObjectId
+
+from lookup_session import load_mongo_env, resolve_voice_id, is_reconnect_session
 from verify_event_counts import verify_event_counts
 
 if __name__ == "__main__":
@@ -32,10 +34,8 @@ if __name__ == "__main__":
             print(f"ERROR: No AssistantSession found for {session_uuid}")
             sys.exit(1)
 
-        from bson import ObjectId
-        session_doc = db.AssistantSession.find_one({"_id": ObjectId(voice_id)}, {"voice_session.reconnects": 1, "tenant": 1})
-        reconnects = ((session_doc or {}).get("voice_session") or {}).get("reconnects", 0) or 0
-        tenant = (session_doc or {}).get("tenant")
+        tenant = (db.AssistantSession.find_one({"_id": ObjectId(voice_id)}, {"tenant": 1}) or {}).get("tenant")
+        is_reconnect = is_reconnect_session(db, voice_id)
 
         result = verify_event_counts(db, session_uuid, botprobe_types=True, dedup=True)
     finally:
@@ -47,7 +47,7 @@ if __name__ == "__main__":
 
     print(f"session_uuid : {session_uuid}")
     print(f"tenant       : {tenant}")
-    print(f"reconnects   : {reconnects}", "(exact match expected)" if reconnects == 0 else "(gap possible on EVENTS SHOWN -- known limitation)")
+    print(f"is_reconnect : {is_reconnect}", "(exact match expected)" if not is_reconnect else "(gap possible on EVENTS SHOWN -- known limitation)")
     print()
     print("Now load this same session_uuid in BotProbe and compare:")
     print()

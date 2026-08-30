@@ -60,6 +60,21 @@ def get_session_requests(db, voice_id: str) -> list:
     return list(db.SessionRequest.find({"session_id": voice_id}).sort("created_at", 1))
 
 
+def is_reconnect_session(db, voice_id: str) -> bool:
+    """True if the call reconnected mid-session (voice_session.reconnects >= 1).
+    Dwijesh's ask: surface this so reconnect samples can be filtered out of a
+    study later if they turn out to cause issues (see MONGO_LOOKUP.md /
+    verify_event_counts.py -- reconnect calls sometimes undercount events
+    vs BotProbe)."""
+    from bson import ObjectId
+    try:
+        doc = db.AssistantSession.find_one({"_id": ObjectId(voice_id)}, {"voice_session.reconnects": 1})
+    except Exception:
+        return False
+    reconnects = ((doc or {}).get("voice_session") or {}).get("reconnects", 0) or 0
+    return reconnects >= 1
+
+
 def get_session_transcript(mongo_uri: str, db_name: str, botprobe_session_uuid: str) -> dict:
     """One-call convenience wrapper: UUID in, transcript out."""
     client = MongoClient(mongo_uri, serverSelectionTimeoutMS=15000)
@@ -72,6 +87,7 @@ def get_session_transcript(mongo_uri: str, db_name: str, botprobe_session_uuid: 
         return {
             "botprobe_session_uuid": botprobe_session_uuid,
             "voice_id": voice_id,
+            "is_reconnect": is_reconnect_session(db, voice_id),
             "turn_count": len(requests),
             "turns": [
                 {
