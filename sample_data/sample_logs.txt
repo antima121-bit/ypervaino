@@ -1,0 +1,2760 @@
+Canary bucket decision
+Metadata
+{
+  "event_value": {
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865",
+    "bucket": 29,
+    "total_active_traffic": 10,
+    "active_variants": [
+      {
+        "variant_key": "dg_25082026_mainstream_chatVoice_mainModel",
+        "traffic_percentage": 10
+      }
+    ],
+    "selected_variant_key": null,
+    "is_control": true
+  },
+  "content": "Canary bucket decision"
+}
+CALL_TRANSFER_CONFIG_LOADED
+2026-08-27 16:49:38.069
++1ms
+Voice transfer config loaded
+Metadata
+{
+  "event_value": {
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Voice transfer config loaded"
+}
+LLM_CONFIG_RESOLVED
+2026-08-27 16:49:38.116
++47ms
+LLM config resolved
+Metadata
+{
+  "event_value": {
+    "purpose": "main_stream",
+    "channel": "voice",
+    "resolution_source": "db_assistant_channel",
+    "db_model_id": "gpt-5.4",
+    "db_fallback_chain": [
+      "gpt-4.1",
+      "gpt-5.1"
+    ],
+    "db_model_kwargs": {
+      "gpt-4.1": {
+        "temperature": 0.2
+      },
+      "gpt-5.1": {
+        "temperature": 0,
+        "verbosity": "low"
+      },
+      "gpt-5.4": {
+        "temperature": 0
+      }
+    },
+    "default_model_id": "gpt-4.1",
+    "default_fallback_chain": [
+      "gpt-5.1",
+      "openai/gpt-oss-120b",
+      "gpt-oss-120b"
+    ],
+    "default_model_kwargs": {
+      "gpt-4.1": {
+        "temperature": 0.2
+      },
+      "gpt-5.1": {
+        "temperature": 0,
+        "verbosity": "low"
+      }
+    },
+    "final_model_id": "gpt-5.4",
+    "final_fallback_chain": [
+      "gpt-4.1",
+      "gpt-5.1"
+    ],
+    "final_model_kwargs": {
+      "gpt-5.4": {
+        "temperature": 0
+      },
+      "gpt-5.1": {
+        "temperature": 0,
+        "verbosity": "low"
+      },
+      "gpt-4.1": {
+        "temperature": 0.2
+      }
+    },
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM config resolved"
+}
+LLM_CONFIG_RESOLVED
+2026-08-27 16:49:38.117
++1ms
+LLM config resolved
+Metadata
+{
+  "event_value": {
+    "purpose": "contextual_query",
+    "channel": "voice",
+    "resolution_source": "default",
+    "final_model_id": "gemini-2.5-flash-lite",
+    "final_fallback_chain": [
+      "gpt-oss-120b",
+      "gpt-4.1-mini"
+    ],
+    "final_model_kwargs": {
+      "gemini-2.5-flash-lite": {
+        "temperature": 0
+      },
+      "gpt-4.1-mini": {
+        "temperature": 0
+      },
+      "gpt-oss-120b": {
+        "temperature": 0
+      }
+    },
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM config resolved"
+}
+LLM_CONFIG_RESOLVED
+2026-08-27 16:49:38.118
++1ms
+LLM config resolved
+Metadata
+{
+  "event_value": {
+    "purpose": "closing_msg",
+    "channel": "voice",
+    "resolution_source": "default",
+    "final_model_id": "gpt-4.1-mini",
+    "final_fallback_chain": [
+      "gemini-2.5-flash-lite"
+    ],
+    "final_model_kwargs": {
+      "gpt-4.1-mini": {
+        "temperature": 0
+      }
+    },
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM config resolved"
+}
+RESPONSE.FINAL
+2026-08-27 16:49:38.121
++3ms
+Thank you for calling Resound Networks. I’m Emily, Resound’s virtual assistant. I can help with billing questions and processing payments. How can I help you today?
+Metadata
+{
+  "request_id": "6a906aa20a1a63a7d1cb12f8",
+  "event_value": {
+    "agent_name": "welcome_message",
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Thank you for calling Resound Networks. I’m Emily, Resound’s virtual assistant. I can help with billing questions and processing payments. How can I help you today?"
+}
+LLM_CONFIG_RESOLVED
+2026-08-27 16:50:02.513
++24.39s
+LLM config resolved
+Metadata
+{
+  "event_value": {
+    "purpose": "reminder",
+    "channel": "voice",
+    "resolution_source": "default",
+    "final_model_id": "gemini-2.5-flash-lite",
+    "final_fallback_chain": [
+      "gpt-4.1-mini"
+    ],
+    "final_model_kwargs": {
+      "gemini-2.5-flash-lite": {
+        "temperature": 0
+      }
+    },
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM config resolved"
+}
+LLM_INVOCATION_SUCCESS
+2026-08-27 16:50:03.129
++616ms
+LLM invocation succeeded
+Metadata
+{
+  "event_value": {
+    "model_id": "gemini-2.5-flash-lite",
+    "model_position": 0,
+    "is_fallback": false,
+    "purpose": "reminder",
+    "latency_ms": 611,
+    "turn_latency_ms": 611,
+    "is_tool_call_decision": false,
+    "is_react_agent": false,
+    "is_streaming": false,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM invocation succeeded"
+}
+USER_QUERY
+2026-08-27 16:50:09.725
++6.60s
+Payment.
+Metadata
+{
+  "request_id": "6a906ac10a1a63a7d1cb135d",
+  "event_value": {
+    "query_language": "en",
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Payment."
+}
+FIRST_LLM_CHUNK_GENERATED
+2026-08-27 16:50:10.954
++1.23s
+First model chunk generated
+Metadata
+{
+  "request_id": "6a906ac10a1a63a7d1cb135d",
+  "event_value": {
+    "latency": 1224.559,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "First model chunk generated"
+}
+LLM_INVOCATION_SUCCESS
+2026-08-27 16:50:11.100
++146ms
+LLM invocation succeeded
+Metadata
+{
+  "request_id": "6a906ac10a1a63a7d1cb135d",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "model_position": 0,
+    "is_fallback": false,
+    "purpose": "main_stream",
+    "latency_ms": 1274,
+    "turn_latency_ms": 1274,
+    "is_tool_call_decision": false,
+    "is_react_agent": false,
+    "is_streaming": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM invocation succeeded"
+}
+TOKEN_USAGE_DETAILS
+2026-08-27 16:50:11.100
++0ms
+Token usage
+Metadata
+{
+  "request_id": "6a906ac10a1a63a7d1cb135d",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "input_tokens": 5917,
+    "output_tokens": 15,
+    "total_tokens": 5932,
+    "cache_read": 0,
+    "is_cache_hit": false,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Token usage"
+}
+LLM_STREAMING_THROUGHPUT
+2026-08-27 16:50:11.101
++1ms
+LLM streaming throughput
+Metadata
+{
+  "request_id": "6a906ac10a1a63a7d1cb135d",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "output_tokens": 15,
+    "streaming_duration_ms": 150,
+    "throughput_tokens_per_sec": 100,
+    "token_source": "usage_metadata",
+    "is_tool_call_decision": false,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM streaming throughput"
+}
+RESPONSE.FINAL
+2026-08-27 16:50:11.110
++9ms
+Are you calling from the phone number linked to your account?
+Metadata
+{
+  "request_id": "6a906ac10a1a63a7d1cb135d",
+  "event_value": {
+    "latency": 1379.797,
+    "knowledge_sources": [],
+    "agent_name": "Main_Auth",
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Are you calling from the phone number linked to your account?"
+}
+LLM_INVOCATION_SUCCESS
+2026-08-27 16:50:12.100
++990ms
+LLM invocation succeeded
+Metadata
+{
+  "request_id": "6a906ac10a1a63a7d1cb135d",
+  "event_value": {
+    "model_id": "gpt-4.1-mini",
+    "model_position": 0,
+    "is_fallback": false,
+    "purpose": "closing_msg",
+    "latency_ms": 969,
+    "turn_latency_ms": 969,
+    "is_tool_call_decision": false,
+    "is_react_agent": false,
+    "is_streaming": false,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM invocation succeeded"
+}
+USER_QUERY
+2026-08-27 16:50:17.566
++5.47s
+Yes.
+Metadata
+{
+  "request_id": "6a906ac90a1a63a7d1cb1387",
+  "event_value": {
+    "query_language": "en",
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Yes."
+}
+LLM_INVOCATION_SUCCESS
+2026-08-27 16:50:18.739
++1.17s
+LLM invocation succeeded
+Metadata
+{
+  "request_id": "6a906ac90a1a63a7d1cb1387",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "model_position": 0,
+    "is_fallback": false,
+    "purpose": "main_stream",
+    "latency_ms": 768,
+    "turn_latency_ms": 768,
+    "is_tool_call_decision": true,
+    "is_react_agent": false,
+    "is_streaming": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM invocation succeeded"
+}
+TOKEN_USAGE_DETAILS
+2026-08-27 16:50:18.740
++1ms
+Token usage
+Metadata
+{
+  "request_id": "6a906ac90a1a63a7d1cb1387",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "input_tokens": 5945,
+    "output_tokens": 23,
+    "total_tokens": 5968,
+    "cache_read": 0,
+    "is_cache_hit": false,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Token usage"
+}
+LLM_STREAMING_THROUGHPUT
+2026-08-27 16:50:18.740
++0ms
+LLM streaming throughput
+Metadata
+{
+  "request_id": "6a906ac90a1a63a7d1cb1387",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "output_tokens": 23,
+    "streaming_duration_ms": 150,
+    "throughput_tokens_per_sec": 153.33,
+    "token_source": "usage_metadata",
+    "is_tool_call_decision": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM streaming throughput"
+}
+DEBUG.TOOL_INVOKED
+2026-08-27 16:50:18.746
++6ms
+Verify_PhoneNumber · phone_local: 3252264754
+Metadata
+{
+  "request_id": "6a906ac90a1a63a7d1cb1387",
+  "event_value": {
+    "type": "tool",
+    "tool_id": "00bd0899-c894-af67-8123-d9b7cac15397",
+    "name": "Verify_PhoneNumber",
+    "input": {
+      "phone_local": "3252264754"
+    },
+    "other_info": {
+      "run_id": "01a04421-27fa-7043-9293-08215f8b2347",
+      "parent_run_id": "01a04421-27f9-79c1-982b-10831805193d",
+      "tags": [
+        "seq:step:1"
+      ],
+      "metadata": {
+        "debug_session_id": "6a906a9e3da0e1d7748b4209",
+        "request_id": "6a906ac90a1a63a7d1cb1387",
+        "thread_id": "6a906a9e3da0e1d7748b4209",
+        "langgraph_step": 2,
+        "langgraph_node": "tools",
+        "langgraph_triggers": [
+          "branch:to:tools"
+        ],
+        "langgraph_path": [
+          "__pregel_pull",
+          "tools"
+        ],
+        "langgraph_checkpoint_ns": "Main_Auth:38fd7cb1-b2ef-0ccd-3a3f-d0621599f811|tools:00bd0899-c894-af67-8123-d9b7cac15397",
+        "checkpoint_ns": "Main_Auth:38fd7cb1-b2ef-0ccd-3a3f-d0621599f811",
+        "stream_preamble": true,
+        "llm_preamble_generated": false
+      },
+      "color": "green",
+      "name": null
+    },
+    "output": "ToolMessage(content='{"data": {"accounts": {"nodes": [{"name": "Laurie Vaquera", "displayName": "Laurie Vaquera", "status": {"name": "Suspended", "type": "SUSPENDED"}}]}}}', name='Verify_PhoneNumber', tool_call_id='call_DIZlD06ntrtjT2joocgIdasz')",
+    "output_metadata": {
+      "run_id": "UUID('01a04421-27fa-7043-9293-08215f8b2347')",
+      "parent_run_id": "UUID('01a04421-27f9-79c1-982b-10831805193d')",
+      "tags": [
+        "seq:step:1"
+      ],
+      "color": "green",
+      "name": "Verify_PhoneNumber"
+    },
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Debug Event Logged"
+}
+FIRST_LLM_CHUNK_GENERATED
+2026-08-27 16:50:18.749
++3ms
+First model chunk generated
+Metadata
+{
+  "request_id": "6a906ac90a1a63a7d1cb1387",
+  "event_value": {
+    "latency": 1177.673,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "First model chunk generated"
+}
+TOOL_CALL_RESULT
+2026-08-27 16:50:19.151
++402ms
+Tool: Verify_PhoneNumber call result
+Metadata
+{
+  "request_id": "6a906ac90a1a63a7d1cb1387",
+  "event_value": {
+    "tool_name": "Verify_PhoneNumber",
+    "tool_args": "{"phone_local": "3252264754"}",
+    "result": "{"tool_output": {"data": {"accounts": {"nodes": [{"name": "Laurie Vaquera", "displayName": "Laurie Vaquera", "status": {"name": "Suspended", "type": "SUSPENDED"}}]}}}, "tool_type": "API", "status_code": 200}",
+    "latency": 403.082,
+    "start_time": 1787849418.748596,
+    "end_time": 1787849419.1515927,
+    "tool_config": {
+      "input_params": [
+        {
+          "key": "phone_local",
+          "required": true,
+          "data_type": "str",
+          "id": 0,
+          "description": "",
+          "example": "",
+          "value": "",
+          "is_static": false
+        }
+      ],
+      "output_params": [],
+      "is_background_execution": false,
+      "is_idempotent": false,
+      "is_external_call_transfer": false,
+      "extract_response_instructions": null,
+      "instructions": "",
+      "is_non_interruptible": null,
+      "variable_binding": null,
+      "bound_variable": null,
+      "api_integration_id": "6a7b074e374218a51aaf0339",
+      "api_config": {
+        "id": "6a7b074e374218a51aaf0339",
+        "name": "Verify PhoneNumber",
+        "description": "",
+        "examples": null,
+        "bot_id": "cacd3b5d-7623-4a9b-a726-d3bba535b802",
+        "workflow_ids": [],
+        "http_method": "POST",
+        "url": "https://api.gaiia.com/api/v1",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "description": ""
+          },
+          {
+            "key": "X-Gaiia-Api-Key",
+            "value": "gaiia_sk_live_c876cd76d11e431f93fdcf030cf025e8_fc7b69e4",
+            "description": ""
+          }
+        ],
+        "body": "{
+  "query": "query AccountsByPhone($filter: AccountFilter) { accounts(filter: $filter) { nodes { name displayName status { name type } } } }",
+  "variables": {
+    "filter": {
+      "contacts": {
+        "some": {
+          "OR": [
+            { "homePhone": { "contains": "{{phone_local}}" } },
+            { "mobilePhone": { "contains": "{{phone_local}}" } },
+            { "workPhone": { "contains": "{{phone_local}}" } }
+          ]
+        }
+      }
+    }
+  }
+}",
+        "form_data": null,
+        "url_encoded_form_data": null,
+        "raw_text": null,
+        "query_params": [],
+        "extracted_variables": [
+          {
+            "key": "phone_local",
+            "required": true,
+            "data_type": "String",
+            "id": 0,
+            "description": "",
+            "example": "",
+            "value": null,
+            "is_static": false
+          }
+        ],
+        "created": "2026-05-27T08:48:15.880000",
+        "modified": "2026-05-28T20:01:41.724000",
+        "last_run": "2026-06-09T06:18:21.310000",
+        "last_run_response": "{"data": {"accounts": {"nodes": [{"name": null, "displayName": "Carlos Anchia", "status": {"name": "Active", "type": "ACTIVE"}}]}}}",
+        "status": "SUCCESS",
+        "is_mock_api": false,
+        "mock_collection": null,
+        "mock_api_entity": null,
+        "mock_data": null,
+        "is_generated_api": false,
+        "mock_backend_id": null,
+        "mock_api_logic": null,
+        "auth_config": {
+          "auth_type": "none",
+          "data": null
+        },
+        "is_operation_type_read_only": false,
+        "skip_url_encoding": true
+      }
+    },
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Tool: Verify_PhoneNumber call result"
+}
+LLM_INVOCATION_SUCCESS
+2026-08-27 16:50:20.102
++951ms
+LLM invocation succeeded
+Metadata
+{
+  "request_id": "6a906ac90a1a63a7d1cb1387",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "model_position": 0,
+    "is_fallback": false,
+    "purpose": "main_stream",
+    "latency_ms": 939,
+    "turn_latency_ms": 939,
+    "is_tool_call_decision": false,
+    "is_react_agent": false,
+    "is_streaming": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM invocation succeeded"
+}
+TOKEN_USAGE_DETAILS
+2026-08-27 16:50:20.102
++0ms
+Token usage
+Metadata
+{
+  "request_id": "6a906ac90a1a63a7d1cb1387",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "input_tokens": 6048,
+    "output_tokens": 25,
+    "total_tokens": 6073,
+    "cache_read": 5760,
+    "is_cache_hit": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Token usage"
+}
+LLM_STREAMING_THROUGHPUT
+2026-08-27 16:50:20.103
++1ms
+LLM streaming throughput
+Metadata
+{
+  "request_id": "6a906ac90a1a63a7d1cb1387",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "output_tokens": 25,
+    "streaming_duration_ms": 185,
+    "throughput_tokens_per_sec": 135.14,
+    "token_source": "usage_metadata",
+    "is_tool_call_decision": false,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM streaming throughput"
+}
+RESPONSE.FINAL
+2026-08-27 16:50:20.112
++9ms
+Thanks. Let me find your account using your phone number.Would you like to verify using your account number or the last 4 digits of the payment method on file?
+Metadata
+{
+  "request_id": "6a906ac90a1a63a7d1cb1387",
+  "event_value": {
+    "latency": 2540.739,
+    "knowledge_sources": [],
+    "agent_name": "Main_Auth",
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Thanks. Let me find your account using your phone number.Would you like to verify using your account number or the last 4 digits of the payment method on file?"
+}
+LLM_INVOCATION_SUCCESS
+2026-08-27 16:50:21.056
++944ms
+LLM invocation succeeded
+Metadata
+{
+  "request_id": "6a906ac90a1a63a7d1cb1387",
+  "event_value": {
+    "model_id": "gpt-4.1-mini",
+    "model_position": 0,
+    "is_fallback": false,
+    "purpose": "closing_msg",
+    "latency_ms": 923,
+    "turn_latency_ms": 923,
+    "is_tool_call_decision": false,
+    "is_react_agent": false,
+    "is_streaming": false,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM invocation succeeded"
+}
+USER_QUERY
+2026-08-27 16:50:31.842
++10.79s
+Last digits.
+Metadata
+{
+  "request_id": "6a906ad70a1a63a7d1cb13cf",
+  "event_value": {
+    "query_language": "en",
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Last digits."
+}
+USER_QUERY
+2026-08-27 16:50:32.736
++894ms
+On file.
+Metadata
+{
+  "request_id": "6a906ad80a1a63a7d1cb13d5",
+  "event_value": {
+    "query_language": "en",
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "On file."
+}
+INTERRUPTION_HANDLER_RESULT
+2026-08-27 16:50:32.752
++16ms
+Voice interruption handler completed
+Metadata
+{
+  "request_id": "6a906ad80a1a63a7d1cb13d5",
+  "event_value": {
+    "query": "Last digits.
+On file.",
+    "was_merged": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Voice interruption handler completed"
+}
+FIRST_LLM_CHUNK_GENERATED
+2026-08-27 16:50:33.639
++887ms
+First model chunk generated
+Metadata
+{
+  "request_id": "6a906ad80a1a63a7d1cb13d5",
+  "event_value": {
+    "latency": 886.112,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "First model chunk generated"
+}
+LLM_INVOCATION_SUCCESS
+2026-08-27 16:50:33.832
++193ms
+LLM invocation succeeded
+Metadata
+{
+  "request_id": "6a906ad80a1a63a7d1cb13d5",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "model_position": 0,
+    "is_fallback": false,
+    "purpose": "main_stream",
+    "latency_ms": 974,
+    "turn_latency_ms": 974,
+    "is_tool_call_decision": false,
+    "is_react_agent": false,
+    "is_streaming": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM invocation succeeded"
+}
+TOKEN_USAGE_DETAILS
+2026-08-27 16:50:33.833
++1ms
+Token usage
+Metadata
+{
+  "request_id": "6a906ad80a1a63a7d1cb13d5",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "input_tokens": 6090,
+    "output_tokens": 26,
+    "total_tokens": 6116,
+    "cache_read": 5760,
+    "is_cache_hit": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Token usage"
+}
+LLM_STREAMING_THROUGHPUT
+2026-08-27 16:50:33.834
++1ms
+LLM streaming throughput
+Metadata
+{
+  "request_id": "6a906ad80a1a63a7d1cb13d5",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "output_tokens": 26,
+    "streaming_duration_ms": 197,
+    "throughput_tokens_per_sec": 131.98,
+    "token_source": "usage_metadata",
+    "is_tool_call_decision": false,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM streaming throughput"
+}
+RESPONSE.FINAL
+2026-08-27 16:50:33.843
++9ms
+Can you please provide the name or email associated with the account? I’ll need that to verify against the account.
+Metadata
+{
+  "request_id": "6a906ad80a1a63a7d1cb13d5",
+  "event_value": {
+    "latency": 1089.187,
+    "knowledge_sources": [],
+    "agent_name": "Main_Auth",
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Can you please provide the name or email associated with the account? I’ll need that to verify against the account."
+}
+LLM_INVOCATION_SUCCESS
+2026-08-27 16:50:34.710
++867ms
+LLM invocation succeeded
+Metadata
+{
+  "request_id": "6a906ad80a1a63a7d1cb13d5",
+  "event_value": {
+    "model_id": "gpt-4.1-mini",
+    "model_position": 0,
+    "is_fallback": false,
+    "purpose": "closing_msg",
+    "latency_ms": 847,
+    "turn_latency_ms": 847,
+    "is_tool_call_decision": false,
+    "is_react_agent": false,
+    "is_streaming": false,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM invocation succeeded"
+}
+USER_QUERY
+2026-08-27 16:50:43.529
++8.82s
+About the 4.
+Metadata
+{
+  "request_id": "6a906ae30a1a63a7d1cb140f",
+  "event_value": {
+    "query_language": "en",
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "About the 4."
+}
+FIRST_LLM_CHUNK_GENERATED
+2026-08-27 16:50:44.303
++774ms
+First model chunk generated
+Metadata
+{
+  "request_id": "6a906ae30a1a63a7d1cb140f",
+  "event_value": {
+    "latency": 769.706,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "First model chunk generated"
+}
+LLM_INVOCATION_SUCCESS
+2026-08-27 16:50:44.825
++522ms
+LLM invocation succeeded
+Metadata
+{
+  "request_id": "6a906ae30a1a63a7d1cb140f",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "model_position": 0,
+    "is_fallback": false,
+    "purpose": "main_stream",
+    "latency_ms": 1166,
+    "turn_latency_ms": 1166,
+    "is_tool_call_decision": false,
+    "is_react_agent": false,
+    "is_streaming": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM invocation succeeded"
+}
+TOKEN_USAGE_DETAILS
+2026-08-27 16:50:44.826
++1ms
+Token usage
+Metadata
+{
+  "request_id": "6a906ae30a1a63a7d1cb140f",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "input_tokens": 6132,
+    "output_tokens": 40,
+    "total_tokens": 6172,
+    "cache_read": 5760,
+    "is_cache_hit": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Token usage"
+}
+LLM_STREAMING_THROUGHPUT
+2026-08-27 16:50:44.827
++1ms
+LLM streaming throughput
+Metadata
+{
+  "request_id": "6a906ae30a1a63a7d1cb140f",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "output_tokens": 40,
+    "streaming_duration_ms": 553,
+    "throughput_tokens_per_sec": 72.33,
+    "token_source": "usage_metadata",
+    "is_tool_call_decision": false,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM streaming throughput"
+}
+RESPONSE.FINAL
+2026-08-27 16:50:44.836
++9ms
+I’ll need the name or email on the account first, so I can identify the correct account before using the last 4 digits. What name or email is listed on the account?
+Metadata
+{
+  "request_id": "6a906ae30a1a63a7d1cb140f",
+  "event_value": {
+    "latency": 1301.955,
+    "knowledge_sources": [],
+    "agent_name": "Main_Auth",
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "I’ll need the name or email on the account first, so I can identify the correct account before using the last 4 digits. What name or email is listed on the account?"
+}
+USER_QUERY
+2026-08-27 16:50:45.590
++754ms
+Underscore lori at yahoo dot com.
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "query_language": "en",
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Underscore lori at yahoo dot com."
+}
+INTERRUPTION_HANDLER_RESULT
+2026-08-27 16:50:45.610
++20ms
+Voice interruption handler completed
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "query": "About the 4.
+Underscore lori at yahoo dot com.",
+    "was_merged": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Voice interruption handler completed"
+}
+LLM_INVOCATION_SUCCESS
+2026-08-27 16:50:46.904
++1.29s
+LLM invocation succeeded
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "model_position": 0,
+    "is_fallback": false,
+    "purpose": "main_stream",
+    "latency_ms": 1198,
+    "turn_latency_ms": 1198,
+    "is_tool_call_decision": true,
+    "is_react_agent": false,
+    "is_streaming": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM invocation succeeded"
+}
+LLM_INVOCATION_SUCCESS
+2026-08-27 16:50:46.904
++0ms
+LLM invocation succeeded
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "model_position": 0,
+    "is_fallback": false,
+    "purpose": "main_stream",
+    "latency_ms": 1198,
+    "turn_latency_ms": 1198,
+    "is_tool_call_decision": true,
+    "is_react_agent": false,
+    "is_streaming": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM invocation succeeded"
+}
+LLM_INVOCATION_SUCCESS
+2026-08-27 16:50:46.904
++0ms
+LLM invocation succeeded
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "model_position": 0,
+    "is_fallback": false,
+    "purpose": "main_stream",
+    "latency_ms": 1198,
+    "turn_latency_ms": 1198,
+    "is_tool_call_decision": true,
+    "is_react_agent": false,
+    "is_streaming": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM invocation succeeded"
+}
+TOKEN_USAGE_DETAILS
+2026-08-27 16:50:46.905
++1ms
+Token usage
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "input_tokens": 6141,
+    "output_tokens": 35,
+    "total_tokens": 6176,
+    "cache_read": 5760,
+    "is_cache_hit": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Token usage"
+}
+TOKEN_USAGE_DETAILS
+2026-08-27 16:50:46.905
++0ms
+Token usage
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "input_tokens": 6141,
+    "output_tokens": 35,
+    "total_tokens": 6176,
+    "cache_read": 5760,
+    "is_cache_hit": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Token usage"
+}
+TOKEN_USAGE_DETAILS
+2026-08-27 16:50:46.905
++0ms
+Token usage
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "input_tokens": 6141,
+    "output_tokens": 35,
+    "total_tokens": 6176,
+    "cache_read": 5760,
+    "is_cache_hit": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Token usage"
+}
+LLM_STREAMING_THROUGHPUT
+2026-08-27 16:50:46.906
++1ms
+LLM streaming throughput
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "output_tokens": 35,
+    "streaming_duration_ms": 228,
+    "throughput_tokens_per_sec": 153.51,
+    "token_source": "usage_metadata",
+    "is_tool_call_decision": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM streaming throughput"
+}
+LLM_STREAMING_THROUGHPUT
+2026-08-27 16:50:46.906
++0ms
+LLM streaming throughput
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "output_tokens": 35,
+    "streaming_duration_ms": 228,
+    "throughput_tokens_per_sec": 153.51,
+    "token_source": "usage_metadata",
+    "is_tool_call_decision": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM streaming throughput"
+}
+LLM_STREAMING_THROUGHPUT
+2026-08-27 16:50:46.906
++0ms
+LLM streaming throughput
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "output_tokens": 35,
+    "streaming_duration_ms": 228,
+    "throughput_tokens_per_sec": 153.51,
+    "token_source": "usage_metadata",
+    "is_tool_call_decision": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM streaming throughput"
+}
+DEBUG.TOOL_INVOKED
+2026-08-27 16:50:46.911
++5ms
+Fetch_Account_by_Name_or_Email · name_or_email: lori@yahoo.com, phone_local: 3252264754
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "type": "tool",
+    "tool_id": "73d656c2-c220-23ac-1314-d572265a150d",
+    "name": "Fetch_Account_by_Name_or_Email",
+    "input": {
+      "name_or_email": "lori@yahoo.com",
+      "phone_local": "3252264754"
+    },
+    "other_info": {
+      "run_id": "01a04421-95ff-7182-9f11-77d811df8b9a",
+      "parent_run_id": "01a04421-95fe-75f0-8f9e-f320845c1510",
+      "tags": [
+        "seq:step:1"
+      ],
+      "metadata": {
+        "debug_session_id": "6a906a9e3da0e1d7748b4209",
+        "request_id": "6a906ae50a1a63a7d1cb141b",
+        "thread_id": "6a906a9e3da0e1d7748b4209",
+        "langgraph_step": 2,
+        "langgraph_node": "tools",
+        "langgraph_triggers": [
+          "branch:to:tools"
+        ],
+        "langgraph_path": [
+          "__pregel_pull",
+          "tools"
+        ],
+        "langgraph_checkpoint_ns": "Main_Auth:0e62e105-8148-e658-2cb6-699f5109a588|tools:73d656c2-c220-23ac-1314-d572265a150d",
+        "checkpoint_ns": "Main_Auth:0e62e105-8148-e658-2cb6-699f5109a588",
+        "stream_preamble": true,
+        "llm_preamble_generated": false
+      },
+      "color": "green",
+      "name": null
+    },
+    "output": "ToolMessage(content='{"data": {"accounts": {"nodes": [{"id": "account_po1rxNck28h3dHFYWqzCRL", "readableId": 51405, "name": "Laurie Vaquera", "displayName": "Laurie Vaquera", "status": {"name": "Suspended", "type": "SUSPENDED"}, "primaryContact": {"firstName": "Laurie", "lastName": "Vaquera", "email": "zapata4_laurie@yahoo.com", "mobilePhone": "3252264754", "homePhone": null, "workPhone": null}, "physicalAddress": {"line1": "902 East 5th Street", "line2": null, "locality": "Big Lake", "region": …",
+    "output_metadata": {
+      "run_id": "UUID('01a04421-95ff-7182-9f11-77d811df8b9a')",
+      "parent_run_id": "UUID('01a04421-95fe-75f0-8f9e-f320845c1510')",
+      "tags": [
+        "seq:step:1"
+      ],
+      "color": "green",
+      "name": "Fetch_Account_by_Name_or_Email"
+    },
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Debug Event Logged"
+}
+DEBUG.TOOL_INVOKED
+2026-08-27 16:50:46.911
++0ms
+Fetch_Account_by_Name_or_Email · name_or_email: lori@yahoo.com, phone_local: 3252264754
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "type": "tool",
+    "tool_id": "73d656c2-c220-23ac-1314-d572265a150d",
+    "name": "Fetch_Account_by_Name_or_Email",
+    "input": {
+      "name_or_email": "lori@yahoo.com",
+      "phone_local": "3252264754"
+    },
+    "other_info": {
+      "run_id": "01a04421-95ff-7182-9f11-77d811df8b9a",
+      "parent_run_id": "01a04421-95fe-75f0-8f9e-f320845c1510",
+      "tags": [
+        "seq:step:1"
+      ],
+      "metadata": {
+        "debug_session_id": "6a906a9e3da0e1d7748b4209",
+        "request_id": "6a906ae50a1a63a7d1cb141b",
+        "thread_id": "6a906a9e3da0e1d7748b4209",
+        "langgraph_step": 2,
+        "langgraph_node": "tools",
+        "langgraph_triggers": [
+          "branch:to:tools"
+        ],
+        "langgraph_path": [
+          "__pregel_pull",
+          "tools"
+        ],
+        "langgraph_checkpoint_ns": "Main_Auth:0e62e105-8148-e658-2cb6-699f5109a588|tools:73d656c2-c220-23ac-1314-d572265a150d",
+        "checkpoint_ns": "Main_Auth:0e62e105-8148-e658-2cb6-699f5109a588",
+        "stream_preamble": true,
+        "llm_preamble_generated": false
+      },
+      "color": "green",
+      "name": null
+    },
+    "output": "ToolMessage(content='{"data": {"accounts": {"nodes": [{"id": "account_po1rxNck28h3dHFYWqzCRL", "readableId": 51405, "name": "Laurie Vaquera", "displayName": "Laurie Vaquera", "status": {"name": "Suspended", "type": "SUSPENDED"}, "primaryContact": {"firstName": "Laurie", "lastName": "Vaquera", "email": "zapata4_laurie@yahoo.com", "mobilePhone": "3252264754", "homePhone": null, "workPhone": null}, "physicalAddress": {"line1": "902 East 5th Street", "line2": null, "locality": "Big Lake", "region": …",
+    "output_metadata": {
+      "run_id": "UUID('01a04421-95ff-7182-9f11-77d811df8b9a')",
+      "parent_run_id": "UUID('01a04421-95fe-75f0-8f9e-f320845c1510')",
+      "tags": [
+        "seq:step:1"
+      ],
+      "color": "green",
+      "name": "Fetch_Account_by_Name_or_Email"
+    },
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Debug Event Logged"
+}
+DEBUG.TOOL_INVOKED
+2026-08-27 16:50:46.911
++0ms
+Fetch_Account_by_Name_or_Email · name_or_email: lori@yahoo.com, phone_local: 3252264754
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "type": "tool",
+    "tool_id": "73d656c2-c220-23ac-1314-d572265a150d",
+    "name": "Fetch_Account_by_Name_or_Email",
+    "input": {
+      "name_or_email": "lori@yahoo.com",
+      "phone_local": "3252264754"
+    },
+    "other_info": {
+      "run_id": "01a04421-95ff-7182-9f11-77d811df8b9a",
+      "parent_run_id": "01a04421-95fe-75f0-8f9e-f320845c1510",
+      "tags": [
+        "seq:step:1"
+      ],
+      "metadata": {
+        "debug_session_id": "6a906a9e3da0e1d7748b4209",
+        "request_id": "6a906ae50a1a63a7d1cb141b",
+        "thread_id": "6a906a9e3da0e1d7748b4209",
+        "langgraph_step": 2,
+        "langgraph_node": "tools",
+        "langgraph_triggers": [
+          "branch:to:tools"
+        ],
+        "langgraph_path": [
+          "__pregel_pull",
+          "tools"
+        ],
+        "langgraph_checkpoint_ns": "Main_Auth:0e62e105-8148-e658-2cb6-699f5109a588|tools:73d656c2-c220-23ac-1314-d572265a150d",
+        "checkpoint_ns": "Main_Auth:0e62e105-8148-e658-2cb6-699f5109a588",
+        "stream_preamble": true,
+        "llm_preamble_generated": false
+      },
+      "color": "green",
+      "name": null
+    },
+    "output": "ToolMessage(content='{"data": {"accounts": {"nodes": [{"id": "account_po1rxNck28h3dHFYWqzCRL", "readableId": 51405, "name": "Laurie Vaquera", "displayName": "Laurie Vaquera", "status": {"name": "Suspended", "type": "SUSPENDED"}, "primaryContact": {"firstName": "Laurie", "lastName": "Vaquera", "email": "zapata4_laurie@yahoo.com", "mobilePhone": "3252264754", "homePhone": null, "workPhone": null}, "physicalAddress": {"line1": "902 East 5th Street", "line2": null, "locality": "Big Lake", "region": …",
+    "output_metadata": {
+      "run_id": "UUID('01a04421-95ff-7182-9f11-77d811df8b9a')",
+      "parent_run_id": "UUID('01a04421-95fe-75f0-8f9e-f320845c1510')",
+      "tags": [
+        "seq:step:1"
+      ],
+      "color": "green",
+      "name": "Fetch_Account_by_Name_or_Email"
+    },
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Debug Event Logged"
+}
+FIRST_LLM_CHUNK_GENERATED
+2026-08-27 16:50:46.913
++2ms
+First model chunk generated
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "latency": 1302.279,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "First model chunk generated"
+}
+FIRST_LLM_CHUNK_GENERATED
+2026-08-27 16:50:46.913
++0ms
+First model chunk generated
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "latency": 1302.279,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "First model chunk generated"
+}
+FIRST_LLM_CHUNK_GENERATED
+2026-08-27 16:50:46.913
++0ms
+First model chunk generated
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "latency": 1302.279,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "First model chunk generated"
+}
+TOOL_CALL_RESULT
+2026-08-27 16:50:47.321
++408ms
+Tool: Fetch_Account_by_Name_or_Email call result
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "tool_name": "Fetch_Account_by_Name_or_Email",
+    "tool_args": "{"name_or_email": "lori@yahoo.com", "phone_local": "3252264754"}",
+    "result": "{"tool_output": {"data": {"accounts": {"nodes": [{"id": "account_po1rxNck28h3dHFYWqzCRL", "readableId": 51405, "name": "Laurie Vaquera", "displayName": "Laurie Vaquera", "status": {"name": "Suspended", "type": "SUSPENDED"}, "primaryContact": {"firstName": "Laurie", "lastName": "Vaquera", "email": "zapata4_laurie@yahoo.com", "mobilePhone": "3252264754", "homePhone": null, "workPhone": null}, "physicalAddress": {"line1": "902 East 5th Street", "line2": null, "locality": "Big Lake", "region": "TX",…",
+    "latency": 408.39599999999996,
+    "start_time": 1787849446.9130826,
+    "end_time": 1787849447.3213413,
+    "tool_config": {
+      "input_params": [
+        {
+          "key": "name_or_email",
+          "required": false,
+          "data_type": "str",
+          "id": 0,
+          "description": "",
+          "example": "",
+          "value": "",
+          "is_static": false
+        },
+        {
+          "key": "phone_local",
+          "required": true,
+          "data_type": "str",
+          "id": 0,
+          "description": "",
+          "example": "",
+          "value": "",
+          "is_static": false
+        }
+      ],
+      "output_params": [],
+      "is_background_execution": false,
+      "is_idempotent": false,
+      "is_external_call_transfer": false,
+      "extract_response_instructions": null,
+      "instructions": "",
+      "is_non_interruptible": null,
+      "variable_binding": null,
+      "bound_variable": null,
+      "api_integration_id": "6a7b074d374218a51aaf0338",
+      "api_config": {
+        "id": "6a7b074d374218a51aaf0338",
+        "name": "Fetch Account by Name or Email",
+        "description": "",
+        "examples": null,
+        "bot_id": "cacd3b5d-7623-4a9b-a726-d3bba535b802",
+        "workflow_ids": [],
+        "http_method": "POST",
+        "url": "https://api.gaiia.com/api/v1",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "description": ""
+          },
+          {
+            "key": "X-Gaiia-Api-Key",
+            "value": "gaiia_sk_live_c876cd76d11e431f93fdcf030cf025e8_fc7b69e4",
+            "description": ""
+          }
+        ],
+        "body": "{
+  "query": "query AccountsByPhone($filter: AccountFilter) { accounts(filter: $filter) { nodes { id readableId name displayName status { name type } primaryContact { firstName lastName email mobilePhone homePhone workPhone } physicalAddress { line1 line2 locality region postalCode } } } }",
+  "variables": {
+    "filter": {
+      "contacts": {
+        "some": {
+          "OR": [
+            { "homePhone": { "contains": "{{phone_local}}" } },
+            { "mobilePhone": { "contains": "{{phone_lo…",
+        "form_data": null,
+        "url_encoded_form_data": null,
+        "raw_text": null,
+        "query_params": [
+          {
+            "key": "name_or_email",
+            "value": "{{name_or_email}}",
+            "description": ""
+          }
+        ],
+        "extracted_variables": [
+          {
+            "key": "name_or_email",
+            "required": false,
+            "data_type": "String",
+            "id": 0,
+            "description": "",
+            "example": "",
+            "value": null,
+            "is_static": false
+          },
+          {
+            "key": "phone_local",
+            "required": true,
+            "data_type": "String",
+            "id": 0,
+            "description": "",
+            "example": "",
+            "value": null,
+            "is_static": false
+          }
+        ],
+        "created": "2026-05-27T08:48:15.880000",
+        "modified": "2026-05-27T10:51:16.225000",
+        "last_run": "2026-06-10T10:25:28.915000",
+        "last_run_response": "{"data": {"accounts": {"nodes": [{"id": "account_wteW1rtaH1DPVVXVcW1bWG", "readableId": 118023, "name": null, "displayName": "Carlos Anchia", "status": {"name": "Active", "type": "ACTIVE"}, "primaryContact": {"firstName": "Carlos", "lastName": "Anchia", "email": "casahome2000@gmail.com", "mobilePhone": "18066631556", "homePhone": "17148846585", "workPhone": null}, "physicalAddress": {"line1": "3217 Coventry Lane", "line2": null, "locality": "Plano", "region": "TX", "postalCode": "75093"}}]}}}",
+        "status": "SUCCESS",
+        "is_mock_api": false,
+        "mock_collection": null,
+        "mock_api_entity": null,
+        "mock_data": null,
+        "is_generated_api": false,
+        "mock_backend_id": null,
+        "mock_api_logic": null,
+        "auth_config": {
+          "auth_type": "none",
+          "data": null
+        },
+        "is_operation_type_read_only": true,
+        "skip_url_encoding": true
+      }
+    },
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Tool: Fetch_Account_by_Name_or_Email call result"
+}
+TOOL_CALL_RESULT
+2026-08-27 16:50:47.321
++0ms
+Tool: Fetch_Account_by_Name_or_Email call result
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "tool_name": "Fetch_Account_by_Name_or_Email",
+    "tool_args": "{"name_or_email": "lori@yahoo.com", "phone_local": "3252264754"}",
+    "result": "{"tool_output": {"data": {"accounts": {"nodes": [{"id": "account_po1rxNck28h3dHFYWqzCRL", "readableId": 51405, "name": "Laurie Vaquera", "displayName": "Laurie Vaquera", "status": {"name": "Suspended", "type": "SUSPENDED"}, "primaryContact": {"firstName": "Laurie", "lastName": "Vaquera", "email": "zapata4_laurie@yahoo.com", "mobilePhone": "3252264754", "homePhone": null, "workPhone": null}, "physicalAddress": {"line1": "902 East 5th Street", "line2": null, "locality": "Big Lake", "region": "TX",…",
+    "latency": 408.39599999999996,
+    "start_time": 1787849446.9130826,
+    "end_time": 1787849447.3213413,
+    "tool_config": {
+      "input_params": [
+        {
+          "key": "name_or_email",
+          "required": false,
+          "data_type": "str",
+          "id": 0,
+          "description": "",
+          "example": "",
+          "value": "",
+          "is_static": false
+        },
+        {
+          "key": "phone_local",
+          "required": true,
+          "data_type": "str",
+          "id": 0,
+          "description": "",
+          "example": "",
+          "value": "",
+          "is_static": false
+        }
+      ],
+      "output_params": [],
+      "is_background_execution": false,
+      "is_idempotent": false,
+      "is_external_call_transfer": false,
+      "extract_response_instructions": null,
+      "instructions": "",
+      "is_non_interruptible": null,
+      "variable_binding": null,
+      "bound_variable": null,
+      "api_integration_id": "6a7b074d374218a51aaf0338",
+      "api_config": {
+        "id": "6a7b074d374218a51aaf0338",
+        "name": "Fetch Account by Name or Email",
+        "description": "",
+        "examples": null,
+        "bot_id": "cacd3b5d-7623-4a9b-a726-d3bba535b802",
+        "workflow_ids": [],
+        "http_method": "POST",
+        "url": "https://api.gaiia.com/api/v1",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "description": ""
+          },
+          {
+            "key": "X-Gaiia-Api-Key",
+            "value": "gaiia_sk_live_c876cd76d11e431f93fdcf030cf025e8_fc7b69e4",
+            "description": ""
+          }
+        ],
+        "body": "{
+  "query": "query AccountsByPhone($filter: AccountFilter) { accounts(filter: $filter) { nodes { id readableId name displayName status { name type } primaryContact { firstName lastName email mobilePhone homePhone workPhone } physicalAddress { line1 line2 locality region postalCode } } } }",
+  "variables": {
+    "filter": {
+      "contacts": {
+        "some": {
+          "OR": [
+            { "homePhone": { "contains": "{{phone_local}}" } },
+            { "mobilePhone": { "contains": "{{phone_lo…",
+        "form_data": null,
+        "url_encoded_form_data": null,
+        "raw_text": null,
+        "query_params": [
+          {
+            "key": "name_or_email",
+            "value": "{{name_or_email}}",
+            "description": ""
+          }
+        ],
+        "extracted_variables": [
+          {
+            "key": "name_or_email",
+            "required": false,
+            "data_type": "String",
+            "id": 0,
+            "description": "",
+            "example": "",
+            "value": null,
+            "is_static": false
+          },
+          {
+            "key": "phone_local",
+            "required": true,
+            "data_type": "String",
+            "id": 0,
+            "description": "",
+            "example": "",
+            "value": null,
+            "is_static": false
+          }
+        ],
+        "created": "2026-05-27T08:48:15.880000",
+        "modified": "2026-05-27T10:51:16.225000",
+        "last_run": "2026-06-10T10:25:28.915000",
+        "last_run_response": "{"data": {"accounts": {"nodes": [{"id": "account_wteW1rtaH1DPVVXVcW1bWG", "readableId": 118023, "name": null, "displayName": "Carlos Anchia", "status": {"name": "Active", "type": "ACTIVE"}, "primaryContact": {"firstName": "Carlos", "lastName": "Anchia", "email": "casahome2000@gmail.com", "mobilePhone": "18066631556", "homePhone": "17148846585", "workPhone": null}, "physicalAddress": {"line1": "3217 Coventry Lane", "line2": null, "locality": "Plano", "region": "TX", "postalCode": "75093"}}]}}}",
+        "status": "SUCCESS",
+        "is_mock_api": false,
+        "mock_collection": null,
+        "mock_api_entity": null,
+        "mock_data": null,
+        "is_generated_api": false,
+        "mock_backend_id": null,
+        "mock_api_logic": null,
+        "auth_config": {
+          "auth_type": "none",
+          "data": null
+        },
+        "is_operation_type_read_only": true,
+        "skip_url_encoding": true
+      }
+    },
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Tool: Fetch_Account_by_Name_or_Email call result"
+}
+TOOL_CALL_RESULT
+2026-08-27 16:50:47.321
++0ms
+Tool: Fetch_Account_by_Name_or_Email call result
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "tool_name": "Fetch_Account_by_Name_or_Email",
+    "tool_args": "{"name_or_email": "lori@yahoo.com", "phone_local": "3252264754"}",
+    "result": "{"tool_output": {"data": {"accounts": {"nodes": [{"id": "account_po1rxNck28h3dHFYWqzCRL", "readableId": 51405, "name": "Laurie Vaquera", "displayName": "Laurie Vaquera", "status": {"name": "Suspended", "type": "SUSPENDED"}, "primaryContact": {"firstName": "Laurie", "lastName": "Vaquera", "email": "zapata4_laurie@yahoo.com", "mobilePhone": "3252264754", "homePhone": null, "workPhone": null}, "physicalAddress": {"line1": "902 East 5th Street", "line2": null, "locality": "Big Lake", "region": "TX",…",
+    "latency": 408.39599999999996,
+    "start_time": 1787849446.9130826,
+    "end_time": 1787849447.3213413,
+    "tool_config": {
+      "input_params": [
+        {
+          "key": "name_or_email",
+          "required": false,
+          "data_type": "str",
+          "id": 0,
+          "description": "",
+          "example": "",
+          "value": "",
+          "is_static": false
+        },
+        {
+          "key": "phone_local",
+          "required": true,
+          "data_type": "str",
+          "id": 0,
+          "description": "",
+          "example": "",
+          "value": "",
+          "is_static": false
+        }
+      ],
+      "output_params": [],
+      "is_background_execution": false,
+      "is_idempotent": false,
+      "is_external_call_transfer": false,
+      "extract_response_instructions": null,
+      "instructions": "",
+      "is_non_interruptible": null,
+      "variable_binding": null,
+      "bound_variable": null,
+      "api_integration_id": "6a7b074d374218a51aaf0338",
+      "api_config": {
+        "id": "6a7b074d374218a51aaf0338",
+        "name": "Fetch Account by Name or Email",
+        "description": "",
+        "examples": null,
+        "bot_id": "cacd3b5d-7623-4a9b-a726-d3bba535b802",
+        "workflow_ids": [],
+        "http_method": "POST",
+        "url": "https://api.gaiia.com/api/v1",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "description": ""
+          },
+          {
+            "key": "X-Gaiia-Api-Key",
+            "value": "gaiia_sk_live_c876cd76d11e431f93fdcf030cf025e8_fc7b69e4",
+            "description": ""
+          }
+        ],
+        "body": "{
+  "query": "query AccountsByPhone($filter: AccountFilter) { accounts(filter: $filter) { nodes { id readableId name displayName status { name type } primaryContact { firstName lastName email mobilePhone homePhone workPhone } physicalAddress { line1 line2 locality region postalCode } } } }",
+  "variables": {
+    "filter": {
+      "contacts": {
+        "some": {
+          "OR": [
+            { "homePhone": { "contains": "{{phone_local}}" } },
+            { "mobilePhone": { "contains": "{{phone_lo…",
+        "form_data": null,
+        "url_encoded_form_data": null,
+        "raw_text": null,
+        "query_params": [
+          {
+            "key": "name_or_email",
+            "value": "{{name_or_email}}",
+            "description": ""
+          }
+        ],
+        "extracted_variables": [
+          {
+            "key": "name_or_email",
+            "required": false,
+            "data_type": "String",
+            "id": 0,
+            "description": "",
+            "example": "",
+            "value": null,
+            "is_static": false
+          },
+          {
+            "key": "phone_local",
+            "required": true,
+            "data_type": "String",
+            "id": 0,
+            "description": "",
+            "example": "",
+            "value": null,
+            "is_static": false
+          }
+        ],
+        "created": "2026-05-27T08:48:15.880000",
+        "modified": "2026-05-27T10:51:16.225000",
+        "last_run": "2026-06-10T10:25:28.915000",
+        "last_run_response": "{"data": {"accounts": {"nodes": [{"id": "account_wteW1rtaH1DPVVXVcW1bWG", "readableId": 118023, "name": null, "displayName": "Carlos Anchia", "status": {"name": "Active", "type": "ACTIVE"}, "primaryContact": {"firstName": "Carlos", "lastName": "Anchia", "email": "casahome2000@gmail.com", "mobilePhone": "18066631556", "homePhone": "17148846585", "workPhone": null}, "physicalAddress": {"line1": "3217 Coventry Lane", "line2": null, "locality": "Plano", "region": "TX", "postalCode": "75093"}}]}}}",
+        "status": "SUCCESS",
+        "is_mock_api": false,
+        "mock_collection": null,
+        "mock_api_entity": null,
+        "mock_data": null,
+        "is_generated_api": false,
+        "mock_backend_id": null,
+        "mock_api_logic": null,
+        "auth_config": {
+          "auth_type": "none",
+          "data": null
+        },
+        "is_operation_type_read_only": true,
+        "skip_url_encoding": true
+      }
+    },
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Tool: Fetch_Account_by_Name_or_Email call result"
+}
+LLM_INVOCATION_SUCCESS
+2026-08-27 16:50:48.396
++1.07s
+LLM invocation succeeded
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "model_position": 0,
+    "is_fallback": false,
+    "purpose": "main_stream",
+    "latency_ms": 1060,
+    "turn_latency_ms": 1060,
+    "is_tool_call_decision": false,
+    "is_react_agent": false,
+    "is_streaming": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM invocation succeeded"
+}
+LLM_INVOCATION_SUCCESS
+2026-08-27 16:50:48.396
++0ms
+LLM invocation succeeded
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "model_position": 0,
+    "is_fallback": false,
+    "purpose": "main_stream",
+    "latency_ms": 1060,
+    "turn_latency_ms": 1060,
+    "is_tool_call_decision": false,
+    "is_react_agent": false,
+    "is_streaming": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM invocation succeeded"
+}
+LLM_INVOCATION_SUCCESS
+2026-08-27 16:50:48.396
++0ms
+LLM invocation succeeded
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "model_position": 0,
+    "is_fallback": false,
+    "purpose": "main_stream",
+    "latency_ms": 1060,
+    "turn_latency_ms": 1060,
+    "is_tool_call_decision": false,
+    "is_react_agent": false,
+    "is_streaming": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM invocation succeeded"
+}
+TOKEN_USAGE_DETAILS
+2026-08-27 16:50:48.397
++1ms
+Token usage
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "input_tokens": 6388,
+    "output_tokens": 17,
+    "total_tokens": 6405,
+    "cache_read": 5760,
+    "is_cache_hit": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Token usage"
+}
+TOKEN_USAGE_DETAILS
+2026-08-27 16:50:48.397
++0ms
+Token usage
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "input_tokens": 6388,
+    "output_tokens": 17,
+    "total_tokens": 6405,
+    "cache_read": 5760,
+    "is_cache_hit": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Token usage"
+}
+TOKEN_USAGE_DETAILS
+2026-08-27 16:50:48.397
++0ms
+Token usage
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "input_tokens": 6388,
+    "output_tokens": 17,
+    "total_tokens": 6405,
+    "cache_read": 5760,
+    "is_cache_hit": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Token usage"
+}
+LLM_STREAMING_THROUGHPUT
+2026-08-27 16:50:48.398
++1ms
+LLM streaming throughput
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "output_tokens": 17,
+    "streaming_duration_ms": 239,
+    "throughput_tokens_per_sec": 71.13,
+    "token_source": "usage_metadata",
+    "is_tool_call_decision": false,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM streaming throughput"
+}
+LLM_STREAMING_THROUGHPUT
+2026-08-27 16:50:48.398
++0ms
+LLM streaming throughput
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "output_tokens": 17,
+    "streaming_duration_ms": 239,
+    "throughput_tokens_per_sec": 71.13,
+    "token_source": "usage_metadata",
+    "is_tool_call_decision": false,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM streaming throughput"
+}
+LLM_STREAMING_THROUGHPUT
+2026-08-27 16:50:48.398
++0ms
+LLM streaming throughput
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "output_tokens": 17,
+    "streaming_duration_ms": 239,
+    "throughput_tokens_per_sec": 71.13,
+    "token_source": "usage_metadata",
+    "is_tool_call_decision": false,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM streaming throughput"
+}
+RESPONSE.FINAL
+2026-08-27 16:50:48.409
++11ms
+I will quickly validate the details mentioned against you account. Just a second... Please share the last 4 digits of the payment method on file.
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "latency": 2798.07,
+    "knowledge_sources": [],
+    "agent_name": "Main_Auth",
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "I will quickly validate the details mentioned against you account. Just a second... Please share the last 4 digits of the payment method on file."
+}
+RESPONSE.FINAL
+2026-08-27 16:50:48.409
++0ms
+I will quickly validate the details mentioned against you account. Just a second... Please share the last 4 digits of the payment method on file.
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "latency": 2798.07,
+    "knowledge_sources": [],
+    "agent_name": "Main_Auth",
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "I will quickly validate the details mentioned against you account. Just a second... Please share the last 4 digits of the payment method on file."
+}
+RESPONSE.FINAL
+2026-08-27 16:50:48.409
++0ms
+I will quickly validate the details mentioned against you account. Just a second... Please share the last 4 digits of the payment method on file.
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "latency": 2798.07,
+    "knowledge_sources": [],
+    "agent_name": "Main_Auth",
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "I will quickly validate the details mentioned against you account. Just a second... Please share the last 4 digits of the payment method on file."
+}
+LLM_INVOCATION_SUCCESS
+2026-08-27 16:50:49.556
++1.15s
+LLM invocation succeeded
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "model_id": "gpt-4.1-mini",
+    "model_position": 0,
+    "is_fallback": false,
+    "purpose": "closing_msg",
+    "latency_ms": 1127,
+    "turn_latency_ms": 1127,
+    "is_tool_call_decision": false,
+    "is_react_agent": false,
+    "is_streaming": false,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM invocation succeeded"
+}
+LLM_INVOCATION_SUCCESS
+2026-08-27 16:50:49.556
++0ms
+LLM invocation succeeded
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "model_id": "gpt-4.1-mini",
+    "model_position": 0,
+    "is_fallback": false,
+    "purpose": "closing_msg",
+    "latency_ms": 1127,
+    "turn_latency_ms": 1127,
+    "is_tool_call_decision": false,
+    "is_react_agent": false,
+    "is_streaming": false,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM invocation succeeded"
+}
+LLM_INVOCATION_SUCCESS
+2026-08-27 16:50:49.556
++0ms
+LLM invocation succeeded
+Metadata
+{
+  "request_id": "6a906ae50a1a63a7d1cb141b",
+  "event_value": {
+    "model_id": "gpt-4.1-mini",
+    "model_position": 0,
+    "is_fallback": false,
+    "purpose": "closing_msg",
+    "latency_ms": 1127,
+    "turn_latency_ms": 1127,
+    "is_tool_call_decision": false,
+    "is_react_agent": false,
+    "is_streaming": false,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM invocation succeeded"
+}
+USER_QUERY
+2026-08-27 16:51:01.943
++12.39s
+1 9 4 3.
+Metadata
+{
+  "request_id": "6a906af50a1a63a7d1cb1471",
+  "event_value": {
+    "query_language": "en",
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "1 9 4 3."
+}
+LLM_INVOCATION_SUCCESS
+2026-08-27 16:51:02.964
++1.02s
+LLM invocation succeeded
+Metadata
+{
+  "request_id": "6a906af50a1a63a7d1cb1471",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "model_position": 0,
+    "is_fallback": false,
+    "purpose": "main_stream",
+    "latency_ms": 880,
+    "turn_latency_ms": 880,
+    "is_tool_call_decision": true,
+    "is_react_agent": false,
+    "is_streaming": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM invocation succeeded"
+}
+TOKEN_USAGE_DETAILS
+2026-08-27 16:51:02.966
++2ms
+Token usage
+Metadata
+{
+  "request_id": "6a906af50a1a63a7d1cb1471",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "input_tokens": 6424,
+    "output_tokens": 44,
+    "total_tokens": 6468,
+    "cache_read": 5760,
+    "is_cache_hit": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Token usage"
+}
+LLM_STREAMING_THROUGHPUT
+2026-08-27 16:51:02.970
++4ms
+LLM streaming throughput
+Metadata
+{
+  "request_id": "6a906af50a1a63a7d1cb1471",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "output_tokens": 44,
+    "streaming_duration_ms": 205,
+    "throughput_tokens_per_sec": 214.63,
+    "token_source": "usage_metadata",
+    "is_tool_call_decision": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM streaming throughput"
+}
+DEBUG.TOOL_INVOKED
+2026-08-27 16:51:02.980
++10ms
+Get_Verified_Payment_method · acount_id: account_po1rxNck28h3dHFYWqzCRL, card_digits: 1943
+Metadata
+{
+  "request_id": "6a906af50a1a63a7d1cb1471",
+  "event_value": {
+    "type": "tool",
+    "tool_id": "fdb760a2-67f3-ec78-1acd-983858e531a0",
+    "name": "Get_Verified_Payment_method",
+    "input": {
+      "acount_id": "account_po1rxNck28h3dHFYWqzCRL",
+      "card_digits": "1943"
+    },
+    "other_info": {
+      "run_id": "01a04421-d4c3-7592-b91d-36a82e0787d7",
+      "parent_run_id": "01a04421-d4c2-7430-990e-a99f215fe4f4",
+      "tags": [
+        "seq:step:1"
+      ],
+      "metadata": {
+        "debug_session_id": "6a906a9e3da0e1d7748b4209",
+        "request_id": "6a906af50a1a63a7d1cb1471",
+        "thread_id": "6a906a9e3da0e1d7748b4209",
+        "langgraph_step": 2,
+        "langgraph_node": "tools",
+        "langgraph_triggers": [
+          "branch:to:tools"
+        ],
+        "langgraph_path": [
+          "__pregel_pull",
+          "tools"
+        ],
+        "langgraph_checkpoint_ns": "Main_Auth:adafefb1-973f-1b3e-380f-6ec603ac29e6|tools:fdb760a2-67f3-ec78-1acd-983858e531a0",
+        "checkpoint_ns": "Main_Auth:adafefb1-973f-1b3e-380f-6ec603ac29e6",
+        "stream_preamble": true,
+        "llm_preamble_generated": false
+      },
+      "color": "green",
+      "name": null
+    },
+    "output": "ToolMessage(content='{"matched_payment_methods": [], "message": "No payment method matched card_digits \\"1943\\". 1 payment method(s) found for this account but none matched."}', name='Get_Verified_Payment_method', tool_call_id='call_ueFZGsIhHqq7aqH6RN2wGVNB')",
+    "output_metadata": {
+      "run_id": "UUID('01a04421-d4c3-7592-b91d-36a82e0787d7')",
+      "parent_run_id": "UUID('01a04421-d4c2-7430-990e-a99f215fe4f4')",
+      "tags": [
+        "seq:step:1"
+      ],
+      "color": "green",
+      "name": "Get_Verified_Payment_method"
+    },
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Debug Event Logged"
+}
+FIRST_LLM_CHUNK_GENERATED
+2026-08-27 16:51:02.983
++3ms
+First model chunk generated
+Metadata
+{
+  "request_id": "6a906af50a1a63a7d1cb1471",
+  "event_value": {
+    "latency": 1031.029,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "First model chunk generated"
+}
+TOOL_CALL_RESULT
+2026-08-27 16:51:03.902
++919ms
+Tool: Get_Verified_Payment_method call result
+Metadata
+{
+  "request_id": "6a906af50a1a63a7d1cb1471",
+  "event_value": {
+    "tool_name": "Get_Verified_Payment_method",
+    "tool_args": "{"acount_id": "account_po1rxNck28h3dHFYWqzCRL", "card_digits": "1943"}",
+    "result": "{"tool_output": {"matched_payment_methods": [], "message": "No payment method matched card_digits \"1943\". 1 payment method(s) found for this account but none matched."}, "tool_type": "API", "status_code": 200}",
+    "latency": 919.224,
+    "start_time": 1787849462.9832318,
+    "end_time": 1787849463.9023874,
+    "tool_config": {
+      "input_params": [
+        {
+          "key": "acount_id",
+          "required": true,
+          "data_type": "str",
+          "id": 0,
+          "description": "account_id for the User",
+          "example": "",
+          "value": "",
+          "is_static": false
+        },
+        {
+          "key": "card_digits",
+          "required": true,
+          "data_type": "str",
+          "id": 1,
+          "description": "Last 4 digits for card confirmed from User",
+          "example": "",
+          "value": "",
+          "is_static": false
+        }
+      ],
+      "output_params": [],
+      "is_background_execution": false,
+      "is_idempotent": false,
+      "is_external_call_transfer": false,
+      "extract_response_instructions": null,
+      "instructions": "",
+      "is_non_interruptible": null,
+      "variable_binding": null,
+      "bound_variable": null,
+      "api_integration_id": "6a7b074d374218a51aaf0337",
+      "api_config": {
+        "id": "6a7b074d374218a51aaf0337",
+        "name": "Get Verified Payment method",
+        "description": "",
+        "examples": null,
+        "bot_id": "cacd3b5d-7623-4a9b-a726-d3bba535b802",
+        "workflow_ids": [],
+        "http_method": "GET",
+        "url": "https://va-api-resound-get-verified-payment-method-develo-abgawforlq-uw.a.run.app",
+        "headers": [
+          {
+            "key": "X-VA-API-TOKEN",
+            "value": "d9380e625ef7f31325686075a057c434631440811768d5d98bf6df3f31d54aa3",
+            "description": ""
+          },
+          {
+            "key": "X-Gaiia-Api-Key",
+            "value": "gaiia_sk_live_c876cd76d11e431f93fdcf030cf025e8_fc7b69e4",
+            "description": ""
+          }
+        ],
+        "body": null,
+        "form_data": null,
+        "url_encoded_form_data": null,
+        "raw_text": null,
+        "query_params": [
+          {
+            "key": "account_id",
+            "value": "{{acount_id}}",
+            "description": "account_id for the User"
+          },
+          {
+            "key": "card_digits",
+            "value": "{{card_digits}}",
+            "description": ""
+          }
+        ],
+        "extracted_variables": [
+          {
+            "key": "acount_id",
+            "required": true,
+            "data_type": "String",
+            "id": 0,
+            "description": "account_id for the User",
+            "example": "",
+            "value": null,
+            "is_static": false
+          },
+          {
+            "key": "card_digits",
+            "required": true,
+            "data_type": "String",
+            "id": 1,
+            "description": "Last 4 digits for card confirmed from User",
+            "example": "",
+            "value": null,
+            "is_static": false
+          }
+        ],
+        "created": "2026-05-27T08:43:44.941000",
+        "modified": "2026-06-02T02:40:47.253000",
+        "last_run": "2026-06-06T06:36:25.786000",
+        "last_run_response": "{"matched_payment_methods": [{"id": "payment_method_h8jWcMrArrSsPLjiDkP5rQ", "type": "CREDIT_CARD", "status": "SUCCEEDED", "autoPaymentEnabled": true, "creditCard": {"brand": "AMEX", "maskedIdentificationNumber": "1782", "expirationMonth": 10, "expirationYear": 2029, "holderName": "carlos anchia"}, "bankAccount": null}]}",
+        "status": "SUCCESS",
+        "is_mock_api": false,
+        "mock_collection": null,
+        "mock_api_entity": null,
+        "mock_data": null,
+        "is_generated_api": false,
+        "mock_backend_id": null,
+        "mock_api_logic": null,
+        "auth_config": {
+          "auth_type": "none",
+          "data": null
+        },
+        "is_operation_type_read_only": false,
+        "skip_url_encoding": true
+      }
+    },
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Tool: Get_Verified_Payment_method call result"
+}
+LLM_INVOCATION_SUCCESS
+2026-08-27 16:51:04.848
++946ms
+LLM invocation succeeded
+Metadata
+{
+  "request_id": "6a906af50a1a63a7d1cb1471",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "model_position": 0,
+    "is_fallback": false,
+    "purpose": "main_stream",
+    "latency_ms": 935,
+    "turn_latency_ms": 935,
+    "is_tool_call_decision": false,
+    "is_react_agent": false,
+    "is_streaming": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM invocation succeeded"
+}
+TOKEN_USAGE_DETAILS
+2026-08-27 16:51:04.849
++1ms
+Token usage
+Metadata
+{
+  "request_id": "6a906af50a1a63a7d1cb1471",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "input_tokens": 6537,
+    "output_tokens": 22,
+    "total_tokens": 6559,
+    "cache_read": 5760,
+    "is_cache_hit": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Token usage"
+}
+LLM_STREAMING_THROUGHPUT
+2026-08-27 16:51:04.849
++0ms
+LLM streaming throughput
+Metadata
+{
+  "request_id": "6a906af50a1a63a7d1cb1471",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "output_tokens": 22,
+    "streaming_duration_ms": 201,
+    "throughput_tokens_per_sec": 109.45,
+    "token_source": "usage_metadata",
+    "is_tool_call_decision": false,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM streaming throughput"
+}
+RESPONSE.FINAL
+2026-08-27 16:51:04.858
++9ms
+Let me check your card details. Just a second...That didn’t match the payment method on file. Please try the last 4 digits again.
+Metadata
+{
+  "request_id": "6a906af50a1a63a7d1cb1471",
+  "event_value": {
+    "latency": 2905.012,
+    "knowledge_sources": [],
+    "agent_name": "Main_Auth",
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Let me check your card details. Just a second...That didn’t match the payment method on file. Please try the last 4 digits again."
+}
+LLM_INVOCATION_SUCCESS
+2026-08-27 16:51:05.704
++846ms
+LLM invocation succeeded
+Metadata
+{
+  "request_id": "6a906af50a1a63a7d1cb1471",
+  "event_value": {
+    "model_id": "gpt-4.1-mini",
+    "model_position": 0,
+    "is_fallback": false,
+    "purpose": "closing_msg",
+    "latency_ms": 825,
+    "turn_latency_ms": 825,
+    "is_tool_call_decision": false,
+    "is_react_agent": false,
+    "is_streaming": false,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM invocation succeeded"
+}
+USER_QUERY
+2026-08-27 16:51:14.188
++8.48s
+5 5 6 1.
+Metadata
+{
+  "request_id": "6a906b020a1a63a7d1cb14b4",
+  "event_value": {
+    "query_language": "en",
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "5 5 6 1."
+}
+LLM_INVOCATION_SUCCESS
+2026-08-27 16:51:15.234
++1.05s
+LLM invocation succeeded
+Metadata
+{
+  "request_id": "6a906b020a1a63a7d1cb14b4",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "model_position": 0,
+    "is_fallback": false,
+    "purpose": "main_stream",
+    "latency_ms": 934,
+    "turn_latency_ms": 934,
+    "is_tool_call_decision": true,
+    "is_react_agent": false,
+    "is_streaming": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM invocation succeeded"
+}
+TOKEN_USAGE_DETAILS
+2026-08-27 16:51:15.235
++1ms
+Token usage
+Metadata
+{
+  "request_id": "6a906b020a1a63a7d1cb14b4",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "input_tokens": 6694,
+    "output_tokens": 44,
+    "total_tokens": 6738,
+    "cache_read": 5760,
+    "is_cache_hit": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Token usage"
+}
+LLM_STREAMING_THROUGHPUT
+2026-08-27 16:51:15.235
++0ms
+LLM streaming throughput
+Metadata
+{
+  "request_id": "6a906b020a1a63a7d1cb14b4",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "output_tokens": 44,
+    "streaming_duration_ms": 177,
+    "throughput_tokens_per_sec": 248.59,
+    "token_source": "usage_metadata",
+    "is_tool_call_decision": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM streaming throughput"
+}
+DEBUG.TOOL_INVOKED
+2026-08-27 16:51:15.241
++6ms
+Get_Verified_Payment_method · acount_id: account_po1rxNck28h3dHFYWqzCRL, card_digits: 5561
+Metadata
+{
+  "request_id": "6a906b020a1a63a7d1cb14b4",
+  "event_value": {
+    "type": "tool",
+    "tool_id": "c5e4c74b-9c82-1204-9b4d-086a0b0f140d",
+    "name": "Get_Verified_Payment_method",
+    "input": {
+      "acount_id": "account_po1rxNck28h3dHFYWqzCRL",
+      "card_digits": "5561"
+    },
+    "other_info": {
+      "run_id": "01a04422-04a9-7b30-9df8-71e6c31aa6e4",
+      "parent_run_id": "01a04422-04a8-7de2-9778-cdcfd4c80146",
+      "tags": [
+        "seq:step:1"
+      ],
+      "metadata": {
+        "debug_session_id": "6a906a9e3da0e1d7748b4209",
+        "request_id": "6a906b020a1a63a7d1cb14b4",
+        "thread_id": "6a906a9e3da0e1d7748b4209",
+        "langgraph_step": 2,
+        "langgraph_node": "tools",
+        "langgraph_triggers": [
+          "branch:to:tools"
+        ],
+        "langgraph_path": [
+          "__pregel_pull",
+          "tools"
+        ],
+        "langgraph_checkpoint_ns": "Main_Auth:12a3795d-a8e9-22f6-92a6-005458892b0a|tools:c5e4c74b-9c82-1204-9b4d-086a0b0f140d",
+        "checkpoint_ns": "Main_Auth:12a3795d-a8e9-22f6-92a6-005458892b0a",
+        "stream_preamble": true,
+        "llm_preamble_generated": false
+      },
+      "color": "green",
+      "name": null
+    },
+    "output": "ToolMessage(content='{"matched_payment_methods": [], "message": "No payment method matched card_digits \\"5561\\". 1 payment method(s) found for this account but none matched."}', name='Get_Verified_Payment_method', tool_call_id='call_CmpwiH5SLz8nfk9YXeUOpIjJ')",
+    "output_metadata": {
+      "run_id": "UUID('01a04422-04a9-7b30-9df8-71e6c31aa6e4')",
+      "parent_run_id": "UUID('01a04422-04a8-7de2-9778-cdcfd4c80146')",
+      "tags": [
+        "seq:step:1"
+      ],
+      "color": "green",
+      "name": "Get_Verified_Payment_method"
+    },
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Debug Event Logged"
+}
+FIRST_LLM_CHUNK_GENERATED
+2026-08-27 16:51:15.244
++3ms
+First model chunk generated
+Metadata
+{
+  "request_id": "6a906b020a1a63a7d1cb14b4",
+  "event_value": {
+    "latency": 1050.865,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "First model chunk generated"
+}
+TOOL_CALL_RESULT
+2026-08-27 16:51:16.164
++920ms
+Tool: Get_Verified_Payment_method call result
+Metadata
+{
+  "request_id": "6a906b020a1a63a7d1cb14b4",
+  "event_value": {
+    "tool_name": "Get_Verified_Payment_method",
+    "tool_args": "{"acount_id": "account_po1rxNck28h3dHFYWqzCRL", "card_digits": "5561"}",
+    "result": "{"tool_output": {"matched_payment_methods": [], "message": "No payment method matched card_digits \"5561\". 1 payment method(s) found for this account but none matched."}, "tool_type": "API", "status_code": 200}",
+    "latency": 920.188,
+    "start_time": 1787849475.2437682,
+    "end_time": 1787849476.1638887,
+    "tool_config": {
+      "input_params": [
+        {
+          "key": "acount_id",
+          "required": true,
+          "data_type": "str",
+          "id": 0,
+          "description": "account_id for the User",
+          "example": "",
+          "value": "",
+          "is_static": false
+        },
+        {
+          "key": "card_digits",
+          "required": true,
+          "data_type": "str",
+          "id": 1,
+          "description": "Last 4 digits for card confirmed from User",
+          "example": "",
+          "value": "",
+          "is_static": false
+        }
+      ],
+      "output_params": [],
+      "is_background_execution": false,
+      "is_idempotent": false,
+      "is_external_call_transfer": false,
+      "extract_response_instructions": null,
+      "instructions": "",
+      "is_non_interruptible": null,
+      "variable_binding": null,
+      "bound_variable": null,
+      "api_integration_id": "6a7b074d374218a51aaf0337",
+      "api_config": {
+        "id": "6a7b074d374218a51aaf0337",
+        "name": "Get Verified Payment method",
+        "description": "",
+        "examples": null,
+        "bot_id": "cacd3b5d-7623-4a9b-a726-d3bba535b802",
+        "workflow_ids": [],
+        "http_method": "GET",
+        "url": "https://va-api-resound-get-verified-payment-method-develo-abgawforlq-uw.a.run.app",
+        "headers": [
+          {
+            "key": "X-VA-API-TOKEN",
+            "value": "d9380e625ef7f31325686075a057c434631440811768d5d98bf6df3f31d54aa3",
+            "description": ""
+          },
+          {
+            "key": "X-Gaiia-Api-Key",
+            "value": "gaiia_sk_live_c876cd76d11e431f93fdcf030cf025e8_fc7b69e4",
+            "description": ""
+          }
+        ],
+        "body": null,
+        "form_data": null,
+        "url_encoded_form_data": null,
+        "raw_text": null,
+        "query_params": [
+          {
+            "key": "account_id",
+            "value": "{{acount_id}}",
+            "description": "account_id for the User"
+          },
+          {
+            "key": "card_digits",
+            "value": "{{card_digits}}",
+            "description": ""
+          }
+        ],
+        "extracted_variables": [
+          {
+            "key": "acount_id",
+            "required": true,
+            "data_type": "String",
+            "id": 0,
+            "description": "account_id for the User",
+            "example": "",
+            "value": null,
+            "is_static": false
+          },
+          {
+            "key": "card_digits",
+            "required": true,
+            "data_type": "String",
+            "id": 1,
+            "description": "Last 4 digits for card confirmed from User",
+            "example": "",
+            "value": null,
+            "is_static": false
+          }
+        ],
+        "created": "2026-05-27T08:43:44.941000",
+        "modified": "2026-06-02T02:40:47.253000",
+        "last_run": "2026-06-06T06:36:25.786000",
+        "last_run_response": "{"matched_payment_methods": [{"id": "payment_method_h8jWcMrArrSsPLjiDkP5rQ", "type": "CREDIT_CARD", "status": "SUCCEEDED", "autoPaymentEnabled": true, "creditCard": {"brand": "AMEX", "maskedIdentificationNumber": "1782", "expirationMonth": 10, "expirationYear": 2029, "holderName": "carlos anchia"}, "bankAccount": null}]}",
+        "status": "SUCCESS",
+        "is_mock_api": false,
+        "mock_collection": null,
+        "mock_api_entity": null,
+        "mock_data": null,
+        "is_generated_api": false,
+        "mock_backend_id": null,
+        "mock_api_logic": null,
+        "auth_config": {
+          "auth_type": "none",
+          "data": null
+        },
+        "is_operation_type_read_only": false,
+        "skip_url_encoding": true
+      }
+    },
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Tool: Get_Verified_Payment_method call result"
+}
+LLM_INVOCATION_SUCCESS
+2026-08-27 16:51:17.118
++954ms
+LLM invocation succeeded
+Metadata
+{
+  "request_id": "6a906b020a1a63a7d1cb14b4",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "model_position": 0,
+    "is_fallback": false,
+    "purpose": "main_stream",
+    "latency_ms": 942,
+    "turn_latency_ms": 942,
+    "is_tool_call_decision": false,
+    "is_react_agent": false,
+    "is_streaming": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM invocation succeeded"
+}
+TOKEN_USAGE_DETAILS
+2026-08-27 16:51:17.119
++1ms
+Token usage
+Metadata
+{
+  "request_id": "6a906b020a1a63a7d1cb14b4",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "input_tokens": 6807,
+    "output_tokens": 23,
+    "total_tokens": 6830,
+    "cache_read": 5760,
+    "is_cache_hit": true,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Token usage"
+}
+LLM_STREAMING_THROUGHPUT
+2026-08-27 16:51:17.119
++0ms
+LLM streaming throughput
+Metadata
+{
+  "request_id": "6a906b020a1a63a7d1cb14b4",
+  "event_value": {
+    "model_id": "gpt-5.4",
+    "purpose": "main_stream",
+    "output_tokens": 23,
+    "streaming_duration_ms": 292,
+    "throughput_tokens_per_sec": 78.77,
+    "token_source": "usage_metadata",
+    "is_tool_call_decision": false,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM streaming throughput"
+}
+RESPONSE.FINAL
+2026-08-27 16:51:17.129
++10ms
+Let me check your card details. Just a second...That didn’t match the payment method on file either. Please try the last 4 digits again.
+Metadata
+{
+  "request_id": "6a906b020a1a63a7d1cb14b4",
+  "event_value": {
+    "latency": 2935.4049999999997,
+    "knowledge_sources": [],
+    "agent_name": "Main_Auth",
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Let me check your card details. Just a second...That didn’t match the payment method on file either. Please try the last 4 digits again."
+}
+LLM_INVOCATION_SUCCESS
+2026-08-27 16:51:18.024
++895ms
+LLM invocation succeeded
+Metadata
+{
+  "request_id": "6a906b020a1a63a7d1cb14b4",
+  "event_value": {
+    "model_id": "gpt-4.1-mini",
+    "model_position": 0,
+    "is_fallback": false,
+    "purpose": "closing_msg",
+    "latency_ms": 860,
+    "turn_latency_ms": 860,
+    "is_tool_call_decision": false,
+    "is_react_agent": false,
+    "is_streaming": false,
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "LLM invocation succeeded"
+}
+SESSION_END
+2026-08-27 16:56:15.486
++297.46s
+Assistant Session Ended with Timeout
+Metadata
+{
+  "event_value": {
+    "assistant_origin_id": "875df174-e8ad-419d-8269-5b064593f865"
+  },
+  "content": "Assistant Session Ended with Timeout"
+}
+1Password menu is available. Press down arrow to select.
