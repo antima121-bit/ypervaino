@@ -10,9 +10,7 @@
     --ink:#e7edf1;--ink-2:#93a3b1;--ink-3:#657585;--line:#232d36;--line-strong:#303c46;
     --signal:#3fe0d6;--signal-strong:#6beae1;--signal-soft:rgba(63,224,214,.12);
     --success:#58c793;--success-soft:rgba(88,199,147,.14);
-    --warning:#e3a94a;--warning-soft:rgba(227,169,74,.14);
     --critical:#e2685f;--critical-soft:rgba(226,104,95,.14);
-    --info:#7d97af;--info-soft:rgba(125,151,175,.14);
   }
   *{box-sizing:border-box;}
   html,body{margin:0;}
@@ -28,20 +26,11 @@
   .card-head{display:flex;justify-content:space-between;align-items:center;padding:13px 18px;border-bottom:1px solid var(--line);}
   .card-title{font-size:13.5px;font-weight:600;margin:0;}
   .card-pad{padding:16px 18px;}
-  .pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:600;}
-  .pill.critical{background:var(--critical-soft);color:var(--critical);}
   .grid-kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;}
   .kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:15px 17px;}
   .kpi-label{font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
   .kpi-value{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;}
-  .health-row{display:flex;align-items:center;gap:16px;margin-bottom:12px;}
-  .health-label{width:56px;flex-shrink:0;font-size:12px;color:var(--ink-2);font-weight:600;}
-  .health-track{flex:1;height:26px;border-radius:6px;overflow:hidden;display:flex;}
-  .health-seg{height:100%;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:var(--paper);}
-  .health-legend{display:flex;gap:20px;margin-top:2px;}
-  .legend-item{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--ink-2);}
-  .legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
-  .grid-aspects{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .grid-aspects{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
   .aspect-card{background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:14px 15px;}
   .aspect-card-title{font-size:12.5px;font-weight:600;margin-bottom:12px;}
   .compare-row{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;}
@@ -57,6 +46,7 @@
   .topnav-link{color:var(--ink-2);text-decoration:none;font-size:12.5px;padding:6px 12px;border-radius:6px;}
   .topnav-link:hover{background:var(--surface-2);color:var(--ink);}
   .topnav-link.active{background:var(--signal-soft);color:var(--signal-strong);font-weight:600;}
+  .error-box{background:var(--critical);color:#2a0b08;border-radius:8px;padding:14px 16px;font-size:13px;}
 </style>
 </head>
 <body>
@@ -68,75 +58,49 @@
 </div>
 <div class="main">
   <span class="eyebrow">Ypervaíno</span>
-  <div class="live-pill"><span class="live-dot"></span>Live — connected to local API</div>
-  <h1 style="font-size:22px;margin:0 0 4px;">Results — Qwen rollout, main_stream</h1>
+  <div class="live-pill"><span class="live-dot"></span>Live — real production data (bot_prod)</div>
+  <h1 style="font-size:22px;margin:0 0 4px;">Results</h1>
   <p class="desc" id="desc">Loading…</p>
 
-  <div class="grid-kpi" id="kpi-row"></div>
-
-  <div class="card">
-    <div class="card-head"><h3 class="card-title">Health distribution</h3><span class="pill critical" id="health-pill"></span></div>
-    <div class="card-pad" id="health-body"></div>
-  </div>
-
-  <div class="card">
-    <div class="card-head"><h3 class="card-title">Aspects (computed live from seeded session data)</h3></div>
-    <div class="card-pad"><div class="grid-aspects" id="aspects-body"></div></div>
-  </div>
+  <div id="content"></div>
 
   <p class="footnote">
-    Every number above is computed on request by <code>server.py</code> from <code>ypervaino.db</code> (SQLite) —
-    real aggregation over seeded before/after session, turn, and tool-call rows shaped like va-argus's
-    <code>AssistantSession</code> / <code>VoiceTurnMetric</code> / <code>ToolCall</code> tables. Underlying data
-    is synthetic (no Mongo/Postgres access configured yet), not pulled from real production traffic.
+    Every number above is computed on request from real <code>AssistantEvent</code> documents in
+    <code>bot_prod</code> for the session ids matching this study's scope. No RED/YELLOW/GREEN
+    health classification here — that was va-argus's own derived signal engine, which this
+    pipeline doesn't have access to.
   </p>
 </div>
 
 <script>
 function fmtPct(n){ return (n > 0 ? "+" : "") + n + "%"; }
+function escapeHtml(s){ const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+const passthroughKeys = [
+  'study_type', 'tenant', 'assistant_origin_id', 'channel', 'limit',
+  'date_range_start', 'date_range_end',
+  'date_range_before_start', 'date_range_before_end',
+  'date_range_after_start', 'date_range_after_end',
+];
 
 async function load(){
-  const res = await fetch("/api/v1/ypervaino/results");
+  const urlParams = new URLSearchParams(window.location.search);
+  const apiParams = new URLSearchParams();
+  passthroughKeys.forEach(k => { if (urlParams.get(k)) apiParams.set(k, urlParams.get(k)); });
+
+  document.getElementById('content').innerHTML = '<div class="card"><div class="card-pad">Computing aspects from real event data…</div></div>';
+  const res = await fetch("/api/v1/ypervaino/results?" + apiParams.toString());
   const data = await res.json();
 
+  if (data.error) {
+    document.getElementById('content').innerHTML = `<div class="error-box"><b>Error:</b> ${escapeHtml(data.error)}</div>`;
+    return;
+  }
+
   document.getElementById("desc").textContent =
-    `${data.cohort_sizes.total} conversations analyzed — ${data.cohort_sizes.before} before / ${data.cohort_sizes.after} after`;
+    `${data.cohort_sizes.total} sessions analyzed — ${data.cohort_sizes.before} before / ${data.cohort_sizes.after} after`;
 
-  document.getElementById("kpi-row").innerHTML = `
-    <div class="kpi"><div class="kpi-label">Conversations analyzed</div><div class="kpi-value">${data.cohort_sizes.total}</div></div>
-    <div class="kpi"><div class="kpi-label">Before cohort</div><div class="kpi-value">${data.cohort_sizes.before}</div></div>
-    <div class="kpi"><div class="kpi-label">After cohort</div><div class="kpi-value">${data.cohort_sizes.after}</div></div>
-  `;
-
-  const h = data.health;
-  const shift = (h.after.green - h.before.green).toFixed(1);
-  document.getElementById("health-pill").textContent = shift < 0 ? "green rate down" : "green rate up";
-
-  document.getElementById("health-body").innerHTML = `
-    <div class="health-row">
-      <div class="health-label">Before</div>
-      <div class="health-track">
-        <div class="health-seg" style="width:${h.before.green}%;background:var(--success);">${h.before.green}%</div>
-        <div class="health-seg" style="width:${h.before.yellow}%;background:var(--warning);">${h.before.yellow}%</div>
-        <div class="health-seg" style="width:${h.before.red}%;background:var(--critical);">${h.before.red}%</div>
-      </div>
-    </div>
-    <div class="health-row" style="margin-bottom:2px;">
-      <div class="health-label">After</div>
-      <div class="health-track">
-        <div class="health-seg" style="width:${h.after.green}%;background:var(--success);">${h.after.green}%</div>
-        <div class="health-seg" style="width:${h.after.yellow}%;background:var(--warning);">${h.after.yellow}%</div>
-        <div class="health-seg" style="width:${h.after.red}%;background:var(--critical);">${h.after.red}%</div>
-      </div>
-    </div>
-    <div class="health-legend">
-      <div class="legend-item"><span class="legend-dot" style="background:var(--success);"></span>Green</div>
-      <div class="legend-item"><span class="legend-dot" style="background:var(--warning);"></span>Yellow</div>
-      <div class="legend-item"><span class="legend-dot" style="background:var(--critical);"></span>Red</div>
-    </div>
-  `;
-
-  document.getElementById("aspects-body").innerHTML = data.aspects.map(a => {
+  const aspectsHtml = data.aspects.map(a => {
     const isGood = a.good_if === "down" ? a.delta_pct <= 0 : a.delta_pct >= 0;
     return `
       <div class="aspect-card">
@@ -148,6 +112,18 @@ async function load(){
       </div>
     `;
   }).join("");
+
+  document.getElementById('content').innerHTML = `
+    <div class="grid-kpi">
+      <div class="kpi"><div class="kpi-label">Sessions analyzed</div><div class="kpi-value">${data.cohort_sizes.total}</div></div>
+      <div class="kpi"><div class="kpi-label">Before cohort</div><div class="kpi-value">${data.cohort_sizes.before}</div></div>
+      <div class="kpi"><div class="kpi-label">After cohort</div><div class="kpi-value">${data.cohort_sizes.after}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3 class="card-title">Aspects</h3></div>
+      <div class="card-pad"><div class="grid-aspects">${aspectsHtml}</div></div>
+    </div>
+  `;
 }
 
 load();

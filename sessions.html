@@ -9,32 +9,36 @@
     --paper:#0c1116;--surface:#131a21;--surface-2:#1a2229;--surface-3:#232c34;
     --ink:#e7edf1;--ink-2:#93a3b1;--ink-3:#657585;--line:#232d36;--line-strong:#303c46;
     --signal:#3fe0d6;--signal-strong:#6beae1;--signal-soft:rgba(63,224,214,.12);
-    --success:#58c793;--success-soft:rgba(88,199,147,.14);
-    --warning:#e3a94a;--warning-soft:rgba(227,169,74,.14);
-    --critical:#e2685f;--critical-soft:rgba(226,104,95,.14);
+    --success:#58c793;--success-soft:rgba(88,199,147,.14);--critical:#e2685f;--critical-soft:rgba(226,104,95,.14);
   }
   *{box-sizing:border-box;} html,body{margin:0;}
   body{background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,sans-serif;font-size:13.5px;}
   .mono{font-family:"IBM Plex Mono",ui-monospace,monospace;}
   .main{max-width:1000px;margin:0 auto;padding:28px 32px 60px;}
   .eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);display:block;}
-  .desc{color:var(--ink-2);font-size:13px;margin:6px 0 18px;}
-  .filters{display:flex;gap:10px;margin-bottom:14px;}
-  .select{background:var(--surface-2);border:1px solid var(--line-strong);color:var(--ink);border-radius:6px;padding:7px 10px;font-size:12.5px;font-family:inherit;}
-  .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  .live-pill{display:inline-flex;align-items:center;gap:6px;background:var(--success-soft);color:var(--success);border-radius:999px;padding:4px 10px 4px 8px;font-size:11px;font-weight:600;margin:6px 0 18px;}
+  .live-dot{width:6px;height:6px;border-radius:50%;background:var(--success);animation:pulse 1.4s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:16px;}
+  .card-pad{padding:16px 18px;}
+  .row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;}
+  .field{flex:1;min-width:160px;}
+  .field-label{font-size:11px;color:var(--ink-2);display:block;margin-bottom:6px;}
+  .input,.select{width:100%;background:var(--surface-2);border:1px solid var(--line-strong);color:var(--ink);border-radius:6px;padding:8px 10px;font-size:12.5px;font-family:inherit;}
+  .btn{background:var(--signal);color:#06201f;border:none;border-radius:7px;padding:10px 18px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;}
+  .segmented{display:inline-flex;background:var(--surface-2);border:1px solid var(--line-strong);border-radius:9px;padding:3px;gap:2px;}
+  .segmented-btn{padding:8px 16px;border-radius:6px;font-size:12.5px;color:var(--ink-2);background:none;font-family:inherit;border:none;cursor:pointer;}
+  .segmented-btn.active{background:var(--signal);color:#06201f;font-weight:600;}
   table{width:100%;border-collapse:collapse;font-size:12.5px;}
   th{text-align:left;color:var(--ink-3);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em;padding:10px 14px;border-bottom:1px solid var(--line);}
   td{padding:9px 14px;border-bottom:1px solid var(--line);}
-  tr.row{cursor:pointer;}
-  tr.row:hover{background:var(--surface-2);}
-  .pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:600;}
-  .pill.GREEN{background:var(--success-soft);color:var(--success);}
-  .pill.YELLOW{background:var(--warning-soft);color:var(--warning);}
-  .pill.RED{background:var(--critical-soft);color:var(--critical);}
-  .pager{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;font-size:12px;color:var(--ink-2);}
-  .pager button{background:var(--surface-2);border:1px solid var(--line-strong);color:var(--ink);border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit;}
-  .pager button:disabled{opacity:.4;cursor:default;}
-
+  tr.row-item{cursor:pointer;}
+  tr.row-item:hover{background:var(--surface-2);}
+  .topnav{display:flex;gap:4px;padding:14px 32px;border-bottom:1px solid var(--line);background:var(--surface);}
+  .topnav-link{color:var(--ink-2);text-decoration:none;font-size:12.5px;padding:6px 12px;border-radius:6px;}
+  .topnav-link:hover{background:var(--surface-2);color:var(--ink);}
+  .topnav-link.active{background:var(--signal-soft);color:var(--signal-strong);font-weight:600;}
+  .error-box{background:var(--critical);color:#2a0b08;border-radius:8px;padding:12px 14px;font-size:12.5px;}
   .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;z-index:10;}
   .overlay.open{display:block;}
   .drawer{position:fixed;top:0;right:-560px;width:560px;max-width:92vw;height:100vh;background:var(--surface);border-left:1px solid var(--line);transition:right .2s ease;z-index:11;display:flex;flex-direction:column;}
@@ -47,14 +51,7 @@
   .turn.assistant .turn-avatar{background:var(--signal-soft);color:var(--signal-strong);}
   .turn-speaker{font-weight:600;font-size:11.5px;color:var(--ink-3);}
   .turn-text{font-size:13px;margin-top:2px;}
-  .turn-meta{font-size:10.5px;color:var(--ink-3);margin-top:3px;}
-  .tool-card{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:8px 0 14px 34px;font-size:11.5px;}
-  .tool-card.error{background:var(--critical-soft);border-color:var(--critical);}
-  .section-label{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);margin:16px 0 8px;}
-  .topnav{display:flex;gap:4px;padding:14px 32px;border-bottom:1px solid var(--line);background:var(--surface);}
-  .topnav-link{color:var(--ink-2);text-decoration:none;font-size:12.5px;padding:6px 12px;border-radius:6px;}
-  .topnav-link:hover{background:var(--surface-2);color:var(--ink);}
-  .topnav-link.active{background:var(--signal-soft);color:var(--signal-strong);font-weight:600;}
+  .tool-card{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:8px 0 14px 34px;font-size:11.5px;word-break:break-all;}
 </style>
 </head>
 <body>
@@ -66,101 +63,112 @@
 </div>
 <div class="main">
   <span class="eyebrow">Ypervaíno</span>
+  <div class="live-pill"><span class="live-dot"></span>Live — real production data (bot_prod)</div>
   <h1 style="font-size:22px;margin:2px 0 0;">Sessions</h1>
-  <p class="desc" id="desc">Loading…</p>
 
-  <div class="filters">
-    <select class="select" id="f-cohort" onchange="load(0)">
-      <option value="">All cohorts</option>
-      <option value="before">before</option>
-      <option value="after">after</option>
-    </select>
-    <select class="select" id="f-class" onchange="load(0)">
-      <option value="">All health</option>
-      <option value="GREEN">GREEN</option>
-      <option value="YELLOW">YELLOW</option>
-      <option value="RED">RED</option>
-    </select>
-  </div>
-
-  <div class="card">
-    <table>
-      <thead><tr><th>Session ID</th><th>Cohort</th><th>Scenario</th><th>Turns</th><th>Duration</th><th>Health</th></tr></thead>
-      <tbody id="rows"></tbody>
-    </table>
-    <div class="pager">
-      <span id="pager-info"></span>
-      <div>
-        <button id="prev-btn" onclick="prevPage()">← Prev</button>
-        <button id="next-btn" onclick="nextPage()">Next →</button>
+  <div class="card card-pad">
+    <div class="row">
+      <div class="field">
+        <label class="field-label">Tenant</label>
+        <select class="select" id="tenant"><option value="">Loading…</option></select>
+      </div>
+      <div class="field">
+        <label class="field-label">Assistant Origin ID</label>
+        <input class="input" id="assistant_origin_id" placeholder="paste UUID">
+      </div>
+      <div class="field" style="flex:0 0 auto;">
+        <label class="field-label">Channel</label>
+        <div class="segmented" id="channel-toggle">
+          <button class="segmented-btn active" data-channel="voice">Voice</button>
+          <button class="segmented-btn" data-channel="chat">Chat</button>
+        </div>
       </div>
     </div>
+    <div class="row" style="margin-top:12px;">
+      <div class="field"><label class="field-label">From</label><input class="input" type="datetime-local" id="date_start"></div>
+      <div class="field"><label class="field-label">To</label><input class="input" type="datetime-local" id="date_end"></div>
+      <div class="field" style="flex:0 0 auto;"><button class="btn" onclick="search()">Search</button></div>
+    </div>
   </div>
+
+  <div id="content"></div>
 </div>
 
 <div class="overlay" id="overlay" onclick="closeDrawer()"></div>
 <div class="drawer" id="drawer">
-  <div class="drawer-head">
-    <span class="mono" id="drawer-title">—</span>
-    <button class="drawer-close" onclick="closeDrawer()">✕</button>
-  </div>
+  <div class="drawer-head"><span class="mono" id="drawer-title">—</span><button class="drawer-close" onclick="closeDrawer()">✕</button></div>
   <div class="drawer-body" id="drawer-body"></div>
 </div>
 
 <script>
-const PAGE_SIZE = 20;
-let offset = 0, total = 0;
-
 function escapeHtml(s){ const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
-async function load(newOffset){
-  if (newOffset !== undefined) offset = newOffset;
-  const cohort = document.getElementById('f-cohort').value;
-  const classification = document.getElementById('f-class').value;
-  const res = await fetch(`/api/v1/sessions?cohort=${cohort}&classification=${classification}&limit=${PAGE_SIZE}&offset=${offset}`);
+let channel = 'voice';
+document.querySelectorAll('#channel-toggle .segmented-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#channel-toggle .segmented-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    channel = btn.dataset.channel;
+  });
+});
+
+async function loadTenants(){
+  const res = await fetch('/api/v1/ypervaino/tenants');
   const data = await res.json();
-  total = data.total;
-  document.getElementById('desc').textContent = `${total} sessions`;
-  document.getElementById('rows').innerHTML = data.sessions.map(s => `
-    <tr class="row" onclick="openSession('${s.session_id}')">
-      <td class="mono">${s.session_id}</td>
-      <td>${s.cohort}</td>
-      <td>${s.scenario}</td>
-      <td>${s.turn_count}</td>
-      <td>${s.duration_secs}s</td>
-      <td><span class="pill ${s.classification}">${s.classification}</span></td>
-    </tr>
-  `).join('');
-  document.getElementById('pager-info').textContent = `${offset + 1}–${Math.min(offset + PAGE_SIZE, total)} of ${total}`;
-  document.getElementById('prev-btn').disabled = offset === 0;
-  document.getElementById('next-btn').disabled = offset + PAGE_SIZE >= total;
+  document.getElementById('tenant').innerHTML = data.tenants.map(t => `<option value="${t}">${t}</option>`).join('');
 }
-function prevPage(){ load(Math.max(0, offset - PAGE_SIZE)); }
-function nextPage(){ load(offset + PAGE_SIZE); }
+loadTenants();
+
+async function search(){
+  const tenant = document.getElementById('tenant').value;
+  const assistant_origin_id = document.getElementById('assistant_origin_id').value.trim();
+  const start = document.getElementById('date_start').value;
+  const end = document.getElementById('date_end').value;
+  if (!tenant || !assistant_origin_id || !start || !end) {
+    document.getElementById('content').innerHTML = '<div class="error-box">Fill in tenant, assistant origin id, and both dates.</div>';
+    return;
+  }
+  document.getElementById('content').innerHTML = '<div class="card card-pad">Searching…</div>';
+  const params = new URLSearchParams({
+    study_type: 'single_cohort', tenant, assistant_origin_id, channel,
+    date_range_start: start, date_range_end: end, limit: '100',
+  });
+  const res = await fetch('/api/v1/ypervaino/session_ids?' + params.toString());
+  const data = await res.json();
+  const ids = data.session_ids || [];
+  if (!ids.length) {
+    document.getElementById('content').innerHTML = '<div class="card card-pad">No sessions found for this scope.</div>';
+    return;
+  }
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <table>
+        <thead><tr><th>Session ID</th></tr></thead>
+        <tbody>${ids.map(id => `<tr class="row-item" onclick="openSession('${id}')"><td class="mono">${id}</td></tr>`).join('')}</tbody>
+      </table>
+    </div>
+  `;
+}
 
 async function openSession(id){
-  const res = await fetch(`/api/v1/sessions/${id}`);
+  const res = await fetch('/api/v1/ypervaino/session_detail?session_id=' + encodeURIComponent(id));
   const s = await res.json();
-  document.getElementById('drawer-title').textContent = s.session_id;
-  const turnsHtml = s.turns.map(t => `
-    <div class="turn ${t.speaker}">
-      <div class="turn-avatar">${t.speaker === 'assistant' ? 'B' : 'U'}</div>
-      <div>
-        <div class="turn-speaker">${t.speaker}</div>
-        <div class="turn-text">${escapeHtml(t.text)}</div>
-        <div class="turn-meta">latency ${t.e2e_latency}ms${t.interrupted ? ' · interrupted' : ''}</div>
+  document.getElementById('drawer-title').textContent = s.voice_id || id;
+  if (s.error) {
+    document.getElementById('drawer-body').innerHTML = `<div class="error-box">${escapeHtml(s.error)}</div>`;
+  } else {
+    document.getElementById('drawer-body').innerHTML = s.turns.map(t => `
+      <div class="turn ${t.query ? '' : 'assistant'}">
+        <div class="turn-avatar">${t.query ? 'U' : 'B'}</div>
+        <div>
+          ${t.query ? `<div class="turn-speaker">user [${t.agent_name || ''}]</div><div class="turn-text">${escapeHtml(t.query)}</div>` : ''}
+          <div class="turn-speaker">assistant [${t.agent_name || ''}]</div>
+          <div class="turn-text">${escapeHtml(t.final_response || '')}</div>
+        </div>
       </div>
-    </div>
-  `).join('');
-  const toolsHtml = s.tool_calls.length ? `
-    <div class="section-label">Tool calls</div>
-    ${s.tool_calls.map(tc => `<div class="tool-card ${tc.error ? 'error' : ''}"><b>${tc.tool_name}</b>${tc.error ? ` — error: ${tc.error}` : ' — ok'}</div>`).join('')}
-  ` : '';
-  document.getElementById('drawer-body').innerHTML = `
-    <div class="section-label">${s.cohort} · ${s.scenario} · <span class="pill ${s.classification}">${s.classification}</span></div>
-    ${turnsHtml}
-    ${toolsHtml}
-  `;
+      ${(t.tool_call_list || []).map(tc => `<div class="tool-card">${escapeHtml(JSON.stringify(tc))}</div>`).join('')}
+    `).join('');
+  }
   document.getElementById('overlay').classList.add('open');
   document.getElementById('drawer').classList.add('open');
 }
@@ -168,8 +176,6 @@ function closeDrawer(){
   document.getElementById('overlay').classList.remove('open');
   document.getElementById('drawer').classList.remove('open');
 }
-
-load(0);
 </script>
 </body>
 </html>
