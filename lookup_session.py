@@ -32,12 +32,27 @@ def load_mongo_env(path: str = ".env.mongo") -> dict:
     return env
 
 
-def resolve_voice_id(db, botprobe_session_uuid: str):
-    """BotProbe 'Session ID' (UUID) -> internal voice/Mongo id (hex)."""
+def resolve_voice_id(db, session_uuid: str):
+    """BotProbe 'Session ID' (UUID) -> internal voice/Mongo id (hex).
+
+    Voice-channel sessions store this UUID in `voice_session_id`. Chat-channel
+    sessions never populate that field, so `fetch_filtered_session_ids.py`
+    hands back the AssistantSession `_id` directly for chat -- fall back to
+    treating the input as that `_id` when the voice_session_id lookup misses.
+    """
     doc = db.AssistantSession.find_one(
-        {"voice_session_id": botprobe_session_uuid}, {"_id": 1}
+        {"voice_session_id": session_uuid}, {"_id": 1}
     )
-    return str(doc["_id"]) if doc else None
+    if doc:
+        return str(doc["_id"])
+
+    try:
+        from bson import ObjectId
+        if db.AssistantSession.find_one({"_id": ObjectId(session_uuid)}, {"_id": 1}):
+            return session_uuid
+    except Exception:
+        pass
+    return None
 
 
 def get_session_requests(db, voice_id: str) -> list:
