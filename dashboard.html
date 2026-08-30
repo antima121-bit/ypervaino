@@ -65,10 +65,8 @@
   <div id="content"></div>
 
   <p class="footnote">
-    Every number above is computed on request from real <code>AssistantEvent</code> documents in
-    <code>bot_prod</code> for the session ids matching this study's scope. No RED/YELLOW/GREEN
-    health classification here — that was va-argus's own derived signal engine, which this
-    pipeline doesn't have access to.
+    Numbers come from BotProbe <code>/trace</code> events (Elasticsearch) for sessions scoped via
+    Mongo <code>AssistantSession</code>. See <code>sample_gothrough.md</code> for the full pipeline.
   </p>
 </div>
 
@@ -76,35 +74,35 @@
 function fmtPct(n){ return (n > 0 ? "+" : "") + n + "%"; }
 function escapeHtml(s){ const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
-const passthroughKeys = [
-  'study_type', 'tenant', 'assistant_origin_id', 'channel', 'limit',
-  'date_range_start', 'date_range_end',
-  'date_range_before_start', 'date_range_before_end',
-  'date_range_after_start', 'date_range_after_end',
-];
-
 async function load(){
-  const urlParams = new URLSearchParams(window.location.search);
-  const apiParams = new URLSearchParams();
-  passthroughKeys.forEach(k => { if (urlParams.get(k)) apiParams.set(k, urlParams.get(k)); });
+  const slug = new URLSearchParams(window.location.search).get('study');
+  if (!slug) {
+    document.getElementById('content').innerHTML = '<div class="error-box">Missing ?study= slug.</div>';
+    return;
+  }
+  document.getElementById('content').innerHTML = '<div class="card"><div class="card-pad">Loading evaluation results…</div></div>';
+  let data;
+  for (let i = 0; i < 120; i++) {
+    const res = await fetch(`/api/v1/ypervaino/studies/${encodeURIComponent(slug)}/results`);
+    data = await res.json();
+    if (data.status === 'complete' && data.aspects) break;
+    if (data.error && data.status !== 'running') break;
+    await new Promise(r => setTimeout(r, 2000));
+  }
 
-  document.getElementById('content').innerHTML = '<div class="card"><div class="card-pad">Computing aspects from real event data…</div></div>';
-  const res = await fetch("/api/v1/ypervaino/results?" + apiParams.toString());
-  const data = await res.json();
-
-  if (data.error) {
-    document.getElementById('content').innerHTML = `<div class="error-box"><b>Error:</b> ${escapeHtml(data.error)}</div>`;
+  if (data.error && !data.aspects?.length) {
+    document.getElementById('content').innerHTML = `<div class="error-box"><b>Error:</b> ${escapeHtml(String(data.error))}</div>`;
     return;
   }
 
   document.getElementById("desc").textContent =
     `${data.cohort_sizes.total} sessions analyzed — ${data.cohort_sizes.before} before / ${data.cohort_sizes.after} after`;
 
-  const aspectsHtml = data.aspects.map(a => {
+  const aspectsHtml = (data.aspects || []).map(a => {
     const isGood = a.good_if === "down" ? a.delta_pct <= 0 : a.delta_pct >= 0;
     return `
       <div class="aspect-card">
-        <div class="aspect-card-title">${a.name}</div>
+        <div class="aspect-card-title">${escapeHtml(a.name)}</div>
         <div class="compare-row"><span class="compare-label">Before</span><span class="compare-val">${a.before}</span></div>
         <div class="compare-row"><span class="compare-label">After</span><span class="compare-val">${a.after}</span></div>
         <div class="compare-divider"></div>
@@ -113,15 +111,32 @@ async function load(){
     `;
   }).join("");
 
+  const hypHtml = (data.hypotheses || []).map(h => {
+    const rates = h.rates || {};
+    const before = rates.before || rates.all || {};
+    const after = rates.after || {};
+    const rateStr = rates.after
+      ? `Before ${Math.round((before.rate||0)*100)}% (${before.support||0}) · After ${Math.round((after.rate||0)*100)}% (${after.support||0})`
+      : `${Math.round((before.rate||0)*100)}% match (${before.support||0} sessions)`;
+    return `<div class="aspect-card"><div class="aspect-card-title">${escapeHtml(h.title||h.id||'')}</div><div style="font-size:12px;color:var(--ink-2);margin:6px 0;">${escapeHtml(h.description||'')}</div><div class="delta-badge">${rateStr}${h.rejected?' · low support':''}</div></div>`;
+  }).join('');
+
+  const narrative = data.narrative ? `<div class="card"><div class="card-head"><h3 class="card-title">Summary</h3></div><div class="card-pad" style="color:var(--ink-2);line-height:1.6;">${escapeHtml(data.narrative)}</div></div>` : '';
+
   document.getElementById('content').innerHTML = `
     <div class="grid-kpi">
       <div class="kpi"><div class="kpi-label">Sessions analyzed</div><div class="kpi-value">${data.cohort_sizes.total}</div></div>
       <div class="kpi"><div class="kpi-label">Before cohort</div><div class="kpi-value">${data.cohort_sizes.before}</div></div>
       <div class="kpi"><div class="kpi-label">After cohort</div><div class="kpi-value">${data.cohort_sizes.after}</div></div>
     </div>
+    ${narrative}
     <div class="card">
       <div class="card-head"><h3 class="card-title">Aspects</h3></div>
-      <div class="card-pad"><div class="grid-aspects">${aspectsHtml}</div></div>
+      <div class="card-pad"><div class="grid-aspects">${aspectsHtml || '<p>No aspects computed.</p>'}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3 class="card-title">Hypotheses</h3></div>
+      <div class="card-pad"><div class="grid-aspects">${hypHtml || '<p>No hypotheses evaluated.</p>'}</div></div>
     </div>
   `;
 }

@@ -31,30 +31,17 @@
   .ai-text{font-size:13px;color:var(--ink-2);line-height:1.65;}
   .row-scroll{display:flex;gap:12px;overflow-x:auto;padding-bottom:2px;}
   .sample-card{background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:11px 13px;width:250px;flex-shrink:0;}
-  .sample-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
-  .dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0;}
-  .dot.RED{background:var(--critical);} .dot.YELLOW{background:var(--warning);} .dot.GREEN{background:var(--success);}
   .sample-id{font-size:10.5px;color:var(--ink-3);}
   .sample-line{font-size:11.5px;line-height:1.5;margin-bottom:4px;}
   .sample-line b{color:var(--ink-3);}
   .aspect-row{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);align-items:flex-start;}
   .aspect-row:last-child{border-bottom:none;}
-  .aspect-icon{font-size:14px;line-height:1.4;flex-shrink:0;width:20px;text-align:center;}
   .aspect-title{font-size:13px;font-weight:600;}
   .aspect-desc{font-size:12px;color:var(--ink-2);margin-top:1px;}
   .section-label{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:700;}
   .hyp-card{background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:14px 16px;margin-bottom:10px;}
-  .hyp-card.rejected{opacity:.55;}
-  .hyp-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;}
   .hyp-title{font-size:13.5px;font-weight:600;margin-bottom:5px;}
-  .hyp-claim{font-size:12.5px;color:var(--ink-2);line-height:1.55;max-width:520px;}
-  .hyp-meta{font-size:11px;color:var(--ink-3);margin-top:8px;}
-  .hyp-rates{display:flex;gap:18px;flex-shrink:0;text-align:right;}
-  .rate-col{display:flex;flex-direction:column;}
-  .rate-label{font-size:9.5px;text-transform:uppercase;color:var(--ink-3);letter-spacing:.03em;}
-  .rate-val{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;}
-  .rate-val.sig{color:var(--critical);}
-  .rate-val.notsig{color:var(--ink-3);font-size:12px;font-weight:600;}
+  .hyp-claim{font-size:12.5px;color:var(--ink-2);line-height:1.55;}
   .btn{background:var(--signal);color:#06201f;border:none;border-radius:7px;padding:11px 20px;font-size:13.5px;font-weight:600;font-family:inherit;cursor:pointer;text-decoration:none;display:inline-block;}
   .error-box{background:var(--critical);color:#2a0b08;border-radius:8px;padding:14px 16px;font-size:13px;}
   .topnav{display:flex;gap:4px;padding:14px 32px;border-bottom:1px solid var(--line);background:var(--surface);}
@@ -68,124 +55,69 @@
   <a href="/" class="topnav-link">New Study</a>
   <a href="/explore" class="topnav-link active">Explore</a>
   <a href="/results" class="topnav-link">Results</a>
-  <a href="/sessions" class="topnav-link">Sessions</a>
 </div>
 <div class="main">
   <span class="eyebrow">Ypervaíno</span>
-  <div class="live-pill"><span class="live-dot"></span>Live — Gemini analyzing real seeded transcripts now</div>
+  <div class="live-pill"><span class="live-dot"></span>Live — BotProbe traces + Mongo session index</div>
   <h1 style="font-size:22px;margin:0 0 4px;">Exploration &amp; Plan Approval</h1>
-  <p class="desc" id="desc">Sampling conversations and asking the LLM to propose a plan…</p>
-
+  <p class="desc" id="desc">Loading analysis plan…</p>
   <div id="content"></div>
 </div>
-
 <script>
 const params = new URLSearchParams(window.location.search);
-const description = params.get('description') || '';
-
-function escapeHtml(s){
-  const d = document.createElement('div'); d.textContent = s; return d.innerHTML;
-}
-
-const passthroughKeys = [
-  'study_type', 'tenant', 'assistant_origin_id', 'channel', 'limit',
-  'date_range_start', 'date_range_end',
-  'date_range_before_start', 'date_range_before_end',
-  'date_range_after_start', 'date_range_after_end',
-];
+const slug = params.get('study');
+function escapeHtml(s){ const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 async function load(){
-  document.getElementById('content').innerHTML = '<div class="card"><div class="loading">Fetching real session ids, sampling transcripts, calling Gemini… (can take 10-20s)</div></div>';
-  const apiParams = new URLSearchParams({
-    description,
-    mode: params.get('mode') || 'comparative',
-    n_explore: params.get('n_explore') || '10',
-    min_support: params.get('min_support') || '10',
-    significance_level: params.get('significance_level') || '0.05',
-  });
-  passthroughKeys.forEach(k => { if (params.get(k)) apiParams.set(k, params.get(k)); });
-
-  const res = await fetch('/api/v1/ypervaino/explore?' + apiParams.toString());
-  const data = await res.json();
-
-  if (data.llm.error){
-    document.getElementById('content').innerHTML = `<div class="error-box"><b>Error:</b> ${escapeHtml(data.llm.error)}</div>`;
+  if (!slug) {
+    document.getElementById('content').innerHTML = '<div class="error-box">Missing ?study= slug. Start from New Study.</div>';
     return;
   }
-
-  document.getElementById('desc').textContent = data.mode === 'discovery'
-    ? 'Pure discovery mode — proposed plan from a sample of the pool.'
-    : 'Comparative mode' + (description ? ` — investigating: "${description}"` : ' — proposed plan from a before/after sample.');
-
-  const samplesHtml = data.samples.map(s => `
+  document.getElementById('content').innerHTML = '<div class="card"><div class="loading">Loading plan…</div></div>';
+  const res = await fetch(`/api/v1/ypervaino/studies/${encodeURIComponent(slug)}/explore`);
+  const data = await res.json();
+  if (!res.ok) {
+    document.getElementById('content').innerHTML = `<div class="error-box">${escapeHtml(JSON.stringify(data.detail || data))}</div>`;
+    return;
+  }
+  const llm = data.llm || {};
+  if (llm.error) {
+    document.getElementById('content').innerHTML = `<div class="error-box">${escapeHtml(llm.error)}</div>`;
+    return;
+  }
+  document.getElementById('desc').textContent = data.meta?.title || slug;
+  const samplesHtml = (data.samples || []).map(s => `
     <div class="sample-card">
-      <div class="sample-head"><span class="sample-id mono">${s.session_id}</span></div>
-      ${s.transcript.slice(0,3).map(t => `<div class="sample-line"><b>${t.speaker}:</b> ${escapeHtml(t.text)}</div>`).join('')}
-    </div>
-  `).join('');
-
-  const aspectsHtml = (data.llm.aspects || []).map(a => `
-    <div class="aspect-row">
-      <div><div class="aspect-title">${escapeHtml(a.name)}</div><div class="aspect-desc">${escapeHtml(a.description)}</div></div>
-    </div>
-  `).join('');
-
-  const plotsHtml = (data.llm.suggested_plots || []).map(p => `
-    <div class="aspect-row">
-      <div class="aspect-icon">▲</div>
-      <div><div class="aspect-title">${escapeHtml(p.title)}</div><div class="aspect-desc">${escapeHtml(p.description)}</div></div>
-    </div>
-  `).join('') || '<div class="aspect-desc" style="padding:11px 0;">No plots proposed for this sample.</div>';
-
-  const tablesHtml = (data.llm.suggested_tables || []).map(t => `
-    <div class="aspect-row">
-      <div class="aspect-icon">▦</div>
-      <div><div class="aspect-title">${escapeHtml(t.title)}</div><div class="aspect-desc">${escapeHtml(t.description)}</div></div>
-    </div>
-  `).join('') || '<div class="aspect-desc" style="padding:11px 0;">No tables proposed for this sample.</div>';
-
-  const hypHtml = (data.llm.hypotheses || []).map(h => `
-    <div class="hyp-card">
-      <div class="hyp-title">${escapeHtml(h.title)}</div>
-      <div class="hyp-claim">${escapeHtml(h.claim)}</div>
-    </div>
-  `).join('');
-
+      <div class="sample-id mono">${s.session_id}</div>
+      ${(s.transcript || []).slice(0,3).map(t => `<div class="sample-line"><b>${t.speaker}:</b> ${escapeHtml(t.text || '')}</div>`).join('')}
+    </div>`).join('');
+  const aspectsHtml = (llm.aspects || []).map(a => `
+    <div class="aspect-row"><div><div class="aspect-title">${escapeHtml(a.name || a.id || '')}</div><div class="aspect-desc">${escapeHtml(a.description || '')}</div></div></div>`).join('');
+  const plotsHtml = (llm.suggested_plots || []).map(p => `
+    <div class="aspect-row"><div><div class="aspect-title">${escapeHtml(p.title || p.id || '')}</div><div class="aspect-desc">${escapeHtml(p.description || '')}</div></div></div>`).join('') || '<div class="aspect-desc">No plots proposed.</div>';
+  const hypHtml = (llm.hypotheses || []).map(h => `
+    <div class="hyp-card"><div class="hyp-title">${escapeHtml(h.title || h.id || '')}</div><div class="hyp-claim">${escapeHtml(h.description || h.claim || '')}</div></div>`).join('');
   document.getElementById('content').innerHTML = `
-    <div class="card">
-      <div class="card-head">What we found<span class="pill">Claude-generated</span></div>
-      <div class="card-pad ai-note">
-        <div class="ai-avatar">✦</div>
-        <div class="ai-text">${escapeHtml(data.llm.exploration_summary || '')}</div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-head">Sample conversations</div>
-      <div class="card-pad"><div class="row-scroll">${samplesHtml}</div></div>
-    </div>
-    <div class="card">
-      <div class="card-head">Quantitative analysis</div>
-      <div class="card-pad" style="padding-bottom:4px;">
-        <div class="section-label">Aspect proposal</div>
-        <div style="padding-top:2px;">${aspectsHtml}</div>
-        <div class="section-label" style="margin-top:14px;">Plots proposal</div>
-        <div>${plotsHtml}</div>
-        <div class="section-label" style="margin-top:14px;">Table proposal</div>
-        <div>${tablesHtml}</div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-head">Qualitative analysis</div>
-      <div class="card-pad">
-        <div class="section-label" style="margin-bottom:8px;">Hypothesis proposal</div>
-        ${hypHtml}
-      </div>
-    </div>
-    <a class="btn" id="run-btn" href="#">Approve &amp; Run Full Analysis →</a>
-  `;
-  const resultsParams = new URLSearchParams();
-  passthroughKeys.forEach(k => { if (params.get(k)) resultsParams.set(k, params.get(k)); });
-  document.getElementById('run-btn').href = '/results?' + resultsParams.toString();
+    <div class="card"><div class="card-head">What we found<span class="pill">AnalysisPlan</span></div>
+      <div class="card-pad ai-note"><div class="ai-avatar">✦</div><div class="ai-text">${escapeHtml(llm.exploration_summary || '')}</div></div></div>
+    <div class="card"><div class="card-head">Sample conversations</div><div class="card-pad"><div class="row-scroll">${samplesHtml}</div></div></div>
+    <div class="card"><div class="card-head">Quantitative analysis</div><div class="card-pad">${aspectsHtml}${plotsHtml}</div></div>
+    <div class="card"><div class="card-head">Qualitative analysis</div><div class="card-pad">${hypHtml}</div></div>
+    <button class="btn" id="run-btn">Execute plan →</button>`;
+  document.getElementById('run-btn').onclick = runPhase3;
+}
+
+async function runPhase3(){
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true; btn.textContent = 'Running Phase 3…';
+  const res = await fetch(`/api/v1/ypervaino/studies/${encodeURIComponent(slug)}/execute`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
+  if (!res.ok) { btn.textContent = 'Execute failed'; return; }
+  for (let i = 0; i < 600; i++) {
+    const st = await (await fetch(`/api/v1/ypervaino/studies/${encodeURIComponent(slug)}/status`)).json();
+    if (st.status === 'complete') { window.location.href = '/results?study=' + encodeURIComponent(slug); return; }
+    if (st.status === 'failed') { btn.textContent = 'Failed'; return; }
+    await new Promise(r => setTimeout(r, 3000));
+  }
 }
 load();
 </script>

@@ -3,6 +3,7 @@
 config/_event_schema_probe.json
 config/_trace_schema_probe.json
 config/_schema_detailed.json
+studies/
 ypervaino.db
 server.log
 __pycache__/

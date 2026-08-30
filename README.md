@@ -1,51 +1,59 @@
 # Ypervaíno
 
-A hackathon project that analyzes voice-bot conversations at scale — measuring the impact
-of a backend change (model swap, guardrails, prompt change...) or discovering hidden
-patterns in production traffic, without manually reading transcripts.
+Analyze voice-bot conversations at scale — measure the impact of a backend change
+(model swap, guardrails, prompt change…) or discover hidden patterns in production traffic.
 
-See [`hackthon.md`](./hackthon.md) for the full formal model this is built against.
+See [`hackthon.md`](./hackthon.md) for the formal model and [`architecture.md`](./architecture.md) for the pipeline design.
 
 ## What's in here
 
-This is a **lightweight, self-contained implementation** built for demo purposes:
+| Component | Role |
+|-----------|------|
+| `app.py` | FastAPI server — study lifecycle API + static UI |
+| `ypervaino/` | Pipeline (phases 0–3), feature computation, LLM client, study store |
+| `config/` | Event schema, primitives, filter atoms, pricing, artifact templates |
+| `new_study.html`, `explore.html`, `dashboard.html`, `sessions.html` | 3-tab flow + session browser |
+| `fetch_filtered_session_ids.py`, `lookup_session.py` | Mongo session discovery & transcript lookup |
+| `server.py` | Legacy demo handler (prefer `app.py`) |
 
-- `server.py` — a zero-dependency Python backend (stdlib `http.server` + `sqlite3`).
-  Seeds a small SQLite database shaped like [va-argus](https://gitlab.com/the-level-engineering/va-argus)'s
-  Sessions data (sessions / turns / tool calls) with synthetic "before/after" conversations,
-  computes real Primitives/Aspects from it, and calls the Gemini API to do real LLM-driven
-  exploration and hypothesis generation.
-- `new_study.html`, `explore.html`, `dashboard.html`, `sessions.html` — the 4 pages of the flow.
+**Data sources (production):**
 
-**Important:** the demo backend still uses synthetic SQLite data. Production wiring uses **Mongo
-for session discovery** and **BotProbe `/trace` for full event logs** — see
-[`MONGO_LOOKUP.md`](./MONGO_LOOKUP.md). The engine (sampling, statistics, LLM calls,
-hypothesis testing) is real; swap the data layer per architecture docs.
+- **Mongo** `AssistantSession` — session discovery (tenant, dates, assistant)
+- **BotProbe** `GET /trace?session_id=…&env=prod` — full event logs (Elasticsearch)
+- **VA Blueprint** `POST /service/va-blueprint/extract_blueprint` — assistant structure
 
-## Running it
+See [`MONGO_LOOKUP.md`](./MONGO_LOOKUP.md) and [`sample_gothrough.md`](./sample_gothrough.md).
 
-No installs needed beyond Python 3 (already on macOS):
+## Running
 
 ```bash
-cd ypervaino-live
-cp .env.example .env   # then paste your own GEMINI_API_KEY into .env
-python3 server.py
+cd ypervaino
+pip3 install -r requirements.txt
+cp .env.example .env          # OPENAI_API_KEY, BotProbe URL, blueprint URL
+# .env.mongo with MONGO_URI + MONGO_DB_NAME (gitignored)
+python3 app.py
 ```
 
-Open **http://localhost:8765/** in your browser.
+Open **http://localhost:8765/**
 
-Get a free Gemini API key (no credit card needed) at **aistudio.google.com/apikey**.
+1. **New Study** — submit comparative or discovery study (async phases 0–2)
+2. **Explore** — review LLM-generated analysis plan, click **Execute plan**
+3. **Results** — aspect deltas, hypothesis rates, narrative summary
+4. **Sessions** — browse sessions by tenant/date, view transcripts
 
-## Flow
+Studies persist under `./studies/{slug}/`.
 
-1. **New Study** (`/`) — describe what changed (or leave blank for Pure Discovery mode), set sample size / min support / significance level
-2. **Explore & Approve** (`/explore`) — Gemini reads a sample of real transcripts, proposes aspects + hypotheses (each with a structured predicate), which are then tested against *all* seeded sessions for real match rates and significance
-3. **Results** (`/results`) — before/after health distribution, aspect deltas, computed live from SQLite
-4. **Sessions** (`/sessions`) — browse every seeded conversation, click one to see its full transcript + tool calls
+## Specs (source of truth)
 
-## Known gaps (see `hackthon.md` for the full model)
+- [`input_schema.md`](./input_schema.md) — study form fields
+- [`output_schema.md`](./output_schema.md) — pipeline artifacts
+- [`api.md`](./api.md) — HTTP API
+- [`UI_design.md`](./UI_design.md) — tab flow
 
-- No real ScopeFilter (tenant/assistant/date range don't actually filter data yet)
-- No real embedding-based clustering for exploration sampling (approximated with scenario/health stratification)
-- Approving a plan on `/explore` doesn't yet feed back into what `/results` computes
-- Not connected to real production pipeline yet (`server.py` still uses SQLite; production path documented in `MONGO_LOOKUP.md`)
+## v1 notes
+
+- Phase 0 traces up to `MAX_TRACE_SESSIONS` (default 200) per cohort
+- Exploration sampling is random (not embedding-medoid)
+- Change context resolver is a stub; blueprint fetched via HTTP
+- Artifact renderer writes CSV tables; PNG plots deferred
+- Cohort filter atoms supported in API; UI wiring optional
