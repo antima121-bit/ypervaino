@@ -19,8 +19,8 @@ signal engine, which we don't have here. Do not invent one without agreement.
 
 from pymongo import MongoClient
 
-from fetch_filtered_session_ids import fetch_filtered_session_ids, load_mongo_env
-from lookup_session import get_session_transcript, resolve_voice_id
+from fetch_filtered_session_ids import load_mongo_env
+from lookup_session import resolve_voice_id, get_session_requests
 
 SAFETY_MAX_TIME_MS = 15_000
 
@@ -101,24 +101,22 @@ def compute_cohort_aspects(db, session_ids: list) -> dict:
 
 
 def sample_real_transcripts(db, session_ids: list, n: int) -> list:
-    """Pull full transcripts (via lookup_session) for up to n ids -- used as
-    the LLM exploration sample. Each call is one indexed lookup + one indexed
-    SessionRequest query, safe for the small n Explore actually needs."""
+    """Pull full transcripts for up to n ids -- used as the LLM exploration
+    sample. Reuses the single already-open `db` connection for every id
+    (previously each id opened its own MongoClient via get_session_transcript
+    -- a fresh TLS handshake + auth per session, ~4s each against Atlas --
+    this is why Explore used to take so long)."""
     samples = []
     for sid in session_ids[:n]:
-        result = get_session_transcript(*_env_uri_dbname(), sid)
-        if "error" in result:
+        voice_id = resolve_voice_id(db, sid)
+        if voice_id is None:
             continue
+        requests = get_session_requests(db, voice_id)
         samples.append({
             "session_id": sid,
             "transcript": [
-                {"speaker": "user" if t["query"] else "assistant", "text": t["query"] or t["final_response"]}
-                for t in result["turns"]
+                {"speaker": "user" if r.get("query") else "assistant", "text": r.get("query") or r.get("final_response")}
+                for r in requests
             ],
         })
     return samples
-
-
-def _env_uri_dbname():
-    env = load_mongo_env()
-    return env["MONGO_URI"], env["MONGO_DB_NAME"]
