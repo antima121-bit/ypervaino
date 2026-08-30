@@ -13,11 +13,10 @@ so it reads as one product family, not a bolted-on tool.
 | # | Tab | One-line job | Inputs | Outputs |
 |---|---|---|---|---|
 | 1 | **New Study** | Collect `CreateStudyRequest`, kick off Phase 0–2 | Full form (§1) | Navigates to Explore on success |
-| 2 | **Explore** | Show `AnalysisPlan`, get one approval | None (read-only) + **Execute** button | Navigates to Results on completion |
+| 2 | **Explore** | Show `AnalysisPlan`, get one approval | None (read-only) + **Execute plan** button | Navigates to Results on completion |
 | 3 | **Results** | Show `EvaluationResult` | None (read-only) | Session links out to BotProbe, export |
 
-No 4th tab. No studies-list screen in v1 scope proper — see §7 for the recommendation on that
-open question.
+No 4th tab. No studies-list screen in v1 — see §7 for a deferred proposal only.
 
 ---
 
@@ -64,7 +63,7 @@ open question.
 |---|---|---|---|---|
 | Identity | `study_title` | text input | yes | Must be unique; becomes the storage slug |
 | Identity | `study_type` | segmented control: **Comparative** / **Single Cohort** | yes | Drives which date fields show below |
-| What changed? | `change_description` | textarea | no | Empty + empty `pr_link` ⇒ pure discovery |
+| What changed? | `change_description` | textarea | no | Empty + empty `pr_link`: **Single Cohort** ⇒ pure discovery; **Comparative** ⇒ window comparison (no attributed change) |
 | What changed? | `pr_link` | text input (URL) | no | Triggers `ChangeContextResolver` server-side |
 | Scope | `tenant` | dropdown | yes | |
 | Scope | `assistant_origin_id` | dropdown (depends on tenant) | yes | |
@@ -73,7 +72,7 @@ open question.
 | Scope (single) | `date_range` | date-range picker | yes, if `study_type == single_cohort` | |
 | Scope (comparative) | `date_range_before` | date-range picker | yes, if `study_type == comparative` | |
 | Scope (comparative) | `date_range_after` | date-range picker | yes, if `study_type == comparative` | |
-| Cohort filters | `cohort_filters[]` | multi-select chip list, sourced from the filter-atom registry (§2.3) | no | See §1.3 below |
+| Cohort filters | `cohort_filters[]` | multi-select chip list, sourced from the filter-atom registry ([input_schema.md](./input_schema.md) §2.3) | no | See §1.3 below |
 | Cohort filters | `traffic_split` | two linked inputs: dimension + value | no | e.g. `canary_variant` = `treatment` |
 | Sampling | `n_explore` | number input | no, default 100 | Must be **even** when `study_type == comparative` |
 | Sampling | `n_eval` | number input **or** "All" toggle | no, default "all" | |
@@ -110,6 +109,7 @@ across both windows — render them once, not duplicated per window. Only the tw
 | `study_title` not unique | "A study called '{title}' already exists. Pick a different name." |
 | `tenant` / `assistant_origin_id` unset | "Choose a tenant and assistant." |
 | Date range missing/incomplete for the selected `study_type` | "Set the {before/after/} date range." |
+| Any date range where `start >= end` | "End must be after start." |
 | `date_range_before` end date is after `date_range_after` start date (overlap) | "Before and after windows overlap — pick non-overlapping ranges." |
 | `n_explore` odd, `study_type == comparative` | "Exploration size must be even in Comparative mode (splits evenly before/after)." |
 | `n_explore` < 4 | "Pick at least 4 — anything smaller isn't a useful sample." |
@@ -123,15 +123,13 @@ single toast at the top.
 - Button: **"Start Analysis"**, disabled while any validation error is showing.
 - **Submitting:** button becomes a spinner + "Starting…"; whole form becomes read-only (no
   editing mid-submit).
-- **Progress** (Phase 0–2 running server-side): replace the form with a simple step tracker,
-  polling `meta.json.status`:
-  ```
-  ● Resolving cohort         (status: created)
-  ○ Sampling conversations
-  ○ Generating plan
-  ```
-  Each step fills in as the backend advances; this is display-only, not literally 3 separate
-  API calls — poll one status field and map it to step-completion.
+- **Progress** (Phase 0–2 running server-side): replace the form with a single blocking state
+  while `meta.json.status == "created"`: spinner + **"Running analysis…"**. draft3 has no
+  sub-status enum for Phase 0 vs 1 vs 2 — do not invent one. Optionally show a read-only
+  3-step checklist inferred from intermediate files (not a separate API contract):
+  `cohort_stats.json` exists → step 1 done; `intermediate/s_explore/` populated → step 2 done;
+  `analysis_plan.json` exists → step 3 done. If files aren't pollable, show the single
+  "Running analysis…" line only.
 - **Success** (`status == "explored"`): auto-navigate to **Explore** for this study.
 - **Failure** (`status == "failed"`): stay on **New Study**, keep the filled-in form values,
   show an error banner above the submit button with the message from `meta.json.error`
@@ -144,14 +142,17 @@ single toast at the top.
 
 ## 2. Tab: Explore
 
-**Purpose:** Read-only display of the `AnalysisPlan` Phase 2 produced. One action: **Execute**.
+**Purpose:** Read-only display of the `AnalysisPlan` Phase 2 produced. One action: **Execute plan**.
 
 ### 2.1 Layout sketch
 
+**Comparative** header example:
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  {study_title}                    [Comparative]  [Execute →]  │
+│  {study_title}              [Comparative]  [ Execute plan ]   │
 │  Before: 1,842 sessions   After: 1,901 sessions                │
+│  Sampled {n_explore} conversations for exploration               │
 │                                                                │
 │  ── What we found ─────────────────────────────────────────    │
 │  "{exploration_summary — 2-4 sentence narrative}"               │
@@ -169,15 +170,22 @@ single toast at the top.
 │  └─────────────────────────────────────────────────────────┘   │
 │  (repeat per hypothesis)                                        │
 │                                                                │
-│                                              [ Execute plan ]   │
 └─────────────────────────────────────────────────────────────┘
+```
+
+**Single cohort** header example — one cohort line, no before/after:
+
+```
+│  {study_title}           [Single Cohort]  [ Execute plan ]      │
+│  1,842 sessions in cohort                                        │
+│  Sampled {n_explore} conversations for exploration               │
 ```
 
 ### 2.2 Layout regions
 
 | Region | Content | Source |
 |---|---|---|
-| Header | Study title, study type badge, cohort sizes after Phase 0 | `meta.json`, `cohort_stats.json` |
+| Header | Study title, study type badge, cohort size(s) after Phase 0, **`n_explore` sample count** | `meta.json`, `cohort_stats.json`, `create_study.json` (or `analysis_plan.json.study_query.config.n_explore`) |
 | Summary card | `exploration_summary` narrative | `analysis_plan.json` |
 | Quantitative section | Proposed **aspects** (name + description), suggested plot/table specs (labels only — no live charts, no data exists until Phase 3) | `analysis_plan.json.quantitative` |
 | Qualitative section | Proposed **hypotheses**: title, description, signal names referenced (no raw predicate syntax shown to the user) | `analysis_plan.json.qualitative` |
@@ -198,17 +206,17 @@ single toast at the top.
 - **Loading** (this tab reached before `analysis_plan.json` exists — shouldn't normally happen
   since New Study only navigates here once `explored`, but guard anyway): full-page spinner,
   "Loading plan…".
-- **Executing** (Phase 3 running): replace the Execute button with a disabled spinner state
+- **Executing** (Phase 3 running): replace the Execute plan button with a disabled spinner state
   ("Running evaluation…"); the plan content above stays visible (read-only) so the user can
   keep reviewing while it runs. Poll `meta.json.status` for `running` → `complete`/`failed`.
 - **Execution failed**: banner above the plan: "Evaluation failed: {error}. The plan is
-  unchanged — you can retry Execute, or start a new study." Execute button re-enabled.
+  unchanged — you can retry **Execute plan**, or start a new study." Execute plan button re-enabled.
 - **Zero hypotheses** (Phase 2 produced aspects only — e.g. an extremely narrow or very clean
   cohort): show the quantitative section, and in place of the qualitative section a plain note:
   "No hypotheses were proposed from this sample — the aspects above will still be evaluated."
   Execute still runs (aspects-only evaluation).
 - **Zero aspects AND zero hypotheses** (degenerate plan): treat as a Phase 2 failure, not a
-  valid empty plan — show the same failure banner as New Study's `failed` status, with Execute
+  valid empty plan — show the same failure banner as New Study's `failed` status, with Execute plan
   disabled and a link back to New Study.
 
 ---
@@ -218,6 +226,8 @@ single toast at the top.
 **Purpose:** Read-only view of `EvaluationResult`. No inputs.
 
 ### 3.1 Layout sketch
+
+**Comparative** header example:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -234,7 +244,8 @@ single toast at the top.
 │  ── Hypotheses ────────────────────────────────────────────    │
 │  ┌ {title} ──────────────────────────────────────────────┐    │
 │  │ before 4.2%  after 18.6%  p<0.001  significant          │    │
-│  │ 171 matching sessions → [view in BotProbe]              │    │
+│  │ 171 matching sessions (support_count)                     │    │
+│  │ Counter-examples (3): [session_a] [session_b] [session_c] │    │
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                                │
 │  ── Summary ───────────────────────────────────────────────    │
@@ -242,13 +253,15 @@ single toast at the top.
 └─────────────────────────────────────────────────────────────┘
 ```
 
+**Single cohort** header: `{N} sessions in cohort` — no before/after line.
+
 ### 3.2 Layout regions
 
 | Region | Content | Source |
 |---|---|---|
-| Header | Study title, cohort sizes | `evaluation_result.json.cohort_sizes` |
+| Header | Study title, cohort size(s) — comparative: before/after counts; single cohort: one count | `evaluation_result.json.cohort_sizes` |
 | Quantitative | One card per Aspect: before/after (or single value for `SingleCohortStudy`), delta, delta_pct, significance test result | `evaluation_result.json.quantitative` |
-| Qualitative | One card per Hypothesis: `match_rate` (or `rate_before`/`rate_after` for comparative), `support_count`, `rejected` flag if under `min_support`, significance | `evaluation_result.json.qualitative` |
+| Qualitative | One card per Hypothesis: `match_rate` (or `rate_before`/`rate_after` for comparative), `support_count`, `counter_examples[]` (linked session ids), `rejected` flag if under `min_support`, significance | `evaluation_result.json.qualitative` |
 | Artifacts | Rendered tables/plots per `suggested_plots`/`suggested_tables` from the plan | `evaluation_result.json.artifacts` |
 | Narrative | `artifacts.narrative_summary` (and `recommendations` if present) | `evaluation_result.json.artifacts` |
 
@@ -261,11 +274,15 @@ the min_support gate legible (matches draft3 §13's intent: "technically true bu
 
 ### 3.4 Session drill-down (v1 affordance, not a tab)
 
-- Where a hypothesis or artifact references specific `session_id`s (counter-examples, matches),
-  render each as a link: `{BOTPROBE_BASE_URL}?session_id={id}`, opening BotProbe in a new tab.
+- **`support_count`** is a number only — do not link all matching sessions (could be thousands).
+- **`counter_examples[]`** (draft3 §13): render explicitly on each hypothesis card under a
+  "Counter-examples" subheading — capped display (e.g. first 5 ids + "and N more" if longer).
+  These are the sessions to inspect when validating or disputing a claim; link each id to BotProbe.
+- Other artifact references to specific `session_id`s follow the same link pattern.
+- Link format: `{BOTPROBE_BASE_URL}?session_id={id}`, opening BotProbe in a new tab.
 - Do not build an in-app transcript viewer for v1 — that scope belongs to BotProbe.
-- If `BOTPROBE_BASE_URL` isn't configured (e.g. local/demo environment), render the session ids
-  as plain (non-clickable) monospace text instead of a dead link.
+- If `BOTPROBE_BASE_URL` isn't configured (e.g. local/demo environment), render session ids
+  as plain (non-clickable) monospace text instead of dead links.
 
 ### 3.5 Export
 
@@ -287,7 +304,7 @@ the min_support gate legible (matches draft3 §13's intent: "technically true bu
 
 Cutting these is a feature of the design, not a gap to fill later without discussion:
 
-- A studies list/dashboard screen as part of the 3-tab spec — see §7 for the recommendation
+- A studies list/dashboard screen — not in v1; see §7 for a deferred proposal only
 - In-app session/transcript browser (that's BotProbe's job)
 - Plan editing, hypothesis approve/reject, re-planning, or a feedback loop on Explore
 - Exposing `min_support` / `significance_level` / `pairing_turn_tolerance` as user controls
@@ -325,18 +342,14 @@ the same product, not a separate tool:
 
 ---
 
-## 7. Open question, resolved: studies list
+## 7. Deferred (not v1): studies list
 
-draft3.md doesn't specify a studies-list screen, but v1 has file-based persistence
-(`studies/<slug>/`) which implies studies accumulate on disk with no way to get back to one
-after leaving it — a real gap for a multi-study demo, not just a nice-to-have.
+**Out of scope for v1** per draft3.md and input_schema.md — do not build until explicitly approved.
 
-**Recommendation:** add a lightweight 4th surface, not a 4th tab — a dropdown or small list
-under the product name in the header ("My Studies") that reads `studies/*/meta.json` and links
-straight to that study's current tab (Explore if `explored`, Results if `complete`, New Study
-form pre-filled if `failed` and the user wants to retry). This keeps the 3-tab pipeline model
-intact while not stranding every study after the first. **Confirm with Dwijesh before building**
-— this is a proposal, not something draft3.md asked for.
+File-based persistence (`studies/<slug>/`) means studies accumulate on disk; returning to a
+prior study currently requires knowing its slug/URL. If approved post-v1, a lightweight header
+dropdown ("My Studies") reading `studies/*/meta.json` could link to each study's current tab
+(Explore if `explored`, Results if `complete`). **Not part of this spec until confirmed.**
 
 ---
 
@@ -346,3 +359,4 @@ intact while not stranding every study after the first. **Confirm with Dwijesh b
 |---------|------|-------|
 | v1 | 2026-08-29 | First UI design pass against draft3.md + input_schema.md |
 | v1.1 | 2026-08-29 | Added wireframe sketches, validation copy, full loading/empty/error states for all 3 tabs, cross-cutting interaction rules, visual token table, and a resolved recommendation for the studies-list open question |
+| v1.2 | 2026-08-29 | Alignment fixes: Explore `n_explore` meta, single-cohort headers, progress state vs draft3 status model, counter-examples on Results, date start/end validation, filter-atom cross-ref, window-comparison copy, unified **Execute plan** label, studies list marked deferred |
