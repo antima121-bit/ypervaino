@@ -1,0 +1,109 @@
+# Maintainer-authored platform truth for Ypervaíno.
+# Loaded at startup; injected into Phase 2b planning and cost primitive computation.
+# See problem_statement_modelling.md §8.1 and input_schema.md §2.1.
+
+schema_version: "1.0"
+updated_at: "2026-08-30"
+
+# Pointer to event type catalog (trace API source of truth)
+event_schema_path: config/event_schema.json
+
+instructions:
+  - "If model_id is main_model, cq_model, or router_model, treat inference cost as $0 (in-house / platform-reserved IDs)."
+  - "For TOKEN_USAGE_DETAILS cost primitives: cost_usd = (input_tokens * input_rate + output_tokens * output_rate) / 1_000_000 using price_table; apply zero_cost_models before pricing."
+  - "purpose=main_stream is the primary user-facing response LLM; contextual_query maps to cq_model zero-cost bucket when model_id matches."
+  - "Ignore welcome_message agent turns for opening_intent classification."
+  - "Session traces come from BotProbe GET /trace (Elasticsearch), not Mongo AssistantEvent."
+  - "On reconnect sessions (voice_session.reconnects >= 1), dedupe SESSION_END before latency/token aggregates."
+
+# Logical / deployment model IDs that never incur cost in bot billing
+zero_cost_models:
+  - main_model
+  - cq_model
+  - router_model
+
+# Map bot logical IDs and common aliases → price_table key (when deployment name differs)
+model_aliases:
+  main_model: main_model
+  cq_model: cq_model
+  router_model: router_model
+  # OpenAI deployment names seen in production traces (sample_logs.txt)
+  gpt-4.1: gpt-4.1
+  gpt-4.1-mini: gpt-4.1-mini
+  gpt-4.1-nano: gpt-4.1-nano
+  gpt-4o: gpt-4o
+  gpt-4o-mini: gpt-4o-mini
+  gpt-5.1: gpt-5.1
+  gpt-5.4: gpt-5.4
+  openai/gpt-oss-120b: gpt-oss-120b
+  gpt-oss-120b: gpt-oss-120b
+  # Gemini deployment names
+  gemini-2.5-flash-lite: gemini-2.5-flash-lite
+  gemini-2.5-flash: gemini-2.5-flash
+  gemini-2.0-flash: gemini-2.0-flash
+
+# USD per 1M tokens (standard API list pricing). Divide by 1e6 for per-token rate.
+# Sources: OpenAI API pricing (Aug 2026), Google Gemini API pricing (ai.google.dev, Aug 2026).
+# Re-verify quarterly; cached reads use cache_read field from TOKEN_USAGE_DETAILS when present.
+pricing_as_of: "2026-08-30"
+price_table:
+  main_model:
+    input_usd_per_million: 0.0
+    output_usd_per_million: 0.0
+  cq_model:
+    input_usd_per_million: 0.0
+    output_usd_per_million: 0.0
+  router_model:
+    input_usd_per_million: 0.0
+    output_usd_per_million: 0.0
+  gpt-4.1:
+    input_usd_per_million: 2.00
+    output_usd_per_million: 8.00
+  gpt-4.1-mini:
+    input_usd_per_million: 0.40
+    output_usd_per_million: 1.60
+  gpt-4.1-nano:
+    input_usd_per_million: 0.10
+    output_usd_per_million: 0.40
+  gpt-4o:
+    input_usd_per_million: 2.50
+    output_usd_per_million: 10.00
+  gpt-4o-mini:
+    input_usd_per_million: 0.15
+    output_usd_per_million: 0.60
+  gpt-5.1:
+    input_usd_per_million: 1.25
+    output_usd_per_million: 10.00
+  gpt-5.4:
+    input_usd_per_million: 1.25
+    output_usd_per_million: 10.00
+  gpt-oss-120b:
+    input_usd_per_million: 0.15
+    output_usd_per_million: 0.60
+  gemini-2.5-flash-lite:
+    input_usd_per_million: 0.10
+    output_usd_per_million: 0.40
+  gemini-2.5-flash:
+    input_usd_per_million: 0.30
+    output_usd_per_million: 2.50
+  gemini-2.0-flash:
+    input_usd_per_million: 0.10
+    output_usd_per_million: 0.40
+
+# Unknown model_id → warn and treat as $0 (avoid false cost inflation in v1)
+unknown_model_cost_policy: zero_with_warning
+
+dedup_rules:
+  SESSION_END:
+    strategy: first
+    scope: session
+    note: "On reconnect sessions, keep first SESSION_END only (verify_event_counts.py)."
+  default:
+    strategy: keep_all
+    scope: session
+    note: "Do not dedupe DEBUG.SKILL_ROUTED or other routing events by request_id alone."
+  es_resend:
+    strategy: dedupe_by_field
+    field: secs_since_session_start
+    scope: session
+    note: "Optional second pass when ES log shipper re-sends identical lines (BotProbe reconciliation)."

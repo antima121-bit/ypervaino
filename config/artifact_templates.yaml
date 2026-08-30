@@ -1,0 +1,126 @@
+# Closed template registry for PlanSynthesizer suggested_plots / suggested_tables.
+# ArtifactRenderer validates template id + bindings before render (architecture.md §11).
+# See output_schema.md §11.5.
+
+schema_version: "1.0"
+updated_at: "2026-08-30"
+
+plots:
+  aspect_before_after_bar:
+    description: "Grouped bar chart of aspect values before vs after cohort (comparative studies)"
+    study_types: [comparative]
+    output: png
+    bindings:
+      aspect_ids:
+        type: array
+        items: string
+        required: true
+        description: "Aspect ids from AnalysisPlan.quantitative.aspects"
+      show_significance:
+        type: boolean
+        default: true
+
+  aspect_delta_lollipop:
+    description: "Lollipop chart of aspect delta (after − before) with confidence interval"
+    study_types: [comparative]
+    output: png
+    bindings:
+      aspect_ids:
+        type: array
+        items: string
+        required: true
+
+  aspect_single_cohort_bar:
+    description: "Bar chart of aspect aggregate for single cohort"
+    study_types: [single_cohort]
+    output: png
+    bindings:
+      aspect_ids:
+        type: array
+        items: string
+        required: true
+
+  hypothesis_rate_comparison:
+    description: "Grouped bar of hypothesis match rates by cohort"
+    study_types: [comparative, single_cohort]
+    output: png
+    bindings:
+      hypothesis_ids:
+        type: array
+        items: string
+        required: true
+      show_support_counts:
+        type: boolean
+        default: true
+
+  distribution_histogram:
+    description: "Histogram of a primitive or signal across D_eval"
+    study_types: [comparative, single_cohort]
+    output: png
+    bindings:
+      metric_name:
+        type: string
+        required: true
+        description: "Primitive or signal name from per_conversation shards"
+      cohort:
+        type: string
+        enum: [before, after, all]
+        default: all
+      bins:
+        type: integer
+        default: 30
+
+tables:
+  aspect_summary:
+    description: "All aspects with cohort aggregates, deltas, p-values"
+    study_types: [comparative, single_cohort]
+    output: csv
+    bindings:
+      aspect_ids:
+        type: array
+        items: string
+        required: false
+        description: "Empty = all aspects in plan"
+
+  hypothesis_summary:
+    description: "Hypothesis support rates, match counts, significance"
+    study_types: [comparative, single_cohort]
+    output: csv
+    bindings:
+      hypothesis_ids:
+        type: array
+        items: string
+        required: false
+
+  cohort_overview:
+    description: "Cohort sizes, filter stats, date ranges"
+    study_types: [comparative, single_cohort]
+    output: csv
+    bindings: {}
+
+  counter_examples:
+    description: "Session ids per hypothesis for BotProbe links"
+    study_types: [comparative, single_cohort]
+    output: csv
+    bindings:
+      hypothesis_ids:
+        type: array
+        items: string
+        required: false
+      max_per_hypothesis:
+        type: integer
+        default: 5
+
+# PlanSynthesizer prompt hint — list of allowed template ids
+allowed_template_ids:
+  plots:
+    - aspect_before_after_bar
+    - aspect_delta_lollipop
+    - aspect_single_cohort_bar
+    - hypothesis_rate_comparison
+    - distribution_histogram
+  tables:
+    - aspect_summary
+    - hypothesis_summary
+    - cohort_overview
+    - counter_examples

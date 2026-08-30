@@ -1,0 +1,119 @@
+# Maps New Study UI cohort_filters[].atom_id → conversation_predicate operands.
+# Compiler: filter_atom_compiler.py reads this registry.
+# See input_schema.md §2.3 and problem_statement_modelling.md §6.
+
+schema_version: "1.0"
+updated_at: "2026-08-30"
+
+atoms:
+  - id: main_stream_model_is
+    label: "Main stream model is"
+    description: "Filter by resolved main_stream LLM deployment"
+    primitive: main_stream_model_invoked
+    op: "=="
+    value_type: string
+    ui_control: text
+
+  - id: main_stream_model_is_not
+    label: "Main stream model is not"
+    primitive: main_stream_model_invoked
+    op: "!="
+    value_type: string
+    ui_control: text
+
+  - id: turn_count_at_least
+    label: "Turn count at least"
+    primitive: turn_count
+    op: ">="
+    value_type: integer
+    ui_control: number
+
+  - id: turn_count_at_most
+    label: "Turn count at most"
+    primitive: turn_count
+    op: "<="
+    value_type: integer
+    ui_control: number
+
+  - id: session_duration_at_least_minutes
+    label: "Session duration at least (minutes)"
+    primitive: session_duration_ms
+    op: ">="
+    value_type: float
+    value_transform: "minutes_to_ms"
+    ui_control: number
+
+  - id: guardrail_triggered
+    label: "Guardrails triggered"
+    primitive: guardrail_triggered
+    op: "=="
+    value: true
+    value_type: boolean
+    ui_control: toggle
+
+  - id: transfer_completed
+    label: "Call transfer completed"
+    primitive: transfer_completed
+    op: "=="
+    value: true
+    value_type: boolean
+    ui_control: toggle
+
+  - id: tool_error_occurred
+    label: "Tool error occurred"
+    primitive: tool_error_count
+    op: ">"
+    value: 0
+    value_type: integer
+    ui_control: toggle
+
+  - id: tool_invoked_at_least
+    label: "Tool invocations at least"
+    primitive: tool_invocation_count
+    op: ">="
+    value_type: integer
+    ui_control: number
+
+  - id: interruption_at_least
+    label: "Interruptions at least"
+    primitive: interruption_count
+    op: ">="
+    value_type: integer
+    ui_control: number
+
+  - id: agent_ever_active
+    label: "Agent ever active"
+    description: "Parameterized — compiler expands agent_ever_{name}"
+    primitive: agent_ever
+    op: "=="
+    value_type: string
+    ui_control: agent_picker
+    parameterized: true
+
+  - id: canary_variant_is
+    label: "Canary variant is"
+    primitive: traffic_split_variant
+    op: "=="
+    value_type: string
+    ui_control: text
+
+  - id: session_outcome_in
+    label: "Session outcome is one of"
+    primitive: session_outcome
+    op: "in"
+    value_type: string_list
+    ui_control: multi_select
+    allowed_values:
+      - completed
+      - transferred
+      - abandoned
+      - timeout
+      - unknown
+
+  - id: opening_intent_is
+    label: "Opening intent is"
+    primitive: opening_intent_class
+    op: "=="
+    value_type: string
+    ui_control: intent_picker
+    note: "Requires IntentLexicon from Phase 0; options populated per study."

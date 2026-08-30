@@ -1,0 +1,226 @@
+# Layer-0 primitive catalog — one scalar per conversation.
+# Field paths reference config/event_schema.json (BotProbe /trace events).
+# See problem_statement_modelling.md §10 and architecture.md §4.2.
+
+schema_version: "1.0"
+updated_at: "2026-08-30"
+event_schema_path: config/event_schema.json
+
+primitives:
+  # --- Session / outcome ---
+  turn_count:
+    value_type: integer
+    description: "Number of user turns"
+    source:
+      event_type: USER_QUERY
+      scope: session
+    reducer: count
+
+  session_duration_ms:
+    value_type: integer
+    description: "Last event timestamp minus first event timestamp"
+    source:
+      event_type: ["USER_QUERY", "SESSION_END", "WEBSOCKET.CONNECTED"]
+      scope: session
+    reducer: time_diff
+    reducer_args: { first: min_timestamp, last: max_timestamp }
+
+  session_outcome:
+    value_type: string
+    description: "Collapsed outcome: transfer > end status > timeout > completed > unknown"
+    source:
+      event_type:
+        - CALL_TRANSFER_COMPLETED
+        - SESSION_END
+        - SESSION_METRICS_COMPUTED
+      scope: session
+    reducer: session_outcome_priority
+
+  transfer_completed:
+    value_type: boolean
+    source:
+      event_type: CALL_TRANSFER_COMPLETED
+      scope: session
+    reducer: exists
+
+  interruption_count:
+    value_type: integer
+    source:
+      event_type: INTERRUPTION_HANDLER_RESULT
+      scope: session
+    reducer: count
+
+  traffic_split_variant:
+    value_type: string
+    description: "Canary bucket selected_variant_key from first CANARY_BUCKET_DECISION"
+    source:
+      event_type: CANARY_BUCKET_DECISION
+      scope: session
+    reducer: first
+    field: event_value.selected_variant_key
+
+  # --- Conversation / routing ---
+  main_stream_model:
+    value_type: string
+    description: "Resolved model for main_stream purpose"
+    source:
+      event_type: LLM_CONFIG_RESOLVED
+      filter: { purpose: main_stream }
+      scope: session
+    reducer: last
+    field: event_value.final_model_id
+
+  main_stream_model_invoked:
+    value_type: string
+    description: "Actual model_id used on last main_stream LLM invocation"
+    source:
+      event_type: LLM_INVOCATION_SUCCESS
+      filter: { purpose: main_stream }
+      scope: session
+    reducer: last
+    field: event_value.model_id
+
+  agent_path:
+    value_type: string
+    description: "Ordered distinct RESPONSE.FINAL agent names joined by →"
+    source:
+      event_type: RESPONSE.FINAL
+      scope: session
+    reducer: distinct_sequence
+    field: event_value.agent_name
+    join: "→"
+
+  guardrail_triggered:
+    value_type: boolean
+    source:
+      event_type: GUARDRAIL_CHECK
+      scope: session
+    reducer: exists
+    filter: "event_value.would_block == true OR len(event_value.flagged_categories) > 0"
+
+  # Parameterized: agent_ever_{name}
+  agent_ever:
+    value_type: boolean
+    parameterized: true
+    parameter: agent_name
+    source:
+      event_type: RESPONSE.FINAL
+      scope: session
+    reducer: exists
+    field: event_value.agent_name
+    match: exact_ignore_case
+
+  # --- LLM latency (per purpose; expand {purpose} at plan compile time) ---
+  "{purpose}_latency_p95":
+    value_type: float
+    parameterized: true
+    parameter: purpose
+    source:
+      event_type: LLM_INVOCATION_SUCCESS
+      filter: { purpose: "{purpose}" }
+      scope: session
+    reducer: p95
+    field: event_value.latency_ms
+
+  main_stream_latency_p95:
+    value_type: float
+    alias_of: "{purpose}_latency_p95"
+    purpose: main_stream
+
+  contextual_query_latency_p95:
+    value_type: float
+    alias_of: "{purpose}_latency_p95"
+    purpose: contextual_query
+
+  router_latency_p95:
+    value_type: float
+    alias_of: "{purpose}_latency_p95"
+    purpose: router
+
+  # --- LLM cost (uses system_knowledge.yaml price_table + zero_cost_models) ---
+  "{purpose}_input_tokens_sum":
+    value_type: integer
+    parameterized: true
+    parameter: purpose
+    source:
+      event_type: TOKEN_USAGE_DETAILS
+      filter: { purpose: "{purpose}" }
+      scope: session
+    reducer: sum
+    field: event_value.input_tokens
+
+  "{purpose}_output_tokens_sum":
+    value_type: integer
+    parameterized: true
+    parameter: purpose
+    source:
+      event_type: TOKEN_USAGE_DETAILS
+      filter: { purpose: "{purpose}" }
+      scope: session
+    reducer: sum
+    field: event_value.output_tokens
+
+  "{purpose}_estimated_cost_usd":
+    value_type: float
+    parameterized: true
+    parameter: purpose
+    description: "Sum over TOKEN_USAGE_DETAILS rows; zero_cost_models applied via SystemKnowledge"
+    source:
+      event_type: TOKEN_USAGE_DETAILS
+      filter: { purpose: "{purpose}" }
+      scope: session
+    reducer: token_cost_usd
+    fields:
+      model_id: event_value.model_id
+      input_tokens: event_value.input_tokens
+      output_tokens: event_value.output_tokens
+      cache_read: event_value.cache_read
+
+  main_stream_estimated_cost_usd:
+    value_type: float
+    alias_of: "{purpose}_estimated_cost_usd"
+    purpose: main_stream
+
+  # --- Tools ---
+  tool_invocation_count:
+    value_type: integer
+    source:
+      event_type: [DEBUG.TOOL_INVOKED, TOOL_CALL_RESULT]
+      scope: session
+    reducer: count
+
+  tool_error_count:
+    value_type: integer
+    source:
+      event_type: [TOOL_CALL_ERROR, TOOL_CALL_RESULT]
+      scope: session
+    reducer: count
+    filter: "tool error semantics — TOOL_CALL_ERROR exists OR TOOL_CALL_RESULT indicates failure"
+
+  avg_tool_latency_ms:
+    value_type: float
+    source:
+      event_type: TOOL_CALL_RESULT
+      scope: session
+    reducer: mean
+    field: event_value.latency
+
+  # --- Exploration / cached in FeatureVector (not event-reduced in Phase 3 unless listed) ---
+  opening_intent_class:
+    value_type: string
+    computed_by: IntentClassifier
+    description: "Rule-based opening intent from IntentLexicon"
+
+  opening_intent_score:
+    value_type: float
+    computed_by: IntentClassifier
+
+  length_bucket:
+    value_type: string
+    computed_by: FeatureComputer
+    description: "short | medium | long from turn_count"
+
+  outcome_bucket:
+    value_type: string
+    computed_by: FeatureComputer
+    description: "Collapsed session_outcome for stratified sampling"

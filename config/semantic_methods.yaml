@@ -1,0 +1,96 @@
+# SemanticSignal.method allowlist and executor defaults.
+# PlanSynthesizer may only emit methods listed here (architecture.md §8.3).
+# See input_schema.md §2.10.
+
+schema_version: "1.0"
+updated_at: "2026-08-30"
+
+methods:
+  intent_classifier:
+    tier: cheap
+    executor: IntentClassifier
+    value_types: [string]
+    llm_in_bulk_eval: false
+    description: "Opening intent class from cached FeatureVector / IntentLexicon scoring"
+    allowed_in:
+      - hypothesis_predicate
+      - exploration_features
+    spec_schema:
+      intent_id: string
+
+  rule_based:
+    tier: cheap
+    executor: RuleBasedScorer
+    value_types: [string, boolean, float]
+    llm_in_bulk_eval: false
+    description: "Keywords + regex over searchable_text; score >= min_hits"
+    allowed_in:
+      - hypothesis_predicate
+      - cohort_filter
+    spec_schema:
+      description: string
+      labels: list[string]
+      keywords: list[string]
+      regex: list[string]
+      min_hits: integer
+      scope: enum[session, turn, opening_turns]
+      negative_keywords: list[string]
+
+  embedding_nearest_neighbor:
+    tier: medium
+    executor: EmbeddingNN
+    value_types: [string]
+    llm_in_bulk_eval: false
+    description: "SBERT encode searchable_text; nearest prototype label from plan spec"
+    allowed_in:
+      - hypothesis_predicate
+    spec_schema:
+      labels: list[{ id: string, prototype_phrases: list[string] }]
+      min_similarity: float
+
+  zero_shot_llm:
+    tier: expensive
+    executor: ZeroShotLLMClassifier
+    value_types: [string, boolean]
+    llm_in_bulk_eval: capped
+    max_sessions_per_hypothesis: 200
+    error_if_full_deval: true
+    description: "Batched LLM classify — never on entire D_eval without cap"
+    allowed_in:
+      - hypothesis_predicate
+    spec_schema:
+      prompt: string
+      labels: list[string]
+      batch_size: integer
+
+  llm_extract:
+    tier: expensive
+    executor: LLMExtract
+    value_types: [string, float, boolean]
+    llm_in_bulk_eval: counter_examples_only
+    max_sessions: 10
+    description: "Read transcript for counter-example deep dives only"
+    allowed_in:
+      - hypothesis_predicate
+      - counter_example_annotation
+    spec_schema:
+      prompt: string
+      field: string
+      value_type: enum[string, float, boolean]
+
+# Default models for semantic LLM methods (override via env; fallback chain in architecture.md §12)
+llm_defaults:
+  zero_shot_llm:
+    primary: gpt-4.1-mini
+    fallback: [gpt-4o-mini, gemini-2.5-flash-lite]
+  llm_extract:
+    primary: gpt-4.1
+    fallback: [gpt-4o, gemini-2.5-flash]
+
+# Methods that may appear as ClassicalSignal kinds (not semantic) — documented for PlanSynthesizer
+classical_signal_kinds:
+  - turn_index
+  - duration_between
+  - regex_on_transcript
+  - agent_path_label
+  - conditional_metadata
