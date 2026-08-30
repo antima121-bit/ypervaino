@@ -34,7 +34,8 @@ def load_mongo_env(path: Path | None = None) -> dict[str, str]:
 load_dotenv()
 
 STUDIES_ROOT = Path(os.environ.get("STUDIES_ROOT", ROOT / "studies"))
-BOT_API_BASE_URL = os.environ.get("BOT_API_BASE_URL", "http://localhost:8000")
+BOT_API_BASE_URL = os.environ.get("BOT_API_BASE_URL", "https://bot.thelevel.ai")
+PRODUCTION_SERVICE_TOKEN = os.environ.get("PRODUCTION_SERVICE_TOKEN", "")
 BOTPROBE_TRACE_BASE_URL = os.environ.get("BOTPROBE_TRACE_BASE_URL", "http://10.128.0.34:3333")
 BOTPROBE_TRACE_ENV = os.environ.get("BOTPROBE_TRACE_ENV", "prod")
 BOTPROBE_BASE_URL = os.environ.get("BOTPROBE_BASE_URL", BOTPROBE_TRACE_BASE_URL)

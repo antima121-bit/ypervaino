@@ -15,6 +15,7 @@ from ypervaino.settings import (
     BOT_API_BASE_URL,
     BOTPROBE_TRACE_BASE_URL,
     BOTPROBE_TRACE_ENV,
+    PRODUCTION_SERVICE_TOKEN,
 )
 
 
@@ -103,7 +104,14 @@ def fetch_blueprint(tenant: str, origin_id: str, channel: str = "voice", runtime
         "channel": channel,
         "runtime_mode": runtime_mode,
     }).encode()
-    req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"}, method="POST")
+    headers = {
+        "Content-Type": "application/json",
+        "X-DTS-SCHEMA": tenant,
+        "User-Agent": "ypervaino/1.0",
+    }
+    if PRODUCTION_SERVICE_TOKEN:
+        headers["Authorization"] = f"Bearer {PRODUCTION_SERVICE_TOKEN}"
+    req = urllib.request.Request(url, data=body, headers=headers, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=120) as resp:
             data = json.loads(resp.read())
