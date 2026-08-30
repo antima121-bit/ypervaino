@@ -10,6 +10,7 @@
     --ink:#e7edf1;--ink-2:#93a3b1;--ink-3:#657585;--line:#232d36;--line-strong:#303c46;
     --signal:#3fe0d6;--signal-strong:#6beae1;--signal-soft:rgba(63,224,214,.12);
     --success:#58c793;--success-soft:rgba(88,199,147,.14);--critical:#e2685f;
+    --accent-2:#e3a94a;--accent-2-soft:rgba(227,169,74,.16);
   }
   *{box-sizing:border-box;} html,body{margin:0;}
   body{background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,sans-serif;font-size:13.5px;}
@@ -54,10 +55,19 @@
   .cal-day{text-align:center;font-size:12px;padding:6px 0;border-radius:6px;cursor:pointer;color:var(--ink);background:none;border:none;font-family:inherit;}
   .cal-day:hover{background:var(--surface-3);}
   .cal-day.outside{color:var(--ink-3);opacity:.4;}
-  .cal-day.in-range{background:var(--signal-soft);border-radius:0;}
-  .cal-day.range-start,.cal-day.range-end{background:var(--signal);color:#06201f;font-weight:700;}
-  .cal-footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:11px;color:var(--ink-3);}
+  .cal-day.before-in{background:var(--signal-soft);border-radius:0;}
+  .cal-day.before-edge{background:var(--signal);color:#06201f;font-weight:700;}
+  .cal-day.after-in{background:var(--accent-2-soft);border-radius:0;}
+  .cal-day.after-edge{background:var(--accent-2);color:#2a1600;font-weight:700;}
+  .cal-footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:11px;color:var(--ink-3);gap:8px;}
   .cal-footer button{background:var(--signal);color:#06201f;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;}
+  .cal-footer .cal-reset{background:none;color:var(--ink-3);text-decoration:underline;padding:0;font-weight:400;}
+  .cal-step{font-size:11px;color:var(--ink-2);margin-bottom:8px;padding:5px 8px;background:var(--surface-3);border-radius:6px;}
+  .cal-step .b{color:var(--signal-strong);font-weight:600;}
+  .cal-step .a{color:var(--accent-2);font-weight:600;}
+  .cal-legend{display:flex;gap:14px;margin-top:8px;font-size:10.5px;color:var(--ink-2);}
+  .cal-legend span{display:inline-flex;align-items:center;gap:5px;}
+  .cal-legend i{width:8px;height:8px;border-radius:2px;display:inline-block;}
 </style>
 </head>
 <body>
@@ -117,22 +127,9 @@
         </div>
       </div>
 
-      <div id="single-dates" style="display:none;">
-        <label class="field-label">Date range <span class="req">*</span></label>
-        <div id="cal-single"></div>
-      </div>
-
-      <div id="comparative-dates">
-        <div class="row">
-          <div class="field">
-            <label class="field-label">Before window <span class="req">*</span></label>
-            <div id="cal-before"></div>
-          </div>
-          <div class="field">
-            <label class="field-label">After window <span class="req">*</span></label>
-            <div id="cal-after"></div>
-          </div>
-        </div>
+      <div>
+        <label class="field-label">Date range(s) <span class="req">*</span></label>
+        <div id="cal-widget"></div>
       </div>
     </div>
   </div>
@@ -172,16 +169,23 @@
   <button class="btn" id="start-btn" onclick="start()">Start Analysis →</button>
 </div>
 <script>
-// ---- generic click-to-select date range calendar ----
-function createDateRangePicker(containerId){
+// ---- one calendar, mode-aware: 1 range for Pure Discovery, 2 (before+after) for Comparative ----
+function createDateRangePicker(containerId, getMode){
   const container = document.getElementById(containerId);
-  const state = { viewMonth: new Date(), start: null, end: null, picking: 'start' };
+  const state = {
+    viewMonth: new Date(),
+    before: { start: null, end: null },
+    after: { start: null, end: null },
+    single: { start: null, end: null },
+    step: 'before-start', // before-start | before-end | after-start | after-end | start | end
+  };
 
   const wrap = document.createElement('div');
   wrap.className = 'daterange-wrap';
   wrap.innerHTML = `
-    <button type="button" class="daterange-btn placeholder">Select date range</button>
-    <div class="cal-popover">
+    <button type="button" class="daterange-btn placeholder">Select date range(s)</button>
+    <div class="cal-popover" style="width:300px;">
+      <div class="cal-step"></div>
       <div class="cal-nav">
         <button type="button" class="cal-prev">‹</button>
         <span class="cal-nav-label"></span>
@@ -191,7 +195,8 @@ function createDateRangePicker(containerId){
         ${['S','M','T','W','T','F','S'].map(d => `<div class="cal-weekday">${d}</div>`).join('')}
       </div>
       <div class="cal-grid cal-days"></div>
-      <div class="cal-footer"><span class="cal-hint">Click a start day, then an end day</span><button type="button" class="cal-done">Done</button></div>
+      <div class="cal-legend" id="cal-legend"></div>
+      <div class="cal-footer"><button type="button" class="cal-reset">Reset</button><button type="button" class="cal-done">Done</button></div>
     </div>
   `;
   container.appendChild(wrap);
@@ -200,11 +205,36 @@ function createDateRangePicker(containerId){
   const popover = wrap.querySelector('.cal-popover');
   const label = wrap.querySelector('.cal-nav-label');
   const daysGrid = wrap.querySelector('.cal-days');
+  const stepLabel = wrap.querySelector('.cal-step');
+  const legend = wrap.querySelector('#cal-legend');
 
   function fmt(d){ return d.toLocaleDateString(undefined, {month:'short', day:'numeric'}); }
   function ymd(d){ return d.toISOString().slice(0,10); }
+  function firstStepForMode(){ return getMode() === 'discovery' ? 'start' : 'before-start'; }
+
+  function resetForModeIfNeeded(){
+    const mode = getMode();
+    const isComparativeStep = ['before-start','before-end','after-start','after-end'].includes(state.step);
+    if (mode === 'discovery' && isComparativeStep) state.step = 'start';
+    if (mode !== 'discovery' && !isComparativeStep) state.step = 'before-start';
+  }
+
+  function updateStepLabel(){
+    const labels = {
+      'before-start': '<span class="b">Before window</span> — pick start day',
+      'before-end': '<span class="b">Before window</span> — pick end day',
+      'after-start': '<span class="a">After window</span> — pick start day',
+      'after-end': '<span class="a">After window</span> — pick end day',
+      'start': 'Pick start day',
+      'end': 'Pick end day',
+    };
+    stepLabel.innerHTML = labels[state.step] || '';
+  }
 
   function render(){
+    resetForModeIfNeeded();
+    updateStepLabel();
+    const mode = getMode();
     const y = state.viewMonth.getFullYear(), m = state.viewMonth.getMonth();
     label.textContent = state.viewMonth.toLocaleDateString(undefined, {month:'long', year:'numeric'});
     const firstDay = new Date(y, m, 1);
@@ -215,61 +245,107 @@ function createDateRangePicker(containerId){
     for (let d=1; d<=daysInMonth; d++){
       const date = new Date(y, m, d);
       const cls = ['cal-day'];
-      if (state.start && ymd(date) === ymd(state.start)) cls.push('range-start');
-      if (state.end && ymd(date) === ymd(state.end)) cls.push('range-end');
-      if (state.start && state.end && date > state.start && date < state.end) cls.push('in-range');
+      const b = mode === 'discovery' ? state.single : state.before;
+      const a = state.after;
+      if (b.start && ymd(date) === ymd(b.start)) cls.push('before-edge');
+      if (b.end && ymd(date) === ymd(b.end)) cls.push('before-edge');
+      if (b.start && b.end && date > b.start && date < b.end) cls.push('before-in');
+      if (mode !== 'discovery') {
+        if (a.start && ymd(date) === ymd(a.start)) cls.push('after-edge');
+        if (a.end && ymd(date) === ymd(a.end)) cls.push('after-edge');
+        if (a.start && a.end && date > a.start && date < a.end) cls.push('after-in');
+      }
       html += `<button type="button" class="${cls.join(' ')}" data-date="${date.toISOString()}">${d}</button>`;
     }
     daysGrid.innerHTML = html;
     daysGrid.querySelectorAll('.cal-day:not(.outside)').forEach(el => {
       el.addEventListener('click', () => onDayClick(new Date(el.dataset.date)));
     });
-    if (state.start && state.end) {
-      btn.textContent = `${fmt(state.start)} – ${fmt(state.end)}`;
+
+    legend.innerHTML = mode === 'discovery'
+      ? `<span><i style="background:var(--signal);"></i>Window</span>`
+      : `<span><i style="background:var(--signal);"></i>Before</span><span><i style="background:var(--accent-2);"></i>After</span>`;
+
+    if (mode === 'discovery') {
+      if (state.single.start && state.single.end) {
+        btn.textContent = `${fmt(state.single.start)} – ${fmt(state.single.end)}`;
+        btn.classList.remove('placeholder');
+      }
+    } else if (state.before.start && state.before.end && state.after.start && state.after.end) {
+      btn.textContent = `Before ${fmt(state.before.start)}–${fmt(state.before.end)} · After ${fmt(state.after.start)}–${fmt(state.after.end)}`;
       btn.classList.remove('placeholder');
     }
   }
 
   function onDayClick(date){
-    if (state.picking === 'start' || (state.start && date < state.start)) {
-      state.start = date; state.end = null; state.picking = 'end';
-    } else {
-      state.end = date; state.picking = 'start';
+    switch (state.step) {
+      case 'before-start': state.before = { start: date, end: null }; state.step = 'before-end'; break;
+      case 'before-end':
+        if (date < state.before.start) { state.before = { start: date, end: null }; }
+        else { state.before.end = date; state.step = 'after-start'; }
+        break;
+      case 'after-start': state.after = { start: date, end: null }; state.step = 'after-end'; break;
+      case 'after-end':
+        if (date < state.after.start) { state.after = { start: date, end: null }; }
+        else { state.after.end = date; state.step = 'before-start'; }
+        break;
+      case 'start': state.single = { start: date, end: null }; state.step = 'end'; break;
+      case 'end':
+        if (date < state.single.start) { state.single = { start: date, end: null }; }
+        else { state.single.end = date; state.step = 'start'; }
+        break;
     }
     render();
   }
 
-  btn.addEventListener('click', (e) => { e.stopPropagation(); popover.classList.toggle('open'); });
+  btn.addEventListener('click', (e) => { e.stopPropagation(); popover.classList.toggle('open'); render(); });
   wrap.querySelector('.cal-prev').addEventListener('click', () => { state.viewMonth.setMonth(state.viewMonth.getMonth()-1); render(); });
   wrap.querySelector('.cal-next').addEventListener('click', () => { state.viewMonth.setMonth(state.viewMonth.getMonth()+1); render(); });
   wrap.querySelector('.cal-done').addEventListener('click', () => popover.classList.remove('open'));
+  wrap.querySelector('.cal-reset').addEventListener('click', () => {
+    state.before = { start: null, end: null };
+    state.after = { start: null, end: null };
+    state.single = { start: null, end: null };
+    state.step = firstStepForMode();
+    btn.textContent = 'Select date range(s)';
+    btn.classList.add('placeholder');
+    render();
+  });
   document.addEventListener('click', (e) => { if (!wrap.contains(e.target)) popover.classList.remove('open'); });
+
+  function toIso(d, endOfDay){
+    const c = new Date(d); c.setHours(endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0, 0);
+    return c.toISOString().slice(0,19);
+  }
 
   render();
 
   return {
-    getRange(){
-      if (!state.start || !state.end) return null;
-      const s = new Date(state.start); s.setHours(0,0,0,0);
-      const e = new Date(state.end); e.setHours(23,59,59,0);
-      return { start: s.toISOString().slice(0,19), end: e.toISOString().slice(0,19) };
-    }
+    onModeChange(){ state.step = firstStepForMode(); render(); },
+    getResult(){
+      if (getMode() === 'discovery') {
+        if (!state.single.start || !state.single.end) return null;
+        return { start: toIso(state.single.start, false), end: toIso(state.single.end, true) };
+      }
+      if (!state.before.start || !state.before.end || !state.after.start || !state.after.end) return null;
+      return {
+        before: { start: toIso(state.before.start, false), end: toIso(state.before.end, true) },
+        after: { start: toIso(state.after.start, false), end: toIso(state.after.end, true) },
+      };
+    },
   };
 }
 
-const calSingle = createDateRangePicker('cal-single');
-const calBefore = createDateRangePicker('cal-before');
-const calAfter = createDateRangePicker('cal-after');
+let mode = 'comparative';
+const cal = createDateRangePicker('cal-widget', () => mode);
 
 // ---- mode / channel toggles ----
-let mode = 'comparative';
 document.querySelectorAll('#mode-toggle .segmented-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('#mode-toggle .segmented-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     mode = btn.dataset.mode;
-    document.getElementById('single-dates').style.display = mode === 'discovery' ? 'block' : 'none';
-    document.getElementById('comparative-dates').style.display = mode === 'discovery' ? 'none' : 'block';
+    cal.onModeChange();
   });
 });
 
@@ -315,18 +391,17 @@ function start(){
     limit: document.getElementById('n_eval').value || '50',
   });
 
+  const r = cal.getResult();
   if (mode === 'discovery') {
-    const r = calSingle.getRange();
     if (!r) { showErr('Pick a start and end day for the date range.'); return; }
     params.set('date_range_start', r.start);
     params.set('date_range_end', r.end);
   } else {
-    const rb = calBefore.getRange(), ra = calAfter.getRange();
-    if (!rb || !ra) { showErr('Pick both a before window and an after window.'); return; }
-    params.set('date_range_before_start', rb.start);
-    params.set('date_range_before_end', rb.end);
-    params.set('date_range_after_start', ra.start);
-    params.set('date_range_after_end', ra.end);
+    if (!r) { showErr('Pick both a before window and an after window.'); return; }
+    params.set('date_range_before_start', r.before.start);
+    params.set('date_range_before_end', r.before.end);
+    params.set('date_range_after_start', r.after.start);
+    params.set('date_range_after_end', r.after.end);
   }
 
   document.getElementById('start-btn').disabled = true;
