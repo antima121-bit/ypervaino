@@ -68,6 +68,13 @@
   .cal-legend{display:flex;gap:14px;margin-top:8px;font-size:10.5px;color:var(--ink-2);}
   .cal-legend span{display:inline-flex;align-items:center;gap:5px;}
   .cal-legend i{width:8px;height:8px;border-radius:2px;display:inline-block;}
+  .cal-summary{margin-top:10px;display:flex;flex-direction:column;gap:6px;}
+  .cal-summary-row{display:flex;align-items:center;gap:10px;font-size:13px;padding:8px 12px;border-radius:6px;background:var(--surface-2);border:1px solid var(--line-strong);}
+  .cal-summary-row .tag{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 8px;border-radius:999px;flex-shrink:0;}
+  .cal-summary-row.before .tag{background:var(--signal-soft);color:var(--signal-strong);}
+  .cal-summary-row.after .tag{background:var(--accent-2-soft);color:var(--accent-2);}
+  .cal-summary-row .val{color:var(--ink);font-family:"IBM Plex Mono",monospace;}
+  .cal-summary-row .val.empty{color:var(--ink-3);font-family:inherit;font-style:italic;}
 </style>
 </head>
 <body>
@@ -130,6 +137,7 @@
       <div>
         <label class="field-label">Date range(s) <span class="req">*</span></label>
         <div id="cal-widget"></div>
+        <div id="cal-summary" class="cal-summary"></div>
       </div>
     </div>
   </div>
@@ -209,7 +217,9 @@ function createDateRangePicker(containerId, getMode){
   const legend = wrap.querySelector('#cal-legend');
 
   function fmt(d){ return d.toLocaleDateString(undefined, {month:'short', day:'numeric'}); }
+  function fmtFull(d){ return d.toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'}); }
   function ymd(d){ return d.toISOString().slice(0,10); }
+  const summaryEl = document.getElementById('cal-summary');
   function firstStepForMode(){ return getMode() === 'discovery' ? 'start' : 'before-start'; }
 
   function resetForModeIfNeeded(){
@@ -270,11 +280,36 @@ function createDateRangePicker(containerId, getMode){
       if (state.single.start && state.single.end) {
         btn.textContent = `${fmt(state.single.start)} – ${fmt(state.single.end)}`;
         btn.classList.remove('placeholder');
+      } else {
+        btn.textContent = 'Select date range(s)';
+        btn.classList.add('placeholder');
       }
-    } else if (state.before.start && state.before.end && state.after.start && state.after.end) {
-      btn.textContent = `Before ${fmt(state.before.start)}–${fmt(state.before.end)} · After ${fmt(state.after.start)}–${fmt(state.after.end)}`;
-      btn.classList.remove('placeholder');
+    } else {
+      const bDone = state.before.start && state.before.end;
+      const aDone = state.after.start && state.after.end;
+      if (bDone && aDone) {
+        btn.textContent = `Before ${fmt(state.before.start)}–${fmt(state.before.end)} · After ${fmt(state.after.start)}–${fmt(state.after.end)}`;
+        btn.classList.remove('placeholder');
+      } else {
+        btn.textContent = 'Select date range(s)';
+        btn.classList.add('placeholder');
+      }
     }
+
+    renderSummary();
+  }
+
+  function renderSummary(){
+    const mode = getMode();
+    const row = (tag, cls, d) => {
+      const val = (d.start && d.end)
+        ? `${fmtFull(d.start)} → ${fmtFull(d.end)}`
+        : (d.start ? `${fmtFull(d.start)} → (pick end day)` : 'not picked yet');
+      return `<div class="cal-summary-row ${cls}"><span class="tag">${tag}</span><span class="val ${d.start && d.end ? '' : 'empty'}">${val}</span></div>`;
+    };
+    summaryEl.innerHTML = mode === 'discovery'
+      ? row('Window', 'before', state.single)
+      : row('Before', 'before', state.before) + row('After', 'after', state.after);
   }
 
   function onDayClick(date){
