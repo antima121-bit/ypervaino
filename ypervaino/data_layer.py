@@ -17,6 +17,9 @@ from ypervaino.settings import (
     BOTPROBE_TRACE_ENV,
     PRODUCTION_SERVICE_TOKEN,
 )
+from ypervaino.log import get_logger
+
+_log = get_logger("data_layer")
 
 
 def parse_dt(s: str) -> datetime:
@@ -68,10 +71,14 @@ def fetch_session_id_list(
     assistant_id: str | None = None,
     limit: int | None = None,
 ) -> list[str]:
+    _log.debug(
+        "mongo session query tenant=%s assistant=%s channel=%s %s→%s limit=%s",
+        tenant, assistant_origin_id, channel, start.isoformat(), end.isoformat(), limit,
+    )
     env = load_mongo_env()
     client = MongoClient(env["MONGO_URI"], serverSelectionTimeoutMS=15000)
     try:
-        return fetch_session_ids(
+        ids = fetch_session_ids(
             client[env["MONGO_DB_NAME"]],
             tenant,
             assistant_origin_id,
@@ -81,6 +88,8 @@ def fetch_session_id_list(
             assistant_id=assistant_id,
             limit=limit,
         )
+        _log.info("mongo returned %d session ids", len(ids))
+        return ids
     finally:
         client.close()
 
@@ -91,12 +100,14 @@ def fetch_trace(session_uuid: str) -> dict[str, Any]:
         "env": BOTPROBE_TRACE_ENV,
     })
     url = f"{BOTPROBE_TRACE_BASE_URL.rstrip('/')}/trace?{q}"
+    _log.debug("fetching trace session=%s env=%s", session_uuid, BOTPROBE_TRACE_ENV)
     req = urllib.request.Request(url, headers={"Accept": "application/json"})
     with urllib.request.urlopen(req, timeout=120) as resp:
         return json.loads(resp.read())
 
 
 def fetch_blueprint(tenant: str, origin_id: str, channel: str = "voice", runtime_mode: str = "DEBUG") -> dict[str, Any]:
+    _log.info("fetching blueprint tenant=%s origin=%s channel=%s", tenant, origin_id, channel)
     url = f"{BOT_API_BASE_URL.rstrip('/')}/service/va-blueprint/extract_blueprint"
     body = json.dumps({
         "tenant": tenant,
@@ -116,6 +127,7 @@ def fetch_blueprint(tenant: str, origin_id: str, channel: str = "voice", runtime
         with urllib.request.urlopen(req, timeout=120) as resp:
             data = json.loads(resp.read())
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as e:
+        _log.warning("blueprint fetch failed: %s", e)
         return {
             "assistant_info": {
                 "orchestration_type": "unknown",
@@ -173,6 +185,18 @@ def materialize_conversation(session_uuid: str, trace: dict[str, Any], reconnect
         "transcript": transcript,
         "reconnects": reconnects,
     }
+
+
+def load_or_fetch_conversation(store, session_uuid: str) -> dict[str, Any]:
+    cache = store.traces_dir / f"{session_uuid}.json"
+    if cache.exists():
+        _log.debug("trace cache hit session=%s", session_uuid)
+        return store.read_json(cache)
+    _log.debug("trace cache miss session=%s → BotProbe", session_uuid)
+    trace = fetch_trace(session_uuid)
+    conv = materialize_conversation(session_uuid, trace)
+    store.write_json(cache, conv)
+    return conv
 
 
 def summarize_blueprint(bp: dict[str, Any]) -> dict[str, Any]:

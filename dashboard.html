@@ -72,6 +72,12 @@
 
 <script>
 function fmtPct(n){ return (n > 0 ? "+" : "") + n + "%"; }
+function fmtVal(v){
+  if (typeof v !== "number") return v;
+  if (Math.abs(v) >= 1000) return Math.round(v).toLocaleString();
+  if (Math.abs(v) < 1 && v !== 0) return v.toFixed(3);
+  return Number(v.toFixed(2));
+}
 function escapeHtml(s){ const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 async function load(){
@@ -95,16 +101,27 @@ async function load(){
     return;
   }
 
-  document.getElementById("desc").textContent =
-    `${data.cohort_sizes.total} sessions analyzed — ${data.cohort_sizes.before} before / ${data.cohort_sizes.after} after`;
+  const isComparative = data.study_type === 'comparative' || ((data.cohort_sizes?.before || 0) > 0 && (data.cohort_sizes?.after || 0) > 0);
+
+  document.getElementById("desc").textContent = isComparative
+    ? `${data.cohort_sizes.total} sessions analyzed — ${data.cohort_sizes.before} before / ${data.cohort_sizes.after} after`
+    : `${data.cohort_sizes.total} sessions analyzed (single cohort)`;
 
   const aspectsHtml = (data.aspects || []).map(a => {
+    if (!isComparative) {
+      const val = a.after ?? a.before ?? a.value ?? 0;
+      return `
+      <div class="aspect-card">
+        <div class="aspect-card-title">${escapeHtml(a.name)}</div>
+        <div class="compare-row"><span class="compare-label">Value</span><span class="compare-val">${fmtVal(val)}</span></div>
+      </div>`;
+    }
     const isGood = a.good_if === "down" ? a.delta_pct <= 0 : a.delta_pct >= 0;
     return `
       <div class="aspect-card">
         <div class="aspect-card-title">${escapeHtml(a.name)}</div>
-        <div class="compare-row"><span class="compare-label">Before</span><span class="compare-val">${a.before}</span></div>
-        <div class="compare-row"><span class="compare-label">After</span><span class="compare-val">${a.after}</span></div>
+        <div class="compare-row"><span class="compare-label">Before</span><span class="compare-val">${fmtVal(a.before)}</span></div>
+        <div class="compare-row"><span class="compare-label">After</span><span class="compare-val">${fmtVal(a.after)}</span></div>
         <div class="compare-divider"></div>
         <div class="delta-badge ${isGood ? "good" : "bad"}">${fmtPct(a.delta_pct)}</div>
       </div>
@@ -115,10 +132,12 @@ async function load(){
     const rates = h.rates || {};
     const before = rates.before || rates.all || {};
     const after = rates.after || {};
+    const sig = (h.proof || {}).significant;
     const rateStr = rates.after
-      ? `Before ${Math.round((before.rate||0)*100)}% (${before.support||0}) · After ${Math.round((after.rate||0)*100)}% (${after.support||0})`
+      ? `Before ${Math.round((before.rate||0)*100)}% (${before.support||0}) · After ${Math.round((after.rate||0)*100)}% (${after.support||0})${sig !== undefined ? (sig ? ' · significant' : ' · not significant') : ''}`
       : `${Math.round((before.rate||0)*100)}% match (${before.support||0} sessions)`;
-    return `<div class="aspect-card"><div class="aspect-card-title">${escapeHtml(h.title||h.id||'')}</div><div style="font-size:12px;color:var(--ink-2);margin:6px 0;">${escapeHtml(h.description||'')}</div><div class="delta-badge">${rateStr}${h.rejected?' · low support':''}</div></div>`;
+    const counters = (h.counter_examples || []).slice(0,3).map(id => `<div class="mono" style="font-size:11px;color:var(--ink-3);">${escapeHtml(id)}</div>`).join('');
+    return `<div class="aspect-card"><div class="aspect-card-title">${escapeHtml(h.title||h.id||'')}</div><div style="font-size:12px;color:var(--ink-2);margin:6px 0;">${escapeHtml(h.description||'')}</div><div class="delta-badge">${rateStr}${h.rejected?' · low support':''}</div>${counters}</div>`;
   }).join('');
 
   const narrative = data.narrative ? `<div class="card"><div class="card-head"><h3 class="card-title">Summary</h3></div><div class="card-pad" style="color:var(--ink-2);line-height:1.6;">${escapeHtml(data.narrative)}</div></div>` : '';
@@ -126,8 +145,13 @@ async function load(){
   document.getElementById('content').innerHTML = `
     <div class="grid-kpi">
       <div class="kpi"><div class="kpi-label">Sessions analyzed</div><div class="kpi-value">${data.cohort_sizes.total}</div></div>
+      ${isComparative ? `
       <div class="kpi"><div class="kpi-label">Before cohort</div><div class="kpi-value">${data.cohort_sizes.before}</div></div>
       <div class="kpi"><div class="kpi-label">After cohort</div><div class="kpi-value">${data.cohort_sizes.after}</div></div>
+      ` : `
+      <div class="kpi"><div class="kpi-label">Aspects</div><div class="kpi-value">${(data.aspects||[]).length}</div></div>
+      <div class="kpi"><div class="kpi-label">Hypotheses</div><div class="kpi-value">${(data.hypotheses||[]).length}</div></div>
+      `}
     </div>
     ${narrative}
     <div class="card">

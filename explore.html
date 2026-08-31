@@ -44,6 +44,7 @@
   .hyp-claim{font-size:12.5px;color:var(--ink-2);line-height:1.55;}
   .btn{background:var(--signal);color:#06201f;border:none;border-radius:7px;padding:11px 20px;font-size:13.5px;font-weight:600;font-family:inherit;cursor:pointer;text-decoration:none;display:inline-block;}
   .error-box{background:var(--critical);color:#2a0b08;border-radius:8px;padding:14px 16px;font-size:13px;}
+  .run-log{display:none;margin-top:14px;background:#0d1117;color:#c9d1d9;border-radius:8px;padding:10px 12px;font-family:ui-monospace,monospace;font-size:11px;line-height:1.45;max-height:220px;overflow-y:auto;white-space:pre-wrap;}
   .topnav{display:flex;gap:4px;padding:14px 32px;border-bottom:1px solid var(--line);background:var(--surface);}
   .topnav-link{color:var(--ink-2);text-decoration:none;font-size:12.5px;padding:6px 12px;border-radius:6px;}
   .topnav-link:hover{background:var(--surface-2);color:var(--ink);}
@@ -103,21 +104,61 @@ async function load(){
     <div class="card"><div class="card-head">Sample conversations</div><div class="card-pad"><div class="row-scroll">${samplesHtml}</div></div></div>
     <div class="card"><div class="card-head">Quantitative analysis</div><div class="card-pad">${aspectsHtml}${plotsHtml}</div></div>
     <div class="card"><div class="card-head">Qualitative analysis</div><div class="card-pad">${hypHtml}</div></div>
-    <button class="btn" id="run-btn">Execute plan →</button>`;
+    <button class="btn" id="run-btn">Execute plan →</button>
+    <div id="run-log" class="run-log"></div>`;
   document.getElementById('run-btn').onclick = runPhase3;
+}
+
+async function refreshLogs(logEl){
+  try {
+    const lr = await fetch(`/api/v1/ypervaino/studies/${encodeURIComponent(slug)}/logs?tail=50`);
+    const ld = await lr.json();
+    if (ld.lines?.length) {
+      logEl.textContent = ld.lines.join('\n');
+      logEl.scrollTop = logEl.scrollHeight;
+      return;
+    }
+  } catch (_) {}
+  const st = await (await fetch(`/api/v1/ypervaino/studies/${encodeURIComponent(slug)}/status`)).json();
+  const lines = st.progress_hints?.recent_log_lines || [];
+  if (lines.length) {
+    logEl.textContent = lines.join('\n');
+    logEl.scrollTop = logEl.scrollHeight;
+  }
 }
 
 async function runPhase3(){
   const btn = document.getElementById('run-btn');
+  const logEl = document.getElementById('run-log');
   btn.disabled = true; btn.textContent = 'Running Phase 3…';
+  logEl.style.display = 'block';
+  logEl.textContent = 'Starting Phase 3 evaluation…';
   const res = await fetch(`/api/v1/ypervaino/studies/${encodeURIComponent(slug)}/execute`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
-  if (!res.ok) { btn.textContent = 'Execute failed'; return; }
-  for (let i = 0; i < 600; i++) {
-    const st = await (await fetch(`/api/v1/ypervaino/studies/${encodeURIComponent(slug)}/status`)).json();
-    if (st.status === 'complete') { window.location.href = '/results?study=' + encodeURIComponent(slug); return; }
-    if (st.status === 'failed') { btn.textContent = 'Failed'; return; }
-    await new Promise(r => setTimeout(r, 3000));
+  if (!res.ok) {
+    btn.textContent = 'Execute failed';
+    logEl.textContent = 'Failed to start Phase 3.';
+    return;
   }
+  for (let i = 0; i < 600; i++) {
+    await refreshLogs(logEl);
+    const st = await (await fetch(`/api/v1/ypervaino/studies/${encodeURIComponent(slug)}/status`)).json();
+    if (st.status === 'complete') {
+      logEl.textContent += '\n=== Phase 3 complete — redirecting to results ===';
+      window.location.href = '/results?study=' + encodeURIComponent(slug);
+      return;
+    }
+    if (st.status === 'failed') {
+      btn.textContent = 'Failed';
+      logEl.textContent += '\n=== FAILED ===\n' + (st.error || 'Phase 3 failed');
+      return;
+    }
+    if (st.status === 'running') {
+      btn.textContent = 'Running Phase 3…';
+    }
+    await new Promise(r => setTimeout(r, 2000));
+  }
+  btn.textContent = 'Timed out';
+  logEl.textContent += '\nTimed out waiting for Phase 3.';
 }
 load();
 </script>
