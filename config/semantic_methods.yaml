@@ -41,11 +41,11 @@ methods:
     executor: EmbeddingNN
     value_types: [string]
     llm_in_bulk_eval: false
-    description: "SBERT encode searchable_text; nearest prototype label from plan spec"
+    description: "OpenAI embed searchable_text; nearest prototype label from plan spec"
     allowed_in:
       - hypothesis_predicate
     spec_schema:
-      labels: list[{ id: string, prototype_phrases: list[string] }]
+      labels: "list of {id, prototype_phrases[]}"
       min_similarity: float
 
   zero_shot_llm:
