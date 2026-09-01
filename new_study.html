@@ -113,9 +113,8 @@
         </div>
         <div class="field">
           <label class="field-label">Channel</label>
-          <div class="segmented" id="channel-toggle">
-            <button class="segmented-btn active" data-channel="voice" style="padding:8px 20px;">Voice</button>
-            <button class="segmented-btn" data-channel="chat" style="padding:8px 20px;">Chat</button>
+          <div class="segmented">
+            <button class="segmented-btn active" style="padding:8px 20px;" disabled>Voice</button>
           </div>
         </div>
       </div>
@@ -225,14 +224,7 @@ document.querySelectorAll('#mode-toggle .segmented-btn').forEach(btn => {
   });
 });
 
-let channel = 'voice';
-document.querySelectorAll('#channel-toggle .segmented-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('#channel-toggle .segmented-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    channel = btn.dataset.channel;
-  });
-});
+const channel = 'voice'; // Chat option removed -- this product only handles voice for now.
 
 async function loadTenants(){
   try {
