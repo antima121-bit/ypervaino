@@ -10,7 +10,7 @@
     --ink:#e7edf1;--ink-2:#93a3b1;--ink-3:#657585;--line:#232d36;--line-strong:#303c46;
     --signal:#a855f7;--signal-strong:#c084fc;--signal-soft:rgba(168,85,247,.14);
     --success:#58c793;--success-soft:rgba(88,199,147,.14);
-    --warning:#e3a94a;--critical:#e2685f;--info:#7d97af;--info-soft:rgba(125,151,175,.14);
+    --warning:#e3a94a;--critical:#e2685f;--critical-soft:rgba(226,104,95,.14);--info:#7d97af;--info-soft:rgba(125,151,175,.14);
   }
   *{box-sizing:border-box;} html,body{margin:0;}
   body{background:radial-gradient(1000px 650px at 12% 115%, rgba(168,85,247,.32), transparent 60%),radial-gradient(800px 550px at 88% 105%, rgba(91,33,182,.28), transparent 60%),var(--paper);background-attachment:fixed;background-repeat:no-repeat;color:var(--ink);font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,sans-serif;font-size:15px;}
@@ -39,9 +39,14 @@
   .aspect-title{font-size:14.5px;font-weight:600;}
   .aspect-desc{font-size:13.5px;color:var(--ink-2);margin-top:1px;}
   .section-label{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:700;}
-  .hyp-card{background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:14px 16px;margin-bottom:10px;}
+  .hyp-card{background:var(--surface-2);border:1px solid var(--line);border-left-width:3px;border-radius:9px;padding:14px 16px;margin-bottom:10px;}
+  .hyp-card.hyp-good{border-left-color:var(--success);}
+  .hyp-card.hyp-bad{border-left-color:var(--critical);}
   .hyp-title{font-size:15px;font-weight:600;margin-bottom:5px;}
   .hyp-claim{font-size:14px;color:var(--ink-2);line-height:1.55;}
+  .hyp-guess-tag{display:inline-block;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;margin-top:8px;padding:2px 8px;border-radius:999px;}
+  .hyp-guess-tag.hyp-good{background:var(--success-soft);color:var(--success);}
+  .hyp-guess-tag.hyp-bad{background:var(--critical-soft);color:var(--critical);}
   .btn{background:var(--signal);color:#ffffff;border:none;border-radius:7px;padding:11px 20px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;text-decoration:none;display:inline-block;}
   .error-box{background:var(--critical);color:#2a0b08;border-radius:8px;padding:14px 16px;font-size:14.5px;}
   .run-log{display:none;margin-top:14px;background:#0d1117;color:#c9d1d9;border-radius:8px;padding:10px 12px;font-family:ui-monospace,monospace;font-size:12.5px;line-height:1.45;max-height:220px;overflow-y:auto;white-space:pre-wrap;}
@@ -103,13 +108,34 @@ async function load(){
     const aspectLabel = aspectNameById[p.aspect_id] || p.description || '';
     return `<div class="aspect-row"><div><div class="aspect-title">${escapeHtml(templateLabel)}</div><div class="aspect-desc">${escapeHtml(aspectLabel)}</div></div></div>`;
   }).join('') || '<div class="aspect-desc">No plots proposed.</div>';
-  const hypHtml = (llm.hypotheses || []).map(h => `
-    <div class="hyp-card"><div class="hyp-title">${escapeHtml(h.title || h.id || '')}</div><div class="hyp-claim">${escapeHtml(h.description || h.claim || '')}</div></div>`).join('');
+  // Nothing has been measured yet at this stage (plan hasn't been executed) --
+  // there's no real pass/fail to color by. This guesses a direction purely
+  // from how the LLM phrased the title/description (negated/reassuring
+  // wording -> looks positive, plain negative-outcome wording -> looks like
+  // a risk) and labels it as a guess, not a result.
+  function guessHypothesisTone(text){
+    const t = (text || '').toLowerCase();
+    const negation = /\b(does not|doesn't|do not|don't|no increase|not increase|not higher|not more|maintains?|comparable|similar|rarely|consistently (safe|compliant)|reduces?|decreases?|lower or comparable)\b/;
+    const negative = /\b(increase|higher|worse|more errors?|degrade|fail|risk|regress|persists?)\b/;
+    if (negation.test(t)) return 'hyp-good';
+    if (negative.test(t)) return 'hyp-bad';
+    return '';
+  }
+  const hypHtml = (llm.hypotheses || []).map(h => {
+    const tone = guessHypothesisTone((h.title || '') + ' ' + (h.description || h.claim || ''));
+    const tagHtml = tone ? `<div class="hyp-guess-tag ${tone}">${tone === 'hyp-good' ? 'Looks positive' : 'Potential risk'} — unverified</div>` : '';
+    return `<div class="hyp-card ${tone}"><div class="hyp-title">${escapeHtml(h.title || h.id || '')}</div><div class="hyp-claim">${escapeHtml(h.description || h.claim || '')}</div>${tagHtml}</div>`;
+  }).join('');
   document.getElementById('content').innerHTML = `
     <div class="card"><div class="card-head">What we found<span class="pill">AnalysisPlan</span></div>
       <div class="card-pad ai-note"><div class="ai-avatar">✦</div><div class="ai-text">${escapeHtml(llm.exploration_summary || '')}</div></div></div>
     <div class="card"><div class="card-head">Sample conversations</div><div class="card-pad"><div class="row-scroll">${samplesHtml}</div></div></div>
-    <div class="card"><div class="card-head">Quantitative analysis</div><div class="card-pad">${aspectsHtml}${plotsHtml}</div></div>
+    <div class="card"><div class="card-head">Quantitative analysis</div><div class="card-pad">
+      <div class="section-label" style="display:block;margin-bottom:4px;">Aspects to measure</div>
+      ${aspectsHtml}
+      <div class="section-label" style="display:block;margin:16px 0 4px;">Proposed charts</div>
+      ${plotsHtml}
+    </div></div>
     <div class="card"><div class="card-head">Qualitative analysis</div><div class="card-pad">${hypHtml}</div></div>
     <button class="btn" id="run-btn">Execute plan →</button>
     <div id="run-log" class="run-log"></div>`;
