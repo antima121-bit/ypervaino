@@ -5,6 +5,7 @@ import random
 from typing import Any
 
 from ypervaino.artifacts import render_plots, render_tables
+from ypervaino.blueprint_store import init_baseline
 from ypervaino.change_context import resolve_change_context
 from ypervaino.config_loader import load_artifact_templates, load_filter_atoms
 from ypervaino.data_layer import (
@@ -140,8 +141,9 @@ def phase0_cohort(store: StudyStore, req: dict[str, Any], timer: StudyTimer) -> 
         bp_raw = fetch_blueprint(tenant, assistant_origin_id, channel)
         bp_summary = summarize_blueprint(bp_raw)
         store.write_json(store.intermediate_dir / "blueprint_summary.json", bp_summary)
+        init_baseline(store, bp_raw)
         timer.log.info(
-            "Phase 0: blueprint orchestration=%s skills=%d",
+            "Phase 0: blueprint orchestration=%s skills=%d baseline=v0001",
             bp_summary.get("orchestration_type"), len(bp_summary.get("skills") or []),
         )
 

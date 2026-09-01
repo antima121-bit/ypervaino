@@ -12,6 +12,8 @@ from ypervaino.log import get_logger
 
 _log = get_logger("bot_repo")
 
+_checked_out_ref: str | None = None
+
 
 class BotRepoError(Exception):
     pass
@@ -56,21 +58,28 @@ def _fetch_gitlab_mr_branches(project_path: str, iid: int) -> dict[str, str]:
     }
 
 
-def ensure_repo() -> Path:
+def _current_branch(repo: Path) -> str:
+    try:
+        return _run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=repo).strip()
+    except BotRepoError:
+        return ""
+
+
+def ensure_repo(*, fetch: bool = True) -> Path:
     cache = BOT_REPO_CACHE_DIR
     cache.parent.mkdir(parents=True, exist_ok=True)
     if not (cache / ".git").exists():
         _log.info("cloning bot repo %s → %s", BOT_REPO_URL, cache)
         _run(["git", "clone", BOT_REPO_URL, str(cache)], cwd=cache.parent)
-    else:
-        _log.debug("bot repo cache exists at %s", cache)
-    _log.debug("fetching latest refs")
-    _run(["git", "fetch", "--all", "--prune"], cwd=cache)
+    elif fetch:
+        _log.debug("fetching latest refs")
+        _run(["git", "fetch", "--all", "--prune"], cwd=cache)
     return cache
 
 
-def checkout_for_change(pr_link: str | None) -> dict[str, Any]:
-    repo = ensure_repo()
+def checkout_for_change(pr_link: str | None, *, force: bool = False) -> dict[str, Any]:
+    global _checked_out_ref
+    repo = ensure_repo(fetch=not (_checked_out_ref and not force))
     meta: dict[str, Any] = {"repo_path": str(repo)}
 
     if pr_link:
@@ -78,6 +87,8 @@ def checkout_for_change(pr_link: str | None) -> dict[str, Any]:
         if parsed:
             project_path, iid = parsed
             local = f"mr-{iid}"
+            if not force and _checked_out_ref == local:
+                return {**meta, "checked_out": local, "mode": "gitlab_merge_request", "cached": True}
             _log.info("checking out GitLab MR !%d (%s)", iid, project_path)
             try:
                 meta.update(_fetch_gitlab_mr_branches(project_path, iid))
@@ -86,30 +97,30 @@ def checkout_for_change(pr_link: str | None) -> dict[str, Any]:
                 meta["mr_metadata_error"] = str(e)
             _run(["git", "fetch", "origin", f"refs/merge-requests/{iid}/head:{local}"], cwd=repo)
             _run(["git", "checkout", local], cwd=repo)
-            meta["checked_out"] = local
-            meta["mode"] = "gitlab_merge_request"
-            _log.info("checked out branch %s (source=%s)", local, meta.get("source_branch"))
-            return meta
+            _checked_out_ref = local
+            return {**meta, "checked_out": local, "mode": "gitlab_merge_request"}
         gh = re.search(r"github\.com/([^/]+)/([^/]+)/pull/(\d+)", pr_link)
         if gh:
             local = f"pr-{gh.group(3)}"
+            if not force and _checked_out_ref == local:
+                return {**meta, "checked_out": local, "mode": "github_pr", "cached": True}
             _log.info("checking out GitHub PR #%s", gh.group(3))
             _run(["git", "fetch", "origin", f"pull/{gh.group(3)}/head:{local}"], cwd=repo)
             _run(["git", "checkout", local], cwd=repo)
-            meta["checked_out"] = local
-            meta["mode"] = "github_pr"
-            return meta
+            _checked_out_ref = local
+            return {**meta, "checked_out": local, "mode": "github_pr"}
 
     branch = BOT_REPO_DEFAULT_BRANCH
+    if not force and _checked_out_ref == branch and _current_branch(repo) == branch:
+        return {**meta, "checked_out": branch, "mode": "development_default", "cached": True}
     _log.info("checking out default branch %s", branch)
     _run(["git", "checkout", branch], cwd=repo)
     try:
         _run(["git", "pull", "--ff-only", "origin", branch], cwd=repo)
     except BotRepoError:
         pass
-    meta["checked_out"] = branch
-    meta["mode"] = "development_default"
-    return meta
+    _checked_out_ref = branch
+    return {**meta, "checked_out": branch, "mode": "development_default"}
 
 
 def _safe_path(repo: Path, rel_path: str) -> Path:
@@ -120,9 +131,16 @@ def _safe_path(repo: Path, rel_path: str) -> Path:
     return target
 
 
-def read_repo_file(path: str, *, pr_link: str | None = None, max_chars: int = 12000) -> dict[str, Any]:
-    checkout_for_change(pr_link)
-    repo = ensure_repo()
+def read_repo_file(
+    path: str,
+    *,
+    pr_link: str | None = None,
+    skip_checkout: bool = False,
+    max_chars: int = 12000,
+) -> dict[str, Any]:
+    if not skip_checkout:
+        checkout_for_change(pr_link)
+    repo = ensure_repo(fetch=not skip_checkout)
     target = _safe_path(repo, path)
     if not target.exists():
         return {"path": path, "error": "not_found"}
@@ -130,9 +148,17 @@ def read_repo_file(path: str, *, pr_link: str | None = None, max_chars: int = 12
     return {"path": path, "content": text[:max_chars], "truncated": len(text) > max_chars}
 
 
-def grep_repo(pattern: str, paths: list[str] | None = None, *, pr_link: str | None = None, max_matches: int = 40) -> dict[str, Any]:
-    checkout_for_change(pr_link)
-    repo = ensure_repo()
+def grep_repo(
+    pattern: str,
+    paths: list[str] | None = None,
+    *,
+    pr_link: str | None = None,
+    skip_checkout: bool = False,
+    max_matches: int = 40,
+) -> dict[str, Any]:
+    if not skip_checkout:
+        checkout_for_change(pr_link)
+    repo = ensure_repo(fetch=not skip_checkout)
     search_paths = paths or ["."]
     cmd = ["git", "grep", "-n", "-I", "-E", pattern, "--"] + search_paths
     try:

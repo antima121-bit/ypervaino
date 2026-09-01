@@ -69,6 +69,7 @@
   <a href="/" class="topnav-link">New Study</a>
   <a href="/explore" class="topnav-link">Explore</a>
   <a href="/results" class="topnav-link active">Results</a>
+  <a href="/proposals" class="topnav-link">Proposals</a>
   <a href="/sessions" class="topnav-link">Sessions</a>
 </div>
 <div class="main">
@@ -86,6 +87,9 @@
 </div>
 
 <script>
+function navHref(path, slug){
+  return slug ? `${path}?study=${encodeURIComponent(slug)}` : path;
+}
 function fmtPct(n){ return (n > 0 ? "+" : "") + n + "%"; }
 function fmtVal(v){
   if (typeof v !== "number") return v;
@@ -97,6 +101,9 @@ function escapeHtml(s){ const d = document.createElement('div'); d.textContent =
 
 async function load(){
   const slug = new URLSearchParams(window.location.search).get('study');
+  document.querySelectorAll('.topnav-link').forEach(a => {
+    if (a.getAttribute('href') !== '/') a.href = navHref(a.getAttribute('href'), slug);
+  });
   if (!slug) {
     document.getElementById('content').innerHTML = '<div class="error-box">Missing ?study= slug.</div>';
     return;
@@ -218,6 +225,7 @@ async function load(){
     : '';
 
   document.getElementById('content').innerHTML = `
+    <div style="margin-bottom:16px;"><a href="/proposals?study=${encodeURIComponent(slug)}" style="color:var(--signal-strong);font-size:14px;font-weight:600;text-decoration:none;">View proposals →</a></div>
     <div class="grid-kpi">
       <div class="kpi"><div class="kpi-label">Sessions analyzed</div><div class="kpi-value">${data.cohort_sizes.total}</div></div>
       ${isComparative ? `

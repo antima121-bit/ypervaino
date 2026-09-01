@@ -1,7 +1,7 @@
 # Ypervaíno — UI Design (v1)
 
-**Source of truth:** [draft3.md](./draft3.md), [input_schema.md](./input_schema.md)
-**Scope:** Screen-by-screen UI spec for the 3 v1 tabs — layout, every field, every state
+**Source of truth:** [draft3.md](./draft3.md), [input_schema.md](./input_schema.md), [proposal_contract.md](./proposal_contract.md)  
+**Scope:** Screen-by-screen UI spec for the 4 tabs — layout, every field, every state
 (loading / empty / error), copy, and interaction rules. Styling follows the existing
 va-argus dark theme (IBM Plex Sans/Mono, teal accent, RED/YELLOW/GREEN semantic colors)
 so it reads as one product family, not a bolted-on tool.
@@ -15,8 +15,9 @@ so it reads as one product family, not a bolted-on tool.
 | 1 | **New Study** | Collect `CreateStudyRequest`, kick off Phase 0–2 | Full form (§1) | Navigates to Explore on success |
 | 2 | **Explore** | Show `AnalysisPlan`, get one approval | None (read-only) + **Execute plan** button | Navigates to Results on completion |
 | 3 | **Results** | Show `EvaluationResult` | None (read-only) | Session links out to BotProbe, export |
+| 4 | **Proposals** | Generate & apply VA Blueprint fixes from evaluation | **Generate proposals** (on demand); per-card **Apply** / **Reject** | Versioned blueprint workspace; deep proposals + Jira stub |
 
-No 4th tab. No studies-list screen in v1 — see §7 for a deferred proposal only.
+No studies-list screen in v1 — see §8 for a deferred proposal only.
 
 ---
 
@@ -297,26 +298,151 @@ the min_support gate legible (matches draft3 §13's intent: "technically true bu
   a single value, no before/after columns, no significance test row.
 - **Empty artifacts**: if `suggested_plots`/`suggested_tables` was empty in the plan, omit the
   Artifacts region entirely rather than showing an empty box.
+- **Link to Proposals:** optional secondary CTA in header — **"View proposals →"** — enabled when
+  `status == "complete"`. Navigates to Proposals tab for the same study.
 
 ---
 
-## 4. What this deliberately does NOT include (v1 scope discipline)
+## 4. Tab: Proposals
+
+**Purpose:** On-demand Phase 4 — show LLM-generated **shallow** (VA Blueprint, applyable) and **deep**
+(backend advisory) proposals grounded in Phase 3 results. User applies shallow changes one at a time;
+each apply creates a new blueprint version.
+
+**API / data contract:** [proposal_contract.md](./proposal_contract.md), [api.md](./api.md) §7.
+
+**Gate:** only reachable when `meta.status == "complete"`. If user lands here earlier, show a
+blocking message: "Finish evaluation on Results first." with link back to Results.
+
+### 4.1 Layout sketch
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Proposals — {study_title}                                       │
+│  [ Generate proposals ]     (hidden when generation.status=ready)│
+├─────────────────────────────────────────────────────────────────┤
+│  Summary: {bundle.summary}                                       │
+│  {N} shallow · {M} deep                                          │
+├──────────────────────────┬──────────────────────────────────────┤
+│  Shallow proposals       │  Blueprint workspace                  │
+│  (scrollable list)       │  Version [ v0003 ▾ ]                  │
+│                          │  Tabs: Skills | Tools | Guardrails    │
+│  ┌ {title} ──────────┐  │        | Dialog flow | Guidelines     │
+│  │ {description}      │  │  (highlight selection from card)      │
+│  │ confidence · impact│  │                                       │
+│  │ [Preview] [Apply]  │  │                                       │
+│  └────────────────────┘  │                                       │
+├──────────────────────────┴──────────────────────────────────────┤
+│  Deep proposals (out of scope · backend)                         │
+│  ┌ {title} ────────────────────────────────────────────────┐    │
+│  │ {recommendation}                                         │    │
+│  │ [ Create Jira ticket ] [ Acknowledge ] [ Reject ]         │    │
+│  └──────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 4.2 Layout regions
+
+| Region | Content | Source |
+|---|---|---|
+| Header | Study title, **Generate proposals** CTA | `GET …/proposals` → `meta`, `generation.status` |
+| Summary banner | `bundle.summary`, shallow/deep counts | `proposal_bundle.json` |
+| Shallow list | One card per `shallow_proposals[]` | `proposal_bundle.json` |
+| Blueprint workspace | Full VA Blueprint viewer for `current_version`; version dropdown | `GET …/blueprint/versions/{version}` |
+| Deep list | One card per `deep_proposals[]` | `proposal_bundle.json` |
+
+Selecting a shallow card scrolls/highlights the matching `target.display_label` in the workspace
+(match on `target_key` / locators).
+
+### 4.3 Shallow proposal card
+
+| UI element | Source field |
+|---|---|
+| Title | `title` |
+| Body | `description` |
+| Expected impact | `expected_impact` |
+| Confidence pill | `high` / `medium` / `low` |
+| Location breadcrumb | `target.display_label` |
+| Evidence block (collapsible) | `evidence[]` — link `session_ids` to BotProbe (§3.4) |
+| Preview diff | `patch.preview` or `GET …/blueprint/diff` |
+| Status badge | `pending` / `applied` / `rejected` / `superseded` |
+| **Apply** | `POST …/proposals/{id}/apply` — only when `status == "pending"` |
+| **Reject** | `POST …/proposals/{id}/reject` |
+
+After successful Apply: refresh workspace to `applied_version`; show toast "Applied — now at v0003".
+
+### 4.4 Deep proposal card
+
+| UI element | Source field |
+|---|---|
+| Title, description, confidence | same as shallow |
+| Category badge | `category` (backend_logic, new_feature, …) |
+| Out of scope note | `out_of_scope_reason` |
+| Recommendation | `recommendation` |
+| Repo snippets (expandable) | `repo_references[]` |
+| Evidence | `evidence[]` |
+| **Create Jira ticket** | `POST …/jira-stub` → modal with copyable `ticket_draft` (v1 stub) |
+| **Acknowledge** | `POST …/acknowledge` |
+| **Reject** | `POST …/reject` |
+
+Visual: distinct card style — e.g. muted border + **"Out of scope · Backend"** badge. **No Apply button.**
+
+### 4.5 Interactions
+
+1. **Generate proposals** — `POST …/proposals/generate` → poll `GET …/proposals` every 2–3 s.
+2. **Apply** (per shallow card, individually) — one proposal at a time; disabled if another proposal
+   with the same `target_key` is already `applied`.
+3. **Preview** — inline diff panel using `patch.preview.before_excerpt` / `after_excerpt`.
+4. **Version picker** — lists versions from blueprint manifest (`v0001` baseline → current).
+
+No bulk "Apply all". No publish-to-production in v1 — workspace is study-local only.
+
+### 4.6 States
+
+| State | Copy / behavior |
+|---|---|
+| `generation.status == "not_started"` | Empty state: "Evaluation complete. Generate proposals to get VA Blueprint change suggestions." + **Generate proposals** CTA |
+| `generating` | Full-width spinner + "Generating proposals…"; optional log tail from `logs_url` (same pattern as Explore Phase 3) |
+| `failed` | Banner: "Proposal generation failed: {error}." + **Retry** |
+| `ready`, empty lists | "No proposals were generated." + **Retry** |
+| Apply in progress | Disable Apply on that card; spinner on button |
+| Apply conflict (`409 PROPOSAL_CONFLICT`) | Inline error: "Another change to this instruction was already applied." |
+| Apply failed (`409 APPLY_FAILED`) | Inline error with anchor/field message from `apply_result.errors[]` |
+
+Study `meta.status` remains `complete` throughout — do not block the rest of the app on Phase 4.
+
+### 4.7 Jira stub modal (deep proposals)
+
+On **Create Jira ticket**:
+
+- Call `POST …/jira-stub`.
+- Show modal with **Summary**, **Description** (markdown), **Labels**, linked session ids.
+- Primary action: **Copy to clipboard** (v1).
+- Footer note: "Jira integration coming soon" (from `message` field).
+- No external API call in v1.
+
+---
+
+## 5. What this deliberately does NOT include (v1 scope discipline)
 
 Cutting these is a feature of the design, not a gap to fill later without discussion:
 
-- A studies list/dashboard screen — not in v1; see §7 for a deferred proposal only
+- A studies list/dashboard screen — not in v1; see §8 for a deferred proposal only
 - In-app session/transcript browser (that's BotProbe's job)
 - Plan editing, hypothesis approve/reject, re-planning, or a feedback loop on Explore
 - Exposing `min_support` / `significance_level` / `pairing_turn_tolerance` as user controls
 - Any Postgres/Argus-backed data path — v1 uses Mongo for session index and BotProbe `/trace` for event logs
+- **Publishing** applied blueprint changes back to production VA Blueprint API (workspace is local to the study)
+- Real Jira API integration (stub only on Proposals tab)
+- Bulk apply of all shallow proposals at once
 
 ---
 
-## 5. Cross-cutting interaction rules
+## 6. Cross-cutting interaction rules
 
-- **Navigation is one-directional per study**: New Study → Explore → Results. There's no "back
-  to Explore" from Results in v1 (the plan is immutable once executed) and no "back to New
-  Study" from Explore except via the failure banner's escape hatch (§2.4).
+- **Navigation per study**: New Study → Explore → Results → **Proposals**. Proposals requires
+  `complete`. User may jump Results ↔ Proposals freely once evaluation exists. No return to
+  Explore after execute (plan is immutable).
 - **No optimistic UI**: every state transition (submit, execute) waits for the backend's actual
   status field rather than assuming success client-side — Phase 0–3 durations are unpredictable
   (Mongo session query size, BotProbe trace fetch, LLM latency), so a fake "done" would be actively misleading.
@@ -325,38 +451,43 @@ Cutting these is a feature of the design, not a gap to fill later without discus
   decisions beyond display formatting (e.g. 1 decimal place for percentages).
 - **Copy tone**: direct, specific, no apologetic hedging in error states ("Cohort resolution
   failed: no sessions matched this scope" not "Oops, something went wrong!").
+- **Proposal numbers**: confidence and evidence metrics come from `proposal_bundle.json` only —
+  do not invent support counts client-side.
 
 ---
 
-## 6. Visual language (inherited, not new)
+## 7. Visual language (inherited, not new)
 
 No new design system — extend va-argus's existing tokens so Ypervaíno reads as a feature of
 the same product, not a separate tool:
 
 | Token | Value | Use |
 |---|---|---|
-| `--signal` (teal) | `#3fe0d6` | Primary actions (Start Analysis, Execute plan) |
+| `--signal` (teal) | `#3fe0d6` | Primary actions (Start Analysis, Execute plan, Generate proposals, Apply) |
 | `--success` / `--warning` / `--critical` | green / amber / red | Significant-good, not-significant, significant-bad deltas |
 | `--surface`, `--line` | dark card backgrounds, hairline borders | Cards for aspects/hypotheses |
-| IBM Plex Sans / IBM Plex Mono | body / data | Mono for session ids, model ids, numbers in tables |
+| IBM Plex Sans / IBM Plex Mono | body / data | Mono for session ids, model ids, `target_key`, version labels |
+
+Deep proposal cards: use `--line` + muted text; shallow cards: standard `--surface` card style.
 
 ---
 
-## 7. Deferred (not v1): studies list
+## 8. Deferred (not v1): studies list
 
 **Out of scope for v1** per draft3.md and input_schema.md — do not build until explicitly approved.
 
 File-based persistence (`studies/<slug>/`) means studies accumulate on disk; returning to a
 prior study currently requires knowing its slug/URL. If approved post-v1, a lightweight header
 dropdown ("My Studies") reading `studies/*/meta.json` could link to each study's current tab
-(Explore if `explored`, Results if `complete`). **Not part of this spec until confirmed.**
+(Explore if `explored`, Results if `complete`, Proposals if `complete`). **Not part of this spec until confirmed.**
 
 ---
 
-## 8. Document history
+## 9. Document history
 
 | Version | Date | Notes |
 |---------|------|-------|
 | v1 | 2026-08-29 | First UI design pass against draft3.md + input_schema.md |
 | v1.1 | 2026-08-29 | Added wireframe sketches, validation copy, full loading/empty/error states for all 3 tabs, cross-cutting interaction rules, visual token table, and a resolved recommendation for the studies-list open question |
 | v1.2 | 2026-08-29 | Alignment fixes: Explore `n_explore` meta, single-cohort headers, progress state vs draft3 status model, counter-examples on Results, date start/end validation, filter-atom cross-ref, window-comparison copy, unified **Execute plan** label, studies list marked deferred |
+| v1.3 | 2026-09-01 | **Proposals tab (§4):** on-demand generation, shallow Apply/Reject, blueprint workspace + versioning, deep proposals + Jira stub; nav Results ↔ Proposals |

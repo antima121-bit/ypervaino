@@ -20,6 +20,18 @@ from ypervaino.config_loader import load_filter_atoms
 from ypervaino.data_layer import list_assistants, list_tenants
 from ypervaino.log import get_logger, setup_logging
 from ypervaino.settings import ROOT, load_mongo_env
+from ypervaino.proposals import (
+    ProposalError,
+    acknowledge_proposal,
+    apply_shallow_proposal,
+    blueprint_diff,
+    get_blueprint_version,
+    get_proposals_payload,
+    jira_stub,
+    manual_blueprint_patch,
+    reject_proposal,
+)
+from ypervaino.blueprint_store import read_manifest
 from ypervaino.study_runner import StudyRunner
 from ypervaino.study_store import StudyStore, slugify
 
@@ -361,6 +373,131 @@ def results(slug: str):
     }
 
 
+def _proposal_error(exc: ProposalError):
+    detail = {"error": {"code": exc.code, "message": exc.message}}
+    detail["error"].update(exc.extra)
+    raise HTTPException(exc.status, detail=detail)
+
+
+@app.get(f"{API}/studies/{{slug}}/proposals")
+def get_proposals(slug: str):
+    store = _study_or_404(slug)
+    try:
+        return get_proposals_payload(store)
+    except ProposalError as e:
+        _proposal_error(e)
+
+
+@app.post(f"{API}/studies/{{slug}}/proposals/generate")
+def generate_proposals_route(slug: str, force: bool = Query(False)):
+    store = _study_or_404(slug)
+    try:
+        from ypervaino.proposal_generator import read_generation_status
+
+        gen = read_generation_status(store)
+        if gen.get("status") == "ready" and not force:
+            return get_proposals_payload(store)
+        if gen.get("status") != "generating":
+            runner.generate_proposals(slug, force=force)
+            gen = read_generation_status(store)
+        return JSONResponse({
+            "slug": slug,
+            "generation": {
+                "status": gen.get("status", "generating"),
+                "started_at": gen.get("started_at"),
+                "poll_url": f"{API}/studies/{slug}/proposals",
+            },
+        }, status_code=202)
+    except ProposalError as e:
+        _proposal_error(e)
+    except ValueError as e:
+        raise HTTPException(409, detail={"error": {"code": "INVALID_STATE", "message": str(e)}})
+
+
+@app.get(f"{API}/studies/{{slug}}/blueprint/manifest")
+def blueprint_manifest(slug: str):
+    store = _study_or_404(slug)
+    return read_manifest(store)
+
+
+@app.get(f"{API}/studies/{{slug}}/blueprint/versions/{{version}}")
+def blueprint_version(slug: str, version: str):
+    store = _study_or_404(slug)
+    try:
+        return get_blueprint_version(store, version)
+    except FileNotFoundError as e:
+        raise HTTPException(404, detail={"error": {"code": "NOT_FOUND", "message": str(e)}})
+
+
+@app.get(f"{API}/studies/{{slug}}/blueprint/diff")
+def blueprint_diff_route(
+    slug: str,
+    from_version: str = Query(..., alias="from"),
+    to_version: str = Query(..., alias="to"),
+    target_key: str = Query(...),
+):
+    store = _study_or_404(slug)
+    try:
+        return blueprint_diff(store, from_version, to_version, target_key)
+    except FileNotFoundError as e:
+        raise HTTPException(404, detail={"error": {"code": "NOT_FOUND", "message": str(e)}})
+
+
+class RejectBody(BaseModel):
+    reason: str | None = None
+
+
+class BlueprintPatchBody(BaseModel):
+    target: dict[str, Any]
+    patch: dict[str, Any]
+    note: str | None = None
+
+
+@app.post(f"{API}/studies/{{slug}}/proposals/{{proposal_id}}/apply")
+def apply_proposal(slug: str, proposal_id: str):
+    store = _study_or_404(slug)
+    try:
+        return apply_shallow_proposal(store, proposal_id)
+    except ProposalError as e:
+        _proposal_error(e)
+
+
+@app.post(f"{API}/studies/{{slug}}/proposals/{{proposal_id}}/reject")
+def reject_proposal_route(slug: str, proposal_id: str, body: RejectBody | None = None):
+    store = _study_or_404(slug)
+    try:
+        return reject_proposal(store, proposal_id, (body.reason if body else None))
+    except ProposalError as e:
+        _proposal_error(e)
+
+
+@app.post(f"{API}/studies/{{slug}}/proposals/{{proposal_id}}/acknowledge")
+def acknowledge_proposal_route(slug: str, proposal_id: str):
+    store = _study_or_404(slug)
+    try:
+        return acknowledge_proposal(store, proposal_id)
+    except ProposalError as e:
+        _proposal_error(e)
+
+
+@app.post(f"{API}/studies/{{slug}}/proposals/{{proposal_id}}/jira-stub")
+def jira_stub_route(slug: str, proposal_id: str):
+    store = _study_or_404(slug)
+    try:
+        return jira_stub(store, proposal_id)
+    except ProposalError as e:
+        _proposal_error(e)
+
+
+@app.post(f"{API}/studies/{{slug}}/blueprint/patch")
+def blueprint_patch_route(slug: str, body: BlueprintPatchBody):
+    store = _study_or_404(slug)
+    try:
+        return manual_blueprint_patch(store, body.target, body.patch, body.note)
+    except ProposalError as e:
+        _proposal_error(e)
+
+
 # Static pages
 @app.get("/")
 def index():
@@ -375,6 +512,11 @@ def page_explore():
 @app.get("/results")
 def page_results():
     return FileResponse(DIR / "dashboard.html")
+
+
+@app.get("/proposals")
+def page_proposals():
+    return FileResponse(DIR / "proposals.html")
 
 
 @app.get("/sessions")

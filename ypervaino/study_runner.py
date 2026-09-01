@@ -129,3 +129,38 @@ class StudyRunner:
                 meta["error"] = f"{type(e).__name__}: {e}\n{traceback.format_exc()}"
                 store.write_meta(meta)
                 timer.write_summary()
+
+    def generate_proposals(self, slug: str, *, force: bool = False) -> None:
+        from ypervaino.proposal_generator import read_generation_status, write_generation_status
+
+        store = StudyStore(slug)
+        meta = store.read_meta()
+        if meta["status"] != "complete":
+            raise ValueError(f"Cannot generate proposals in status {meta['status']}")
+        gen = read_generation_status(store)
+        if gen.get("status") == "generating":
+            return
+        if gen.get("status") == "ready" and not force:
+            return
+        write_generation_status(store, {
+            "status": "generating",
+            "started_at": now_iso(),
+            "finished_at": None,
+            "error": None,
+        })
+        t = threading.Thread(target=self._run_phase_4, args=(slug,), daemon=True)
+        t.start()
+        _log.info("phase 4 queued slug=%s force=%s", slug, force)
+
+    def _run_phase_4(self, slug: str) -> None:
+        from ypervaino.proposal_generator import run_phase4
+
+        store = StudyStore(slug)
+        timer = StudyTimer(store)
+        timer.log.info("=== Phase 4 (proposals) started ===")
+        with self._lock_for(slug):
+            try:
+                run_phase4(store)
+                timer.log.info("=== Phase 4 complete ===")
+            except Exception:
+                timer.log.exception("Phase 4 failed")

@@ -53,6 +53,8 @@ class StudyStore:
             self.traces_dir,
             self.intermediate_dir,
             self.intermediate_dir / "s_explore",
+            self.intermediate_dir / "proposal_generation",
+            self.intermediate_dir / "blueprint" / "versions",
             self.output_dir,
             self.output_dir / "plots",
             self.output_dir / "tables",
@@ -84,6 +86,7 @@ class StudyStore:
             "s_explore_ready": (self.intermediate_dir / "s_explore" / "manifest.json").exists(),
             "analysis_plan_ready": (self.intermediate_dir / "analysis_plan.json").exists(),
             "evaluation_ready": (self.output_dir / "evaluation_result.json").exists(),
+            "proposals_ready": (self.output_dir / "proposal_bundle.json").exists(),
             "pipeline_log_ready": log_path.exists(),
         }
         if log_path.exists():

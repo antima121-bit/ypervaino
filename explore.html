@@ -62,6 +62,8 @@
   <a href="/" class="topnav-link">New Study</a>
   <a href="/explore" class="topnav-link active">Explore</a>
   <a href="/results" class="topnav-link">Results</a>
+  <a href="/proposals" class="topnav-link">Proposals</a>
+  <a href="/sessions" class="topnav-link">Sessions</a>
 </div>
 <div class="main">
   <span class="eyebrow">Ypervaíno</span>
@@ -73,6 +75,10 @@
 <script>
 const params = new URLSearchParams(window.location.search);
 const slug = params.get('study');
+function navHref(path){ return slug ? `${path}?study=${encodeURIComponent(slug)}` : path; }
+document.querySelectorAll('.topnav-link').forEach(a => {
+  if (a.getAttribute('href') !== '/') a.href = navHref(a.getAttribute('href'));
+});
 function escapeHtml(s){ const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 async function load(){
