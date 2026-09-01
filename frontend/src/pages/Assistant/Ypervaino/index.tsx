@@ -5,7 +5,15 @@ const YPERVAINO_URL = "http://localhost:8765/";
 
 const Ypervaino: React.FC = () => {
   return (
-    <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "24px" }}>
+    <div
+      style={{
+        width: "100%",
+        height: "calc(100vh - 144px)",
+        display: "flex",
+        flexDirection: "column",
+        gap: "16px",
+      }}
+    >
       <TabHeader
         icon={<YpervainoIcon />}
         title="Ypervaíno"
@@ -14,11 +22,10 @@ const Ypervaino: React.FC = () => {
       <div
         style={{
           flex: 1,
+          minHeight: 0,
           border: "1px solid #E1DEDA",
           borderRadius: "8px",
           overflow: "hidden",
-          height: "calc(100vh - 240px)",
-          minHeight: "600px",
         }}
       >
         <iframe
