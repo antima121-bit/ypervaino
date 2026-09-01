@@ -3,20 +3,20 @@
 <head>
 <meta charset="utf-8">
 <title>Ypervaíno — Explore &amp; Approve</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --paper:#0c1116;--surface:#131a21;--surface-2:#1a2229;--surface-3:#232c34;
-    --ink:#e7edf1;--ink-2:#93a3b1;--ink-3:#657585;--line:#232d36;--line-strong:#303c46;
-    --signal:#a855f7;--signal-strong:#c084fc;--signal-soft:rgba(168,85,247,.14);
-    --success:#58c793;--success-soft:rgba(88,199,147,.14);
-    --warning:#e3a94a;--critical:#e2685f;--critical-soft:rgba(226,104,95,.14);--info:#7d97af;--info-soft:rgba(125,151,175,.14);
+    --paper:#f9f8f8;--surface:#ffffff;--surface-2:#fcfcfb;--surface-3:#f3f2f0;
+    --ink:#282624;--ink-2:#7c7972;--ink-3:#b5b1ad;--line:#e1deda;--line-strong:#b5b1ad;
+    --signal:#f07400;--signal-strong:#ff7b00;--signal-soft:rgba(240,116,0,.12);
+    --success:#027a48;--success-soft:#e7fdf3;
+    --warning:#856404;--critical:#b72d0e;--critical-soft:#fce8e4;--info:#3a91b4;--info-soft:#eaf9fe;
   }
   *{box-sizing:border-box;} html,body{margin:0;}
-  body{background:radial-gradient(1000px 650px at 12% 115%, rgba(168,85,247,.32), transparent 60%),radial-gradient(800px 550px at 88% 105%, rgba(91,33,182,.28), transparent 60%),var(--paper);background-attachment:fixed;background-repeat:no-repeat;color:var(--ink);font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,sans-serif;font-size:15px;}
-  .mono{font-family:"IBM Plex Mono",ui-monospace,monospace;}
+  body{background:var(--paper);color:var(--ink);font-family:"Manrope",-apple-system,BlinkMacSystemFont,"Roboto","Oxygen","Ubuntu","Cantarell","Fira Sans","Droid Sans","Helvetica Neue",sans-serif;font-size:15px;}
+  .mono{font-family:"Roboto Mono",ui-monospace,monospace;}
   .main{max-width:900px;margin:0 auto;padding:28px 32px 60px;}
-  .eyebrow{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:22px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;background:linear-gradient(90deg, var(--signal-strong), var(--signal));-webkit-background-clip:text;background-clip:text;color:transparent;display:inline-block;margin-bottom:6px;}
+  .eyebrow{font-family:"Manrope",-apple-system,BlinkMacSystemFont,sans-serif;font-size:22px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;background:linear-gradient(90deg, var(--signal-strong), var(--signal));-webkit-background-clip:text;background-clip:text;color:transparent;display:inline-block;margin-bottom:6px;}
   .live-pill{display:flex;width:fit-content;align-items:center;gap:6px;background:var(--signal-soft);color:var(--signal-strong);border-radius:999px;padding:4px 10px 4px 8px;font-size:12.5px;font-weight:600;margin-bottom:14px;}
   .live-dot{width:6px;height:6px;border-radius:50%;background:var(--signal);animation:pulse 1.4s ease-in-out infinite;}
   @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
@@ -49,12 +49,12 @@
   .hyp-guess-tag.hyp-good{background:var(--success-soft);color:var(--success);}
   .hyp-guess-tag.hyp-bad{background:var(--critical-soft);color:var(--critical);}
   .btn{background:var(--signal);color:#ffffff;border:none;border-radius:7px;padding:11px 20px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;text-decoration:none;display:inline-block;}
-  .error-box{background:var(--critical);color:#2a0b08;border-radius:8px;padding:14px 16px;font-size:14.5px;}
+  .error-box{background:var(--critical-soft);color:var(--critical);border-radius:8px;padding:14px 16px;font-size:14.5px;}
   .run-log{display:none;margin-top:14px;background:#0d1117;color:#c9d1d9;border-radius:8px;padding:10px 12px;font-family:ui-monospace,monospace;font-size:12.5px;line-height:1.45;max-height:220px;overflow-y:auto;white-space:pre-wrap;}
-  .topnav{display:flex;gap:4px;padding:14px 32px;border-bottom:1px solid var(--line);background:var(--surface);}
-  .topnav-link{color:var(--ink-2);text-decoration:none;font-size:14px;padding:6px 12px;border-radius:6px;}
-  .topnav-link:hover{background:var(--surface-2);color:var(--ink);}
-  .topnav-link.active{background:var(--signal-soft);color:var(--signal-strong);font-weight:600;}
+  .topnav{display:flex;gap:4px;padding:14px 32px;background:#171717;}
+  .topnav-link{color:rgba(255,255,255,.6);text-decoration:none;font-size:14px;padding:6px 12px;border-radius:6px;}
+  .topnav-link:hover{background:rgba(255,255,255,.08);color:#ffffff;}
+  .topnav-link.active{background:rgba(240,116,0,.16);color:var(--signal-strong);font-weight:600;}
 </style>
 </head>
 <body>
