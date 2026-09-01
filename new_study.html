@@ -43,38 +43,12 @@
   .run-log{display:none;margin-top:14px;background:#0d1117;color:#c9d1d9;border-radius:8px;padding:10px 12px;font-family:ui-monospace,monospace;font-size:12.5px;line-height:1.45;max-height:180px;overflow-y:auto;white-space:pre-wrap;}
 
   /* date range picker */
-  .daterange-wrap{position:relative;}
-  .daterange-btn{width:100%;text-align:left;background:var(--surface-2);border:1px solid var(--line-strong);color:var(--ink);border-radius:6px;padding:9px 11px;font-size:14.5px;font-family:inherit;cursor:pointer;}
-  .daterange-btn.placeholder{color:var(--ink-3);}
-  .cal-popover{display:none;position:absolute;top:calc(100% + 6px);left:0;z-index:20;background:var(--surface-2);border:1px solid var(--line-strong);border-radius:10px;padding:12px;box-shadow:0 12px 30px rgba(0,0,0,.4);width:270px;}
-  .cal-popover.open{display:block;}
-  .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
-  .cal-nav button{background:var(--surface-3);border:1px solid var(--line-strong);color:var(--ink);border-radius:6px;width:24px;height:24px;cursor:pointer;font-size:13.5px;}
-  .cal-nav-label{font-size:14px;font-weight:600;}
-  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
-  .cal-weekday{text-align:center;font-size:11.5px;color:var(--ink-3);text-transform:uppercase;padding:2px 0;}
-  .cal-day{text-align:center;font-size:13.5px;padding:6px 0;border-radius:6px;cursor:pointer;color:var(--ink);background:none;border:none;font-family:inherit;}
-  .cal-day:hover{background:var(--surface-3);}
-  .cal-day.outside{color:var(--ink-3);opacity:.4;}
-  .cal-day.before-in{background:var(--signal-soft);border-radius:0;}
-  .cal-day.before-edge{background:var(--signal);color:#06201f;font-weight:700;}
-  .cal-day.after-in{background:var(--accent-2-soft);border-radius:0;}
-  .cal-day.after-edge{background:var(--accent-2);color:#2a1600;font-weight:700;}
-  .cal-footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:12.5px;color:var(--ink-3);gap:8px;}
-  .cal-footer button{background:var(--signal);color:#06201f;border:none;border-radius:6px;padding:6px 12px;font-size:13.5px;font-weight:600;cursor:pointer;}
-  .cal-footer .cal-reset{background:none;color:var(--ink-3);text-decoration:underline;padding:0;font-weight:400;}
-  .cal-step{font-size:12.5px;color:var(--ink-2);margin-bottom:8px;padding:5px 8px;background:var(--surface-3);border-radius:6px;}
-  .cal-step .b{color:var(--signal-strong);font-weight:600;}
-  .cal-step .a{color:var(--accent-2);font-weight:600;}
-  .cal-legend{display:flex;gap:14px;margin-top:8px;font-size:12px;color:var(--ink-2);}
-  .cal-legend span{display:inline-flex;align-items:center;gap:5px;}
-  .cal-legend i{width:8px;height:8px;border-radius:2px;display:inline-block;}
-  .cal-summary{margin-top:10px;display:flex;flex-direction:column;gap:6px;}
-  .cal-summary-row{display:flex;align-items:center;gap:10px;font-size:14.5px;padding:8px 12px;border-radius:6px;background:var(--surface-2);border:1px solid var(--line-strong);}
-  .cal-summary-row .tag{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 8px;border-radius:999px;flex-shrink:0;}
-  .cal-summary-row.before .tag{background:var(--signal-soft);color:var(--signal-strong);}
-  .cal-summary-row.after .tag{background:var(--accent-2-soft);color:var(--accent-2);}
-  .cal-summary-row .val{color:var(--ink);font-family:"IBM Plex Mono",monospace;}
+  .date-group{border:1px solid var(--line-strong);border-radius:8px;padding:12px;margin-bottom:10px;}
+  .date-group.before{border-left:3px solid var(--signal);}
+  .date-group.after{border-left:3px solid var(--accent-2);}
+  .date-group-tag{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;}
+  .date-group.before .date-group-tag{color:var(--signal-strong);}
+  .date-group.after .date-group-tag{color:var(--accent-2);}
   .chip-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
   .chip{background:var(--surface-2);border:1px solid var(--line-strong);color:var(--ink-2);border-radius:999px;padding:6px 12px;font-size:13.5px;cursor:pointer;font-family:inherit;}
   .chip.active{background:var(--signal-soft);border-color:var(--signal);color:var(--signal-strong);font-weight:600;}
@@ -148,8 +122,30 @@
 
       <div>
         <label class="field-label">Date range(s) <span class="req">*</span></label>
-        <div id="cal-widget"></div>
-        <div id="cal-summary" class="cal-summary"></div>
+
+        <div id="date-discovery" style="display:none;">
+          <div class="row">
+            <div class="field"><label class="field-label">Start</label><input class="input" type="date" id="date_start"></div>
+            <div class="field"><label class="field-label">End</label><input class="input" type="date" id="date_end"></div>
+          </div>
+        </div>
+
+        <div id="date-comparative">
+          <div class="date-group before">
+            <div class="date-group-tag">Before</div>
+            <div class="row">
+              <div class="field"><label class="field-label">Start</label><input class="input" type="date" id="date_before_start"></div>
+              <div class="field"><label class="field-label">End</label><input class="input" type="date" id="date_before_end"></div>
+            </div>
+          </div>
+          <div class="date-group after">
+            <div class="date-group-tag">After</div>
+            <div class="row">
+              <div class="field"><label class="field-label">Start</label><input class="input" type="date" id="date_after_start"></div>
+              <div class="field"><label class="field-label">End</label><input class="input" type="date" id="date_after_end"></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -188,202 +184,36 @@
   <div id="run-log" class="run-log"></div>
 </div>
 <script>
-// ---- one calendar, mode-aware: 1 range for Pure Discovery, 2 (before+after) for Comparative ----
-function createDateRangePicker(containerId, getMode){
-  const container = document.getElementById(containerId);
-  const state = {
-    viewMonth: new Date(),
-    before: { start: null, end: null },
-    after: { start: null, end: null },
-    single: { start: null, end: null },
-    step: 'before-start', // before-start | before-end | after-start | after-end | start | end
-  };
+// ---- date range: plain date inputs, 2 boxes for discovery, 4 for comparative ----
+function toIso(dateStr, endOfDay){
+  return `${dateStr}T${endOfDay ? '23:59:59' : '00:00:00'}`;
+}
 
-  const wrap = document.createElement('div');
-  wrap.className = 'daterange-wrap';
-  wrap.innerHTML = `
-    <button type="button" class="daterange-btn placeholder">Select date range(s)</button>
-    <div class="cal-popover" style="width:300px;">
-      <div class="cal-step"></div>
-      <div class="cal-nav">
-        <button type="button" class="cal-prev">‹</button>
-        <span class="cal-nav-label"></span>
-        <button type="button" class="cal-next">›</button>
-      </div>
-      <div class="cal-grid cal-weekdays">
-        ${['S','M','T','W','T','F','S'].map(d => `<div class="cal-weekday">${d}</div>`).join('')}
-      </div>
-      <div class="cal-grid cal-days"></div>
-      <div class="cal-legend" id="cal-legend"></div>
-      <div class="cal-footer"><button type="button" class="cal-reset">Reset</button><button type="button" class="cal-done">Done</button></div>
-    </div>
-  `;
-  container.appendChild(wrap);
-
-  const btn = wrap.querySelector('.daterange-btn');
-  const popover = wrap.querySelector('.cal-popover');
-  const label = wrap.querySelector('.cal-nav-label');
-  const daysGrid = wrap.querySelector('.cal-days');
-  const stepLabel = wrap.querySelector('.cal-step');
-  const legend = wrap.querySelector('#cal-legend');
-
-  function fmt(d){ return d.toLocaleDateString(undefined, {month:'short', day:'numeric'}); }
-  function fmtFull(d){ return d.toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'}); }
-  function ymd(d){ return d.toISOString().slice(0,10); }
-  const summaryEl = document.getElementById('cal-summary');
-  function firstStepForMode(){ return getMode() === 'discovery' ? 'start' : 'before-start'; }
-
-  function resetForModeIfNeeded(){
-    const mode = getMode();
-    const isComparativeStep = ['before-start','before-end','after-start','after-end'].includes(state.step);
-    if (mode === 'discovery' && isComparativeStep) state.step = 'start';
-    if (mode !== 'discovery' && !isComparativeStep) state.step = 'before-start';
+function getDateRangeResult(mode){
+  if (mode === 'discovery') {
+    const start = document.getElementById('date_start').value;
+    const end = document.getElementById('date_end').value;
+    if (!start || !end) return null;
+    return { start: toIso(start, false), end: toIso(end, true) };
   }
-
-  function updateStepLabel(){
-    const labels = {
-      'before-start': '<span class="b">Before window</span> — pick start day',
-      'before-end': '<span class="b">Before window</span> — pick end day',
-      'after-start': '<span class="a">After window</span> — pick start day',
-      'after-end': '<span class="a">After window</span> — pick end day',
-      'start': 'Pick start day',
-      'end': 'Pick end day',
-    };
-    stepLabel.innerHTML = labels[state.step] || '';
-  }
-
-  function render(){
-    resetForModeIfNeeded();
-    updateStepLabel();
-    const mode = getMode();
-    const y = state.viewMonth.getFullYear(), m = state.viewMonth.getMonth();
-    label.textContent = state.viewMonth.toLocaleDateString(undefined, {month:'long', year:'numeric'});
-    const firstDay = new Date(y, m, 1);
-    const startOffset = firstDay.getDay();
-    const daysInMonth = new Date(y, m+1, 0).getDate();
-    let html = '';
-    for (let i=0;i<startOffset;i++) html += `<button type="button" class="cal-day outside" disabled></button>`;
-    for (let d=1; d<=daysInMonth; d++){
-      const date = new Date(y, m, d);
-      const cls = ['cal-day'];
-      const b = mode === 'discovery' ? state.single : state.before;
-      const a = state.after;
-      if (b.start && ymd(date) === ymd(b.start)) cls.push('before-edge');
-      if (b.end && ymd(date) === ymd(b.end)) cls.push('before-edge');
-      if (b.start && b.end && date > b.start && date < b.end) cls.push('before-in');
-      if (mode !== 'discovery') {
-        if (a.start && ymd(date) === ymd(a.start)) cls.push('after-edge');
-        if (a.end && ymd(date) === ymd(a.end)) cls.push('after-edge');
-        if (a.start && a.end && date > a.start && date < a.end) cls.push('after-in');
-      }
-      html += `<button type="button" class="${cls.join(' ')}" data-date="${date.toISOString()}">${d}</button>`;
-    }
-    daysGrid.innerHTML = html;
-    daysGrid.querySelectorAll('.cal-day:not(.outside)').forEach(el => {
-      el.addEventListener('click', () => onDayClick(new Date(el.dataset.date)));
-    });
-
-    legend.innerHTML = mode === 'discovery'
-      ? `<span><i style="background:var(--signal);"></i>Window</span>`
-      : `<span><i style="background:var(--signal);"></i>Before</span><span><i style="background:var(--accent-2);"></i>After</span>`;
-
-    if (mode === 'discovery') {
-      if (state.single.start && state.single.end) {
-        btn.textContent = `${fmt(state.single.start)} – ${fmt(state.single.end)}`;
-        btn.classList.remove('placeholder');
-      } else {
-        btn.textContent = 'Select date range(s)';
-        btn.classList.add('placeholder');
-      }
-    } else {
-      const bDone = state.before.start && state.before.end;
-      const aDone = state.after.start && state.after.end;
-      if (bDone && aDone) {
-        btn.textContent = `Before ${fmt(state.before.start)}–${fmt(state.before.end)} · After ${fmt(state.after.start)}–${fmt(state.after.end)}`;
-        btn.classList.remove('placeholder');
-      } else {
-        btn.textContent = 'Select date range(s)';
-        btn.classList.add('placeholder');
-      }
-    }
-
-    renderSummary();
-  }
-
-  function renderSummary(){
-    const mode = getMode();
-    const row = (tag, cls, d) => {
-      const val = (d.start && d.end)
-        ? `${fmtFull(d.start)} → ${fmtFull(d.end)}`
-        : (d.start ? `${fmtFull(d.start)} → (pick end day)` : 'not picked yet');
-      return `<div class="cal-summary-row ${cls}"><span class="tag">${tag}</span><span class="val ${d.start && d.end ? '' : 'empty'}">${val}</span></div>`;
-    };
-    summaryEl.innerHTML = mode === 'discovery'
-      ? row('Window', 'before', state.single)
-      : row('Before', 'before', state.before) + row('After', 'after', state.after);
-  }
-
-  function onDayClick(date){
-    switch (state.step) {
-      case 'before-start': state.before = { start: date, end: null }; state.step = 'before-end'; break;
-      case 'before-end':
-        if (date < state.before.start) { state.before = { start: date, end: null }; }
-        else { state.before.end = date; state.step = 'after-start'; }
-        break;
-      case 'after-start': state.after = { start: date, end: null }; state.step = 'after-end'; break;
-      case 'after-end':
-        if (date < state.after.start) { state.after = { start: date, end: null }; }
-        else { state.after.end = date; state.step = 'before-start'; }
-        break;
-      case 'start': state.single = { start: date, end: null }; state.step = 'end'; break;
-      case 'end':
-        if (date < state.single.start) { state.single = { start: date, end: null }; }
-        else { state.single.end = date; state.step = 'start'; }
-        break;
-    }
-    render();
-  }
-
-  btn.addEventListener('click', (e) => { e.stopPropagation(); popover.classList.toggle('open'); render(); });
-  wrap.querySelector('.cal-prev').addEventListener('click', () => { state.viewMonth.setMonth(state.viewMonth.getMonth()-1); render(); });
-  wrap.querySelector('.cal-next').addEventListener('click', () => { state.viewMonth.setMonth(state.viewMonth.getMonth()+1); render(); });
-  wrap.querySelector('.cal-done').addEventListener('click', () => popover.classList.remove('open'));
-  wrap.querySelector('.cal-reset').addEventListener('click', () => {
-    state.before = { start: null, end: null };
-    state.after = { start: null, end: null };
-    state.single = { start: null, end: null };
-    state.step = firstStepForMode();
-    btn.textContent = 'Select date range(s)';
-    btn.classList.add('placeholder');
-    render();
-  });
-  document.addEventListener('click', (e) => { if (!wrap.contains(e.target)) popover.classList.remove('open'); });
-
-  function toIso(d, endOfDay){
-    const c = new Date(d); c.setHours(endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0, 0);
-    return c.toISOString().slice(0,19);
-  }
-
-  render();
-
+  const bs = document.getElementById('date_before_start').value;
+  const be = document.getElementById('date_before_end').value;
+  const as = document.getElementById('date_after_start').value;
+  const ae = document.getElementById('date_after_end').value;
+  if (!bs || !be || !as || !ae) return null;
   return {
-    onModeChange(){ state.step = firstStepForMode(); render(); },
-    getResult(){
-      if (getMode() === 'discovery') {
-        if (!state.single.start || !state.single.end) return null;
-        return { start: toIso(state.single.start, false), end: toIso(state.single.end, true) };
-      }
-      if (!state.before.start || !state.before.end || !state.after.start || !state.after.end) return null;
-      return {
-        before: { start: toIso(state.before.start, false), end: toIso(state.before.end, true) },
-        after: { start: toIso(state.after.start, false), end: toIso(state.after.end, true) },
-      };
-    },
+    before: { start: toIso(bs, false), end: toIso(be, true) },
+    after: { start: toIso(as, false), end: toIso(ae, true) },
   };
 }
 
+function updateDateGroupVisibility(){
+  document.getElementById('date-discovery').style.display = mode === 'discovery' ? '' : 'none';
+  document.getElementById('date-comparative').style.display = mode === 'discovery' ? 'none' : '';
+}
+
 let mode = 'comparative';
-const cal = createDateRangePicker('cal-widget', () => mode);
+updateDateGroupVisibility();
 
 // ---- mode / channel toggles ----
 document.querySelectorAll('#mode-toggle .segmented-btn').forEach(btn => {
@@ -391,7 +221,7 @@ document.querySelectorAll('#mode-toggle .segmented-btn').forEach(btn => {
     document.querySelectorAll('#mode-toggle .segmented-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     mode = btn.dataset.mode;
-    cal.onModeChange();
+    updateDateGroupVisibility();
   });
 });
 
@@ -508,11 +338,11 @@ function start(){
   if (!study_title) { showErr('Give this study a name.'); return; }
   if (!tenant || !assistant_origin_id) { showErr('Choose a tenant and enter an Assistant Origin ID.'); return; }
 
-  const r = cal.getResult();
+  const r = getDateRangeResult(mode);
   if (mode === 'discovery') {
-    if (!r) { showErr('Pick a start and end day for the date range.'); return; }
+    if (!r) { showErr('Pick a start and end date.'); return; }
   } else {
-    if (!r) { showErr('Pick both a before window and an after window.'); return; }
+    if (!r) { showErr('Pick all 4 dates: before start/end and after start/end.'); return; }
   }
 
   const n_eval_raw = document.getElementById('n_eval').value.trim();
