@@ -1,0 +1,9 @@
+{
+  "_meta": {"name": "zero_shot_label", "strict": true},
+  "type": "object",
+  "properties": {
+    "label": {"type": "string"}
+  },
+  "required": ["label"],
+  "additionalProperties": false
+}

@@ -1,0 +1,12 @@
+{
+  "_meta": {"name": "change_context", "strict": true},
+  "type": "object",
+  "properties": {
+    "summary": {"type": "string"},
+    "affected_modules": {"type": "array", "items": {"type": "string"}},
+    "affected_purposes": {"type": "array", "items": {"type": "string"}},
+    "affected_event_types": {"type": "array", "items": {"type": "string"}}
+  },
+  "required": ["summary", "affected_modules", "affected_purposes", "affected_event_types"],
+  "additionalProperties": false
+}

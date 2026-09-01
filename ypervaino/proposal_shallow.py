@@ -18,7 +18,7 @@ def _skill_names(blueprint: dict[str, Any]) -> list[str]:
 
 
 def generate_shallow_proposals(ctx: dict[str, Any]) -> list[dict[str, Any]]:
-    model = os.environ.get("PROPOSAL_SHALLOW_MODEL", "gpt-4.1")
+    model = os.environ.get("PROPOSAL_SHALLOW_MODEL", "gpt-5.6")
     blueprint = ctx.get("blueprint") or {}
     skill_hint = _skill_names(blueprint)
 
@@ -52,7 +52,7 @@ Available skill names (use these in target.skill_name): {json.dumps(skill_hint)}
 }, default=str)[:30000]}
 """
     _log.info("Call A shallow proposals model=%s", model)
-    data = LLMClient().json_completion(prompt, model=model, max_tokens=8000)
+    data = LLMClient().json_completion(prompt, model=model, schema_name="shallow_proposals_response")
     proposals = data.get("shallow_proposals") or data.get("proposals") or []
     if not isinstance(proposals, list):
         return []

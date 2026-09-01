@@ -9,6 +9,7 @@ from ypervaino.bot_repo import (
     grep_repo,
     read_repo_file,
 )
+from ypervaino.data_layer import blueprint_for_llm, blueprint_routing_context
 from ypervaino.llm_client import LLMClient
 from ypervaino.log import get_logger
 
@@ -18,7 +19,7 @@ _log = get_logger("change_context")
 def resolve_change_context(
     change_description: str,
     pr_link: str | None,
-    blueprint_summary: dict[str, Any],
+    blueprint: dict[str, Any],
 ) -> dict[str, Any]:
     if not change_description and not pr_link:
         return {}
@@ -51,13 +52,13 @@ Max 5 steps.
         f"{tools_desc}\n"
         f"Change description: {change_description}\n"
         f"PR link: {pr_link or 'none'}\n"
-        f"Blueprint: {json.dumps(blueprint_summary, default=str)[:4000]}\n"
+        f"Blueprint: {blueprint_for_llm(blueprint, max_chars=80_000)}\n"
         f"Repo checkout: {json.dumps(repo_meta, default=str)[:2000]}\n"
         "Step 1:"
     )
 
     for step_i in range(5):
-        step = llm.json_completion(transcript, model="gpt-4.1", max_tokens=1500)
+        step = llm.json_completion(transcript, schema_name="change_context_tool_step")
         tool = step.get("tool") or ("finish" if step.get("summary") else None)
         args = step.get("args") or step
         _log.info("step %d tool=%s args=%s", step_i + 1, tool, list((args or {}).keys()) if isinstance(args, dict) else type(args).__name__)
@@ -108,9 +109,9 @@ Change: {change_description}
 PR: {pr_link or 'none'}
 Repo checkout: {json.dumps(repo_meta, default=str)[:4000]}
 Notes: {json.dumps(context_notes, default=str)[:8000]}
-Blueprint orchestration: {blueprint_summary.get('orchestration_type')}
+Blueprint orchestration: {blueprint_routing_context(blueprint).get('orchestration_type')}
 Return JSON with summary, affected_modules[], affected_purposes[], affected_event_types[]"""
-        change_ctx = llm.json_completion(prompt, model="gpt-4.1", max_tokens=1200)
+        change_ctx = llm.json_completion(prompt, schema_name="change_context")
         change_ctx.setdefault("affected_purposes", ["main_stream"])
         change_ctx["repo_checkout"] = repo_meta
 

@@ -1,0 +1,36 @@
+{
+  "_meta": {"name": "change_context_tool_step", "strict": false},
+  "type": "object",
+  "properties": {
+    "tool": {
+      "type": "string",
+      "enum": [
+        "fetch_mr_metadata",
+        "fetch_pr_diff",
+        "read_repo_file",
+        "grep_repo",
+        "finish"
+      ]
+    },
+    "args": {
+      "type": "object",
+      "properties": {
+        "url": {"type": "string"},
+        "path": {"type": "string"},
+        "pattern": {"type": "string"},
+        "paths": {"type": "array", "items": {"type": "string"}},
+        "summary": {"type": "string"},
+        "affected_modules": {"type": "array", "items": {"type": "string"}},
+        "affected_purposes": {"type": "array", "items": {"type": "string"}},
+        "affected_event_types": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    },
+    "summary": {"type": "string"},
+    "affected_modules": {"type": "array", "items": {"type": "string"}},
+    "affected_purposes": {"type": "array", "items": {"type": "string"}},
+    "affected_event_types": {"type": "array", "items": {"type": "string"}}
+  },
+  "required": ["tool"],
+  "additionalProperties": false
+}

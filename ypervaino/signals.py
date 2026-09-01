@@ -20,6 +20,66 @@ def _ev(e: dict, key: str, default=None):
     return e.get(key, default)
 
 
+def _is_boolean_value_type(sig: dict[str, Any]) -> bool:
+    return str(sig.get("value_type") or "").lower() in ("boolean", "bool")
+
+
+def _rule_based_score(text: str, spec: dict[str, Any]) -> int:
+    text = (text or "").lower()
+    score = 0
+    for kw in spec.get("keywords") or []:
+        if (kw or "").lower() in text:
+            score += 1
+    for pat in spec.get("regex") or []:
+        if re.search(pat, text, re.I):
+            score += 1
+    for nk in spec.get("negative_keywords") or []:
+        if (nk or "").lower() in text:
+            score -= 1
+    return score
+
+
+def _dialog_searchable_text(fv: dict[str, Any], conversation: dict[str, Any] | None) -> str:
+    cached = (fv.get("dialog_searchable_text") or "").strip()
+    if cached:
+        return cached.lower()
+    transcript = (conversation or {}).get("transcript") or []
+    if transcript:
+        return "\n".join((line.get("text") or "").lower() for line in transcript if line.get("text"))
+    return (fv.get("user_searchable_text") or "").lower()
+
+
+def _opening_turn_text(fv: dict[str, Any]) -> str:
+    opening = (fv.get("opening_text") or "").strip().lower()
+    if opening:
+        return opening
+    turns = fv.get("user_turns") or []
+    if turns:
+        return str(turns[0]).lower()
+    user_text = (fv.get("user_searchable_text") or "").strip()
+    if user_text:
+        return user_text.split("\n", 1)[0].lower()
+    return ""
+
+
+def _rule_based_corpus(
+    fv: dict[str, Any],
+    spec: dict[str, Any],
+    conversation: dict[str, Any] | None,
+) -> list[str]:
+    scope = (spec.get("scope") or "session").lower()
+    if scope == "opening_turns":
+        return [_opening_turn_text(fv)]
+    if scope == "turn":
+        turns = [str(t).lower() for t in (fv.get("user_turns") or []) if str(t).strip()]
+        if not turns:
+            user_text = (fv.get("user_searchable_text") or "").strip()
+            if user_text:
+                turns = [line.lower() for line in user_text.split("\n") if line.strip()]
+        return turns or [""]
+    return [_dialog_searchable_text(fv, conversation)]
+
+
 class SignalExecutor:
     def __init__(self, plan: dict[str, Any], *, eval_session_count: int):
         self.plan = plan
@@ -146,22 +206,14 @@ class SignalExecutor:
             return fv.get("opening_intent_class") == target if target else fv.get("opening_intent_class")
 
         if method == "rule_based":
-            text = fv.get("searchable_text") or ""
-            if spec.get("scope") == "opening_turns":
-                text = text[:800]
-            score = 0
-            for kw in spec.get("keywords") or []:
-                if kw.lower() in text:
-                    score += 1
-            for pat in spec.get("regex") or []:
-                if re.search(pat, text, re.I):
-                    score += 1
-            for nk in spec.get("negative_keywords") or []:
-                if nk.lower() in text:
-                    score -= 1
-            labels = spec.get("labels") or ["match", "other"]
+            spec = sig.get("spec") or {}
             min_hits = int(spec.get("min_hits") or 1)
-            if score >= min_hits:
+            corpora = _rule_based_corpus(fv, spec, conversation)
+            matched = any(_rule_based_score(text, spec) >= min_hits for text in corpora)
+            labels = spec.get("labels") or ["match", "other"]
+            if _is_boolean_value_type(sig):
+                return 1 if matched else 0
+            if matched:
                 return labels[0]
             return labels[-1] if len(labels) > 1 else False
 
@@ -184,8 +236,7 @@ class SignalExecutor:
             snippet = (fv.get("searchable_text") or "")[:3000]
             out = LLMClient().json_completion(
                 f"{prompt}\nLabels: {labels}\nTranscript excerpt:\n{snippet}\nReturn JSON {{\"label\": one of labels}}",
-                model="gpt-4.1-mini",
-                max_tokens=200,
+                schema_name="zero_shot_label",
             )
             return out.get("label") or labels[-1]
 
@@ -196,8 +247,7 @@ class SignalExecutor:
             snippet = (fv.get("searchable_text") or "")[:4000]
             out = LLMClient().json_completion(
                 f"{prompt}\nReturn JSON {{\"value\": ...}}\nTranscript:\n{snippet}",
-                model="gpt-4.1",
-                max_tokens=300,
+                schema_name="llm_extract_value",
             )
             return out.get("value")
 

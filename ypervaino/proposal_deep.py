@@ -59,7 +59,7 @@ def fetch_repo_snippets(ctx: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def generate_deep_proposals(ctx: dict[str, Any], snippets: list[dict[str, Any]], shallow_titles: list[str]) -> list[dict[str, Any]]:
-    model = os.environ.get("PROPOSAL_DEEP_MODEL", "gpt-4.1")
+    model = os.environ.get("PROPOSAL_DEEP_MODEL", "gpt-5.6")
     prompt = f"""{DEEP_SYSTEM}
 
 ## Task
@@ -88,7 +88,7 @@ Prioritize poor aspect metrics or failed/rejected hypotheses where blueprint edi
 {json.dumps(shallow_titles, default=str)}
 """
     _log.info("Call B deep proposals model=%s", model)
-    data = LLMClient().json_completion(prompt, model=model, max_tokens=8000)
+    data = LLMClient().json_completion(prompt, model=model, schema_name="deep_proposals_response")
     proposals = data.get("deep_proposals") or data.get("proposals") or []
     if not isinstance(proposals, list):
         return []

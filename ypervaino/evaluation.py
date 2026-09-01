@@ -263,14 +263,14 @@ def run_evaluation(
         fv_path = store.features_dir / f"{sid}.json"
         fv = store.read_json(fv_path) if fv_path.exists() else {}
         conv = load_conversation(store, sid)
-        executor.compute_values(fv, conv)
+        values = executor.compute_values(fv, conv)
         aspect_vals: dict[str, float] = {}
         for aspect in aspects:
-            av = aspect_value(aspect, fv)
+            av = aspect_value(aspect, values)
             if av is not None:
                 aid = aspect.get("id") or aspect.get("name")
                 aspect_vals[aid] = av
-        values = enrich_evaluation_values(fv, aspect_vals, cohort_medians)
+        values = enrich_evaluation_values(values, aspect_vals, cohort_medians)
         hyp_matches = {
             h.get("id"): eval_hypothesis(normalize_hypothesis_predicate(h.get("predicate"), h), values)
             for h in hypotheses

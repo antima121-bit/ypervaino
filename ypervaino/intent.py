@@ -6,12 +6,13 @@ from collections import Counter
 from typing import Any
 
 from ypervaino.config_loader import load_event_schema
+from ypervaino.data_layer import blueprint_for_llm, blueprint_routing_context
 from ypervaino.llm_client import LLMClient
 from ypervaino.parallel import run_parallel, worker_count
 from ypervaino.study_store import StudyStore
 
 MIN_INTENT_SCORE = 2.0
-LEXICON_VERSION = "2.1"
+LEXICON_VERSION = "2.2"
 
 # LLM event_value.purpose tags (log vocabulary — not caller-facing descriptions).
 STANDARD_LOG_PURPOSES = frozenset({
@@ -24,11 +25,19 @@ STANDARD_LOG_PURPOSES = frozenset({
     "custom_variables",
 })
 
-# Keyword hits weighted by caller turn index: turn 1 → 1×, turn 2 → ½×, turn 3 → ⅓×, …
+# Caller-facing keyword scoring (primary). Routing hits are tie-breakers only.
 KEYWORD_BASE_WEIGHT = 3.0
 NEGATIVE_KEYWORD_BASE_WEIGHT = 2.0
-ROUTING_SKILL_WEIGHT = 1.0
-ROUTING_TOOL_WEIGHT = 0.75
+# Later-turn keyword hits capped relative to turn-1 when turn-1 matched (avoids auth-loop noise).
+LATER_TURN_KEYWORD_CAP_RATIO = 0.5
+# Bot-side routing signals — low weight + hard cap so bot errors don't drive caller intent.
+ROUTING_SKILL_WEIGHT = 0.15
+ROUTING_TOOL_WEIGHT = 0.10
+ROUTING_AGENT_WEIGHT = 0.10
+ROUTING_NODE_WEIGHT = 0.10
+ROUTING_PURPOSE_WEIGHT = 0.08
+ROUTING_EVENT_WEIGHT = 0.05
+ROUTING_SCORE_CAP = 1.0  # max routing contribution per intent per session
 
 
 def _norm(s: str) -> str:
@@ -109,12 +118,50 @@ def _pilot_log_purposes(
     return counts.most_common(30), allowed
 
 
+def _coerce_intents_map(raw: Any) -> dict[str, Any]:
+    """Normalize LLM output: intents may arrive as a dict or as a list of specs."""
+    if raw is None:
+        return {}
+    if isinstance(raw, dict):
+        return dict(raw)
+    if not isinstance(raw, list):
+        return {}
+
+    out: dict[str, Any] = {}
+    for item in raw:
+        if isinstance(item, dict):
+            intent_id = item.get("intent_id") or item.get("id") or item.get("name")
+            if not intent_id:
+                continue
+            spec = dict(item)
+            for key in ("intent_id", "id", "name"):
+                spec.pop(key, None)
+            out[str(intent_id)] = spec
+        elif isinstance(item, (list, tuple)) and len(item) == 2 and isinstance(item[1], dict):
+            out[str(item[0])] = dict(item[1])
+        elif isinstance(item, str) and item.strip():
+            intent_id = item.strip()
+            out[intent_id] = {
+                "label": intent_id.replace("_", " ").title(),
+                "description": "",
+                "skills": [],
+                "tools": [],
+                "agent_names": [],
+                "nodes": [],
+                "event_type_hints": [],
+                "keywords": [],
+                "purposes": [],
+                "negative_keywords": [],
+            }
+    return out
+
+
 def _normalize_lexicon(
     lexicon: dict[str, Any],
     *,
     allowed_purposes: set[str] | None = None,
 ) -> dict[str, Any]:
-    intents = dict(lexicon.get("intents") or {})
+    intents = _coerce_intents_map(lexicon.get("intents"))
     allowed_purpose_norm = {_norm(p) for p in (allowed_purposes or STANDARD_LOG_PURPOSES)}
     if "unknown" not in intents:
         intents["unknown"] = {
@@ -176,6 +223,7 @@ def build_intent_lexicon(
 
     caller_samples = _pilot_caller_samples(pilot_features)
     purpose_stats, allowed_purposes = _pilot_log_purposes(pilot_features)
+    bp_ctx = blueprint_routing_context(blueprint)
     schema = load_event_schema()
     etypes = schema.get("event_types") or {}
     if isinstance(etypes, dict):
@@ -187,9 +235,10 @@ def build_intent_lexicon(
         {
             "skill": s.get("name"),
             "tools": s.get("tools") or [],
-            "trigger_hint": (s.get("trigger_hint") or "")[:200],
+            "description": s.get("description") or "",
+            "instructions_excerpt": s.get("instructions_excerpt") or "",
         }
-        for s in (blueprint.get("skills") or [])
+        for s in (bp_ctx.get("skills") or [])
     ]
 
     prompt = """Build an IntentLexicon JSON for a voice-bot study.
@@ -232,10 +281,13 @@ Allowed purposes (union of observed + standard):
 """ + json.dumps(sorted(allowed_purposes), ensure_ascii=False)[:1000] + """
 
 Blueprint routing reference (for skills/tools mapping only):
-""" + json.dumps(skill_routing, ensure_ascii=False)[:2500] + """
+""" + json.dumps(skill_routing, ensure_ascii=False)[:4000] + """
 
 Tool catalog:
-""" + json.dumps(blueprint.get("tool_catalog") or [], ensure_ascii=False)[:1500] + """
+""" + json.dumps(bp_ctx.get("tool_catalog") or [], ensure_ascii=False)[:1500] + """
+
+Full VA Blueprint (truncated — use for skill/tool names and instruction context only, NOT as intent labels):
+""" + blueprint_for_llm(blueprint, max_chars=80_000) + """
 
 Pilot routing stats (secondary):
 """ + str(pilot_stats.most_common(30)) + """
@@ -244,13 +296,70 @@ Event types sample:
 """ + json.dumps(etype_names, default=str) + """
 
 Return JSON with keys version and intents.
+intents MUST be an object/dict mapping intent_id → spec (NOT an array).
+Example shape: {{"intents": {{"pay_bill": {{"label": "...", ...}}, "unknown": {{...}}}}}}
 Each intent value must include: label, description, skills, tools, agent_names, nodes, event_type_hints, keywords, purposes, negative_keywords.
 purposes[] values must exactly match allowed log purpose strings listed above."""
 
-    lexicon = LLMClient().json_completion(prompt, model="gpt-4.1-mini", max_tokens=4000)
+    lexicon = LLMClient().json_completion(prompt, schema_name="intent_lexicon")
     lexicon = _normalize_lexicon(lexicon, allowed_purposes=allowed_purposes)
     store.write_json(cache, lexicon)
     return lexicon
+
+
+def _keyword_score(spec: dict[str, Any], user_turns: list[str]) -> float:
+    """Caller-language score with 1/t turn decay. Primary signal for opening_intent_class."""
+    turn1_pos = 0.0
+    turn1_neg = 0.0
+    later_pos = 0.0
+    later_neg = 0.0
+
+    for turn_idx, turn_text in enumerate(user_turns, start=1):
+        turn_w = _turn_weight(turn_idx)
+        pos = 0.0
+        neg = 0.0
+        for kw in spec.get("keywords") or []:
+            k = (kw or "").lower().strip()
+            if k and k in turn_text:
+                pos += KEYWORD_BASE_WEIGHT * turn_w
+        for nk in spec.get("negative_keywords") or []:
+            nk_l = (nk or "").lower().strip()
+            if nk_l and nk_l in turn_text:
+                neg += NEGATIVE_KEYWORD_BASE_WEIGHT * turn_w
+        if turn_idx == 1:
+            turn1_pos, turn1_neg = pos, neg
+        else:
+            later_pos += pos
+            later_neg += neg
+
+    if turn1_pos > 0:
+        later_pos = min(later_pos, turn1_pos * LATER_TURN_KEYWORD_CAP_RATIO)
+
+    return max(0.0, turn1_pos + later_pos - turn1_neg - later_neg)
+
+
+def _routing_score(spec: dict[str, Any], structured: dict[str, set[str]]) -> float:
+    """Bot routing hints — tie-breaker only; capped and ignored without keyword support."""
+    score = 0.0
+    for sk in spec.get("skills") or []:
+        if _norm(sk) in structured["skills"]:
+            score += ROUTING_SKILL_WEIGHT
+    for tool in spec.get("tools") or []:
+        if _norm(tool) in structured["tools"]:
+            score += ROUTING_TOOL_WEIGHT
+    for agent in spec.get("agent_names") or []:
+        if _norm(agent) in structured["agents"]:
+            score += ROUTING_AGENT_WEIGHT
+    for node in spec.get("nodes") or []:
+        if _norm(node) in structured["nodes"]:
+            score += ROUTING_NODE_WEIGHT
+    for purpose in spec.get("purposes") or []:
+        if _norm(purpose) in structured["purposes"]:
+            score += ROUTING_PURPOSE_WEIGHT
+    for et in spec.get("event_type_hints") or []:
+        if _norm(et) in structured["event_types"]:
+            score += ROUTING_EVENT_WEIGHT
+    return min(score, ROUTING_SCORE_CAP)
 
 
 def classify_opening_intent(
@@ -267,35 +376,12 @@ def classify_opening_intent(
     for intent_id, spec in intents.items():
         if intent_id == "unknown":
             continue
-        score = 0.0
-        for sk in spec.get("skills") or []:
-            if _norm(sk) in structured["skills"]:
-                score += ROUTING_SKILL_WEIGHT
-        for tool in spec.get("tools") or []:
-            if _norm(tool) in structured["tools"]:
-                score += ROUTING_TOOL_WEIGHT
-        for agent in spec.get("agent_names") or []:
-            if _norm(agent) in structured["agents"]:
-                score += 1.0
-        for node in spec.get("nodes") or []:
-            if _norm(node) in structured["nodes"]:
-                score += 1.0
-        for purpose in spec.get("purposes") or []:
-            if _norm(purpose) in structured["purposes"]:
-                score += 0.75
-        for et in spec.get("event_type_hints") or []:
-            if _norm(et) in structured["event_types"]:
-                score += 0.5
-        for turn_idx, turn_text in enumerate(user_turns, start=1):
-            turn_w = _turn_weight(turn_idx)
-            for kw in spec.get("keywords") or []:
-                k = (kw or "").lower().strip()
-                if k and k in turn_text:
-                    score += KEYWORD_BASE_WEIGHT * turn_w
-            for nk in spec.get("negative_keywords") or []:
-                nk_l = (nk or "").lower().strip()
-                if nk_l and nk_l in turn_text:
-                    score -= NEGATIVE_KEYWORD_BASE_WEIGHT * turn_w
+        kw_score = _keyword_score(spec, user_turns)
+        if kw_score <= 0:
+            # Routing-only match never wins — caller language required.
+            score = 0.0
+        else:
+            score = kw_score + _routing_score(spec, structured)
 
         if score > 0:
             pos_total += score

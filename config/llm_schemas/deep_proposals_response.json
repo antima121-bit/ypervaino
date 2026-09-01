@@ -1,0 +1,83 @@
+{
+  "_meta": {"name": "deep_proposals_response", "strict": false},
+  "type": "object",
+  "properties": {
+    "deep_proposals": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/deep_proposal"}
+    }
+  },
+  "required": ["deep_proposals"],
+  "additionalProperties": false,
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "properties": {
+        "finding_type": {
+          "type": "string",
+          "enum": ["hypothesis", "aspect", "narrative", "counter_example", "recommendation"]
+        },
+        "finding_id": {"type": "string"},
+        "severity": {"type": "string", "enum": ["high", "medium", "low"]},
+        "summary": {"type": "string"},
+        "session_ids": {"type": "array", "items": {"type": "string"}}
+      },
+      "required": ["finding_type", "severity", "summary"],
+      "additionalProperties": false
+    },
+    "repo_reference": {
+      "type": "object",
+      "properties": {
+        "repo_path": {"type": "string"},
+        "line_range": {
+          "type": "array",
+          "items": {"type": "integer"},
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "snippet": {"type": "string"},
+        "relevance": {"type": "string"}
+      },
+      "required": ["repo_path", "relevance"],
+      "additionalProperties": false
+    },
+    "deep_proposal": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string"},
+        "title": {"type": "string"},
+        "description": {"type": "string"},
+        "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
+        "category": {
+          "type": "string",
+          "enum": [
+            "backend_logic",
+            "new_feature",
+            "data_model",
+            "evaluation_pipeline",
+            "infra",
+            "other"
+          ]
+        },
+        "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}},
+        "recommendation": {"type": "string"},
+        "suggested_approach": {"type": "string"},
+        "out_of_scope_reason": {"type": "string"},
+        "repo_references": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/repo_reference"}
+        }
+      },
+      "required": [
+        "title",
+        "description",
+        "confidence",
+        "category",
+        "evidence",
+        "recommendation",
+        "out_of_scope_reason"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

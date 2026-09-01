@@ -1,0 +1,16 @@
+{
+  "_meta": {"name": "llm_extract_value", "strict": false},
+  "type": "object",
+  "properties": {
+    "value": {
+      "anyOf": [
+        {"type": "string"},
+        {"type": "number"},
+        {"type": "boolean"},
+        {"type": "null"}
+      ]
+    }
+  },
+  "required": ["value"],
+  "additionalProperties": false
+}

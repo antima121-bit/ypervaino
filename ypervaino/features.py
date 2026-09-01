@@ -209,16 +209,19 @@ def compute_features(conversation: dict[str, Any], *, include_embedding: bool = 
 
     searchable_parts = []
     user_utterance_parts = []
+    dialog_parts = []
     for e in events:
         if e.get("content"):
             content = str(e["content"])
             searchable_parts.append(content)
+            dialog_parts.append(content)
             if e.get("event_type") == "USER_QUERY":
                 user_utterance_parts.append(content)
         ev = e.get("event_value")
         if ev:
             searchable_parts.append(json.dumps(ev, default=str))
     searchable_text = "\n".join(searchable_parts).lower()
+    dialog_searchable_text = "\n".join(dialog_parts).lower()
     user_turns = [t.lower() for t in user_utterance_parts]
     user_searchable_text = "\n".join(user_turns)
 
@@ -272,6 +275,7 @@ def compute_features(conversation: dict[str, Any], *, include_embedding: bool = 
         "agent_path": "→".join(agent_names),
         "structured_hits": structured_hits,
         "searchable_text": searchable_text,
+        "dialog_searchable_text": dialog_searchable_text,
         "user_searchable_text": user_searchable_text,
         "user_turns": user_turns,
         "traffic_split_variant": traffic_split_variant,

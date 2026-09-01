@@ -1,0 +1,191 @@
+{
+  "_meta": {"name": "analysis_plan", "strict": false},
+  "type": "object",
+  "properties": {
+    "exploration_summary": {"type": "string"},
+    "quantitative": {
+      "type": "object",
+      "properties": {
+        "aspects": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/aspect"}
+        },
+        "suggested_plots": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/plot_spec"}
+        },
+        "suggested_tables": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/table_spec"}
+        }
+      },
+      "required": ["aspects", "suggested_plots", "suggested_tables"],
+      "additionalProperties": false
+    },
+    "qualitative": {
+      "type": "object",
+      "properties": {
+        "hypotheses": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/hypothesis"}
+        }
+      },
+      "required": ["hypotheses"],
+      "additionalProperties": false
+    },
+    "primitives_required": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "signals_required": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/semantic_signal"}
+    },
+    "user_approved": {"type": "boolean"}
+  },
+  "required": [
+    "exploration_summary",
+    "quantitative",
+    "qualitative",
+    "primitives_required",
+    "signals_required",
+    "user_approved"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "ref": {
+      "type": "object",
+      "properties": {
+        "kind": {"type": "string", "enum": ["primitive", "signal"]},
+        "name": {"type": "string"}
+      },
+      "required": ["kind", "name"],
+      "additionalProperties": false
+    },
+    "aspect_component": {
+      "type": "object",
+      "properties": {
+        "ref": {"$ref": "#/$defs/ref"},
+        "aggregation": {
+          "type": "string",
+          "enum": ["mean", "p50", "p95", "sum", "rate", "count"]
+        },
+        "weight": {"type": "number"}
+      },
+      "required": ["ref", "aggregation"],
+      "additionalProperties": false
+    },
+    "aspect": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string"},
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "components": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/aspect_component"}
+        }
+      },
+      "required": ["id", "name", "description", "components"],
+      "additionalProperties": false
+    },
+    "plot_spec": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string"},
+        "title": {"type": "string"},
+        "description": {"type": "string"},
+        "template": {"type": "string"},
+        "bindings": {"type": "object", "additionalProperties": true}
+      },
+      "required": ["id", "title", "description", "template", "bindings"],
+      "additionalProperties": false
+    },
+    "table_spec": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string"},
+        "title": {"type": "string"},
+        "description": {"type": "string"},
+        "template": {"type": "string"},
+        "bindings": {"type": "object", "additionalProperties": true}
+      },
+      "required": ["id", "title", "description", "template", "bindings"],
+      "additionalProperties": false
+    },
+    "rule_based_spec": {
+      "type": "object",
+      "properties": {
+        "description": {"type": "string"},
+        "labels": {"type": "array", "items": {"type": "string"}},
+        "keywords": {"type": "array", "items": {"type": "string"}},
+        "regex": {"type": "array", "items": {"type": "string"}},
+        "min_hits": {"type": "integer"},
+        "scope": {"type": "string", "enum": ["session", "turn", "opening_turns"]},
+        "negative_keywords": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "semantic_signal": {
+      "type": "object",
+      "properties": {
+        "name": {"type": "string"},
+        "method": {
+          "type": "string",
+          "enum": [
+            "rule_based",
+            "intent_classifier",
+            "embedding_nearest_neighbor",
+            "zero_shot_llm",
+            "llm_extract"
+          ]
+        },
+        "value_type": {
+          "type": "string",
+          "enum": ["string", "boolean", "integer", "float", "int", "bool"]
+        },
+        "spec": {"$ref": "#/$defs/rule_based_spec"}
+      },
+      "required": ["name", "method", "spec"],
+      "additionalProperties": false
+    },
+    "hypothesis": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string"},
+        "title": {"type": "string"},
+        "description": {"type": "string"},
+        "predicate": {"type": "string"},
+        "signals": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/ref"}
+        },
+        "proof": {
+          "type": "object",
+          "properties": {
+            "metric": {
+              "type": "string",
+              "enum": ["match_rate", "match_count", "cohort_delta"]
+            },
+            "min_support": {"type": "integer"},
+            "min_rate": {"type": ["number", "null"]},
+            "significance_test": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": ["chi_square", "fisher", "bootstrap_ci", "mann_whitney"]
+                },
+                {"type": "null"}
+              ]
+            },
+            "significance_level": {"type": "number"}
+          },
+          "required": ["metric", "min_support", "significance_level"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["id", "title", "description", "predicate"],
+      "additionalProperties": false
+    }
+  }
+}

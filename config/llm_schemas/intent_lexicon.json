@@ -1,0 +1,43 @@
+{
+  "_meta": {"name": "intent_lexicon", "strict": false},
+  "type": "object",
+  "properties": {
+    "version": {"type": "string"},
+    "intents": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/intent_signature"}
+    }
+  },
+  "required": ["version", "intents"],
+  "additionalProperties": false,
+  "$defs": {
+    "intent_signature": {
+      "type": "object",
+      "properties": {
+        "label": {"type": "string"},
+        "description": {"type": "string"},
+        "skills": {"type": "array", "items": {"type": "string"}},
+        "tools": {"type": "array", "items": {"type": "string"}},
+        "agent_names": {"type": "array", "items": {"type": "string"}},
+        "nodes": {"type": "array", "items": {"type": "string"}},
+        "event_type_hints": {"type": "array", "items": {"type": "string"}},
+        "keywords": {"type": "array", "items": {"type": "string"}},
+        "purposes": {"type": "array", "items": {"type": "string"}},
+        "negative_keywords": {"type": "array", "items": {"type": "string"}}
+      },
+      "required": [
+        "label",
+        "description",
+        "skills",
+        "tools",
+        "agent_names",
+        "nodes",
+        "event_type_hints",
+        "keywords",
+        "purposes",
+        "negative_keywords"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

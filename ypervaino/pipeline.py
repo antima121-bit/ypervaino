@@ -5,7 +5,7 @@ import random
 from typing import Any
 
 from ypervaino.artifacts import render_plots, render_tables
-from ypervaino.blueprint_store import init_baseline
+from ypervaino.blueprint_store import init_baseline, load_blueprint
 from ypervaino.change_context import resolve_change_context
 from ypervaino.config_loader import load_artifact_templates, load_filter_atoms
 from ypervaino.data_layer import (
@@ -13,7 +13,8 @@ from ypervaino.data_layer import (
     fetch_session_id_list,
     load_or_fetch_conversation,
     parse_dt,
-    summarize_blueprint,
+    blueprint_for_llm,
+    blueprint_routing_context,
 )
 from ypervaino.digest import build_digests_parallel, pick_full_transcripts_for_plan
 from ypervaino.embeddings import apply_opening_embeddings
@@ -21,9 +22,9 @@ from ypervaino.evaluation import run_evaluation
 from ypervaino.exploration import build_exploration_manifest
 from ypervaino.features import compute_features
 from ypervaino.intent import apply_intent_to_features, build_intent_lexicon
-from ypervaino.llm_client import LLMClient
+from ypervaino.llm_client import LLMClient, DEFAULT_LLM_CONFIG
 from ypervaino.parallel import run_parallel, worker_count
-from ypervaino.plan_validator import PlanValidationError, validate_plan
+from ypervaino.plan_validator import PlanValidationError, primitive_catalog_for_prompt, validate_plan
 from ypervaino.sampling import stratified_subsample
 from ypervaino.settings import MAX_TRACE_SESSIONS
 from ypervaino.study_store import StudyStore
@@ -96,12 +97,18 @@ def phase0_cohort(store: StudyStore, req: dict[str, Any], timer: StudyTimer) -> 
             conv = load_or_fetch_conversation(store, sid)
             fv = compute_features(conv, include_embedding=False)
             if not _apply_traffic_split(fv, traffic_split):
+                timer.log.info(
+                    "Phase 0: session %s dropped — traffic_split mismatch (variant=%s)",
+                    sid, fv.get("traffic_split_variant"),
+                )
                 return None
             store.write_json(store.features_dir / f"{sid}.json", fv)
             if compiled and not passes_filters(fv, compiled):
+                timer.log.info("Phase 0: session %s dropped — cohort filter", sid)
                 return None
             return sid, fv
         except Exception:
+            timer.log.exception("Phase 0: session %s failed during feature compute", sid)
             return None
 
     for label, ids in cohorts_raw.items():
@@ -139,12 +146,11 @@ def phase0_cohort(store: StudyStore, req: dict[str, Any], timer: StudyTimer) -> 
 
     with timer.track("0", "BlueprintFetcher"):
         bp_raw = fetch_blueprint(tenant, assistant_origin_id, channel)
-        bp_summary = summarize_blueprint(bp_raw)
-        store.write_json(store.intermediate_dir / "blueprint_summary.json", bp_summary)
         init_baseline(store, bp_raw)
+        bp_ctx = blueprint_routing_context(bp_raw)
         timer.log.info(
             "Phase 0: blueprint orchestration=%s skills=%d baseline=v0001",
-            bp_summary.get("orchestration_type"), len(bp_summary.get("skills") or []),
+            bp_ctx.get("orchestration_type"), len(bp_ctx.get("skills") or []),
         )
 
     change_ctx = None
@@ -154,14 +160,14 @@ def phase0_cohort(store: StudyStore, req: dict[str, Any], timer: StudyTimer) -> 
             change_ctx = resolve_change_context(
                 req.get("change_description") or "",
                 req.get("pr_link"),
-                bp_summary,
+                bp_raw,
             )
             store.write_json(store.intermediate_dir / "change_context.json", change_ctx)
 
     all_ids = [sid for ids in filtered.values() for sid in ids]
     pilot = random.sample(all_ids, min(200, len(all_ids))) if all_ids else []
     with timer.track("0", "IntentLexiconBuilder"):
-        lexicon = build_intent_lexicon(store, bp_summary, [features[s] for s in pilot if s in features])
+        lexicon = build_intent_lexicon(store, bp_raw, [features[s] for s in pilot if s in features])
         apply_intent_to_features(store, all_ids, lexicon)
         for sid in all_ids:
             if sid in features:
@@ -180,7 +186,7 @@ def phase0_cohort(store: StudyStore, req: dict[str, Any], timer: StudyTimer) -> 
         "Phase 0 complete — filtered_counts=%s explore_pool=%d",
         stats["filtered_counts"], len(all_ids),
     )
-    return {"stats": stats, "features": features, "blueprint": bp_summary, "change_context": change_ctx}
+    return {"stats": stats, "features": features, "blueprint": bp_raw, "change_context": change_ctx}
 
 
 def phase1_sample(store: StudyStore, stats: dict, req: dict, features: dict[str, dict], timer: StudyTimer) -> dict[str, Any]:
@@ -213,11 +219,14 @@ def phase2b_plan(store: StudyStore, req: dict, manifest: dict, stats: dict, time
         if p.exists():
             digests.append(store.read_json(p))
     full_transcripts = pick_full_transcripts_for_plan(store, manifest["session_ids"])
-    bp = store.read_json(store.intermediate_dir / "blueprint_summary.json")
+    bp = load_blueprint(store)
+    bp_ctx = blueprint_routing_context(bp)
     change = store.read_json(store.intermediate_dir / "change_context.json") if (store.intermediate_dir / "change_context.json").exists() else {}
     templates = load_artifact_templates()
     allowed_plots = list((templates.get("plots") or {}).keys())
     allowed_tables = list((templates.get("tables") or {}).keys())
+    primitive_catalog = primitive_catalog_for_prompt()
+    primitive_names = [p["name"] for p in primitive_catalog]
 
     samples_text = []
     for d in digests[:12]:
@@ -235,7 +244,10 @@ def phase2b_plan(store: StudyStore, req: dict, manifest: dict, stats: dict, time
 Change context: {json.dumps(change, default=str)[:3000]}
 Study type: {req.get('study_type')}
 Cohort sizes: {json.dumps(stats.get('filtered_counts', {}))}
-Blueprint: {bp.get('orchestration_type')} skills={[s.get('name') for s in (bp.get('skills') or [])[:12]]}
+Blueprint orchestration: {bp_ctx.get('orchestration_type')} skills={[s.get('name') for s in (bp_ctx.get('skills') or [])[:12]]}
+
+Full VA Blueprint (truncated):
+{blueprint_for_llm(bp, max_chars=80_000)}
 
 Samples:
 {chr(10).join(samples_text[:60])}
@@ -243,25 +255,55 @@ Samples:
 Allowed plot templates: {allowed_plots}
 Allowed table templates: {allowed_tables}
 
+Allowed primitives (primitives_required MUST be chosen ONLY from this catalog — config/primitives.yaml):
+{json.dumps(primitive_catalog, default=str)[:12000]}
+
+PRIMITIVES vs SIGNALS
+- primitives_required[]: subset of Allowed primitives above. These are precomputed on every session (FeatureVector).
+- signals_required[]: ONLY for NEW semantic labels NOT in the primitive catalog (e.g. transcript keyword themes, custom classifiers).
+- DO NOT list catalog primitives (turn_count, interruption_count, transfer_completed, etc.) in signals_required.
+- DO NOT invent primitive names (e.g. transfer_count, llm_error_count, payment_success) — they are NOT in the catalog.
+- For transfer / escalation use primitive transfer_completed (boolean) or session_outcome == "transferred", NOT transfer_count.
+
+RULE_BASED SIGNALS (only when truly needed)
+- method must be rule_based with a non-empty spec: keywords[] and/or regex[].
+- value_type: boolean for yes/no signals; predicates compare with == 1 or == 0.
+- SEARCH TEXT (critical): Phase 3 searches RAW utterance strings only — what the caller or bot actually said.
+  - scope opening_turns → first user utterance only (e.g. "i wanna make a payment.")
+  - scope session → full dialogue utterances concatenated (user + bot turns), NO speaker labels, NO event logs.
+- DO NOT prefix regex/keywords with User:, Customer:, Bot:, Assistant:, or transcript turn labels — they will NEVER match.
+- BAD regex: "(?im)^\\\\s*User:\\\\s*.*\\\\bpayment\\\\b"  — WRONG (no "User:" in search text)
+- GOOD regex: "\\\\b(?:make|process)\\\\s+(?:a\\\\s+)?payment\\\\b"  — matches raw caller text
+- GOOD keywords: ["make a payment", "hacer el pago", "representative", "transfer me"]
+- Example: {{"name": "asked_for_agent", "method": "rule_based", "value_type": "boolean", "spec": {{"keywords": ["representative", "agent", "transfer me"], "regex": ["\\\\btransfer\\\\b"], "min_hits": 1, "scope": "session"}}}}
+
+HYPOTHESES
+- predicate: per-session string only, e.g. "interruption_count >= 2 and transfer_completed == 1"
+- boolean signals: compare with == 1 (true) or == 0 (false), e.g. "asked_for_agent == 1 and transfer_completed == 0"
+- predicate variable names MUST appear in primitives_required[] or signals_required[] (no other names)
+- NO mean()/rate()/SQL/cohort aggregates in predicates
+
 Required keys:
 - exploration_summary
 - quantitative.aspects[] with id,name,description,components[{{ref:{{kind, name}}, aggregation}}]
+  - aspect components: ref.kind=primitive and ref.name MUST be from Allowed primitives catalog
 - quantitative.suggested_plots[] with template, aspect_id/title
 - quantitative.suggested_tables[] with template
-- qualitative.hypotheses[] with id,title,description,predicate (per-session only: e.g. "interruption_count >= 2 and transfer_count > 0" — NO mean()/rate()/when SQL)
-- signals_required[] with method in rule_based|intent_classifier|embedding_nearest_neighbor (avoid zero_shot on full cohort)
-- primitives_required[]
+- qualitative.hypotheses[] with id,title,description,predicate
+- signals_required[] (optional; omit if everything comes from primitives)
+- primitives_required[] (non-empty; names from Allowed primitives only)
 - user_approved:false
-Use primitives: turn_count, main_stream_latency_p95, main_stream_estimated_cost_usd, tool_error_count, guardrail_triggered, opening_intent_class, session_outcome"""
+
+Suggested primitives for voice billing studies: turn_count, interruption_count, transfer_completed, session_outcome, opening_intent_class, tool_error_count, main_stream_latency_p95, main_stream_estimated_cost_usd, guardrail_triggered"""
 
     llm = LLMClient()
     plan = None
     last_errors: list[str] = []
-    with timer.track("2b", "PlanSynthesizer", llm={"model": "gpt-4.1"}):
+    with timer.track("2b", "PlanSynthesizer", llm=DEFAULT_LLM_CONFIG):
         for attempt in range(2):
             prompt = base_prompt if attempt == 0 else base_prompt + f"\n\nFix these validation errors:\n{last_errors}"
             timer.log.info("Phase 2b: PlanSynthesizer attempt %d/2", attempt + 1)
-            plan = llm.json_completion(prompt, model="gpt-4.1", max_tokens=6000)
+            plan = llm.json_completion(prompt, schema_name="analysis_plan")
             last_errors = validate_plan(plan)
             if not last_errors:
                 break
@@ -290,12 +332,11 @@ def phase3_evaluate(store: StudyStore, req: dict, stats: dict, plan: dict, timer
         store.write_json(store.output_dir / "per_conversation" / f"{sid}.json", row)
 
     narrative = ""
-    with timer.track("3", "NarrativeSummarizer", llm={"model": "gpt-4.1-mini"}):
+    with timer.track("3", "NarrativeSummarizer", llm=DEFAULT_LLM_CONFIG):
         try:
             narrative = LLMClient().json_completion(
                 f"Summarize evaluation results as JSON {{summary, recommendations[]}}:\n{json.dumps({'aspects': eval_out['aspects'], 'hypotheses': eval_out['hypotheses']}, default=str)[:12000]}",
-                model="gpt-4.1-mini",
-                max_tokens=800,
+                schema_name="narrative_summary",
             )
         except Exception:
             narrative = {"summary": "Evaluation complete.", "recommendations": []}

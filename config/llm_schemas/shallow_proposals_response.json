@@ -1,0 +1,102 @@
+{
+  "_meta": {"name": "shallow_proposals_response", "strict": false},
+  "type": "object",
+  "properties": {
+    "shallow_proposals": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/shallow_proposal"}
+    }
+  },
+  "required": ["shallow_proposals"],
+  "additionalProperties": false,
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "properties": {
+        "finding_type": {
+          "type": "string",
+          "enum": ["hypothesis", "aspect", "narrative", "counter_example", "recommendation"]
+        },
+        "finding_id": {"type": "string"},
+        "severity": {"type": "string", "enum": ["high", "medium", "low"]},
+        "summary": {"type": "string"},
+        "session_ids": {"type": "array", "items": {"type": "string"}},
+        "metrics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {"type": "string"},
+              "value": {"type": "string"},
+              "baseline": {"type": "string"}
+            },
+            "required": ["label", "value"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["finding_type", "severity", "summary"],
+      "additionalProperties": false
+    },
+    "blueprint_target": {
+      "type": "object",
+      "properties": {
+        "domain": {"type": "string"},
+        "skill_name": {"type": "string"},
+        "tool_name": {"type": "string"},
+        "field_path": {"type": "string"},
+        "display_label": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "patch_op": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "type": "string",
+          "enum": [
+            "replace_text",
+            "insert_after",
+            "insert_before",
+            "delete_text",
+            "replace_field",
+            "append",
+            "prepend"
+          ]
+        },
+        "find": {"type": "string"},
+        "replace": {"type": "string"},
+        "anchor": {"type": "string"},
+        "text": {"type": "string"},
+        "value": {"type": "string"},
+        "field": {"type": "string"}
+      },
+      "required": ["op"],
+      "additionalProperties": false
+    },
+    "shallow_proposal": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string"},
+        "title": {"type": "string"},
+        "description": {"type": "string"},
+        "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
+        "expected_impact": {"type": "string"},
+        "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}},
+        "target": {"$ref": "#/$defs/blueprint_target"},
+        "target_key": {"type": "string"},
+        "patch": {
+          "type": "object",
+          "properties": {
+            "ops": {"type": "array", "items": {"$ref": "#/$defs/patch_op"}},
+            "preview": {"type": "string"}
+          },
+          "required": ["ops"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["title", "description", "confidence", "expected_impact", "evidence", "target", "target_key", "patch"],
+      "additionalProperties": false
+    }
+  }
+}

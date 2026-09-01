@@ -208,22 +208,45 @@ def load_or_fetch_conversation(store, session_uuid: str) -> dict[str, Any]:
 
 
 def summarize_blueprint(bp: dict[str, Any]) -> dict[str, Any]:
-    info = bp.get("assistant_info") or {}
-    skills_raw = info.get("skill_list") or []
-    skills = []
-    tools = set()
-    for sk in skills_raw:
+    """Compact blueprint view (legacy). Prefer full blueprint for LLM inputs."""
+    ctx = blueprint_routing_context(bp)
+    return {
+        "orchestration_type": ctx["orchestration_type"],
+        "skills": [
+            {"name": s["name"], "tools": s["tools"], "trigger_hint": s.get("description") or ""}
+            for s in ctx["skills"][:50]
+        ],
+        "dialog_flow_nodes": [],
+        "transfer_rules_summary": "",
+        "tool_catalog": ctx["tool_catalog"][:100],
+    }
+
+
+def blueprint_routing_context(blueprint: dict[str, Any]) -> dict[str, Any]:
+    """Structured skill/tool index from a full VA Blueprint response."""
+    info = blueprint.get("assistant_info") or {}
+    skills_out: list[dict[str, Any]] = []
+    tools: set[str] = set()
+    for sk in info.get("skill_list") or []:
         name = sk.get("name") or sk.get("id") or "unknown"
         skill_tools = [t.get("name") for t in (sk.get("tools") or []) if t.get("name")]
         tools.update(skill_tools)
-        skills.append({"name": name, "tools": skill_tools, "trigger_hint": (sk.get("description") or "")[:200]})
+        skills_out.append({
+            "name": name,
+            "tools": skill_tools,
+            "description": (sk.get("description") or "")[:300],
+            "instructions_excerpt": (sk.get("instructions") or "")[:2000],
+        })
     return {
         "orchestration_type": info.get("orchestration_type") or "unknown",
-        "skills": skills[:50],
-        "dialog_flow_nodes": [],
-        "transfer_rules_summary": "",
-        "tool_catalog": sorted(tools)[:100],
+        "skills": skills_out,
+        "tool_catalog": sorted(tools),
     }
+
+
+def blueprint_for_llm(blueprint: dict[str, Any], *, max_chars: int = 120_000) -> str:
+    """Serialize full blueprint for LLM context (truncated)."""
+    return json.dumps(blueprint, default=str, ensure_ascii=False)[:max_chars]
 
 
 def get_reconnects(mongo_uri: str, db_name: str, voice_id: str) -> int:
