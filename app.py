@@ -310,6 +310,16 @@ def execute_study(slug: str):
     return {"slug": slug, "status": "running", "poll_url": f"{API}/studies/{slug}/status"}
 
 
+@app.get(f"{API}/studies/{{slug}}/plots/{{filename}}")
+def get_plot(slug: str, filename: str):
+    store = _study_or_404(slug)
+    safe_name = Path(filename).name  # no path traversal via ../
+    path = store.output_dir / "plots" / safe_name
+    if not path.exists():
+        raise HTTPException(404, detail={"error": {"code": "NOT_FOUND", "message": "Plot not found"}})
+    return FileResponse(path, media_type="image/png")
+
+
 @app.get(f"{API}/studies/{{slug}}/results")
 def results(slug: str):
     store = _study_or_404(slug)

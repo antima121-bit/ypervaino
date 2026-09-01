@@ -8,80 +8,54 @@
   :root{
     --paper:#0c1116;--surface:#131a21;--surface-2:#1a2229;--surface-3:#232c34;
     --ink:#e7edf1;--ink-2:#93a3b1;--ink-3:#657585;--line:#232d36;--line-strong:#303c46;
-    --signal:#3fe0d6;--signal-strong:#6beae1;--signal-soft:rgba(63,224,214,.12);
+    --signal:#a855f7;--signal-strong:#c084fc;--signal-soft:rgba(168,85,247,.14);
     --success:#58c793;--success-soft:rgba(88,199,147,.14);--critical:#e2685f;
     --accent-2:#e3a94a;--accent-2-soft:rgba(227,169,74,.16);
   }
   *{box-sizing:border-box;} html,body{margin:0;}
-  body{background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,sans-serif;font-size:13.5px;}
+  body{background:radial-gradient(1000px 650px at 12% 115%, rgba(168,85,247,.32), transparent 60%),radial-gradient(800px 550px at 88% 105%, rgba(91,33,182,.28), transparent 60%),var(--paper);background-attachment:fixed;background-repeat:no-repeat;color:var(--ink);font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,sans-serif;font-size:15px;}
   .main{max-width:820px;margin:0 auto;padding:28px 32px 60px;}
-  .eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);display:block;}
-  .live-pill{display:inline-flex;align-items:center;gap:6px;background:var(--success-soft);color:var(--success);border-radius:999px;padding:4px 10px 4px 8px;font-size:11px;font-weight:600;margin-bottom:14px;}
-  .live-dot{width:6px;height:6px;border-radius:50%;background:var(--success);animation:pulse 1.4s ease-in-out infinite;}
+  .eyebrow{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:22px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;background:linear-gradient(90deg, var(--signal-strong), var(--signal));-webkit-background-clip:text;background-clip:text;color:transparent;display:inline-block;margin-bottom:6px;}
+  .live-pill{display:flex;width:fit-content;align-items:center;gap:6px;background:var(--signal-soft);color:var(--signal-strong);border-radius:999px;padding:4px 10px 4px 8px;font-size:12.5px;font-weight:600;margin-bottom:14px;}
+  .live-dot{width:6px;height:6px;border-radius:50%;background:var(--signal);animation:pulse 1.4s ease-in-out infinite;}
   @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
-  .desc{color:var(--ink-2);font-size:13px;margin:6px 0 22px;line-height:1.5;}
+  .desc{color:var(--ink-2);font-size:14.5px;margin:6px 0 22px;line-height:1.5;}
   .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-bottom:16px;}
-  .card-head{padding:13px 18px;border-bottom:1px solid var(--line);font-size:13.5px;font-weight:600;}
+  .card-head{padding:13px 18px;border-bottom:1px solid var(--line);font-size:15px;font-weight:600;}
   .card-pad{padding:16px 18px;}
-  .textarea,.input,.select{width:100%;background:var(--surface-2);border:1px solid var(--line-strong);color:var(--ink);border-radius:6px;padding:9px 11px;font-size:13px;font-family:inherit;}
+  .textarea,.input,.select{width:100%;background:var(--surface-2);border:1px solid var(--line-strong);color:var(--ink);border-radius:6px;padding:9px 11px;font-size:14.5px;font-family:inherit;}
   .textarea{min-height:70px;resize:vertical;}
-  .field-label{font-size:11px;color:var(--ink-2);display:block;margin-bottom:6px;}
+  .field-label{font-size:12.5px;color:var(--ink-2);display:block;margin-bottom:6px;}
   .field-label .req{color:var(--critical);}
-  .btn{background:var(--signal);color:#06201f;border:none;border-radius:7px;padding:11px 20px;font-size:13.5px;font-weight:600;font-family:inherit;cursor:pointer;}
+  .btn{background:var(--signal);color:#ffffff;border:none;border-radius:7px;padding:11px 20px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;}
   .btn:disabled{opacity:.5;cursor:default;}
   .topnav{display:flex;gap:4px;padding:14px 32px;border-bottom:1px solid var(--line);background:var(--surface);}
-  .topnav-link{color:var(--ink-2);text-decoration:none;font-size:12.5px;padding:6px 12px;border-radius:6px;}
+  .topnav-link{color:var(--ink-2);text-decoration:none;font-size:14px;padding:6px 12px;border-radius:6px;}
   .topnav-link:hover{background:var(--surface-2);color:var(--ink);}
   .topnav-link.active{background:var(--signal-soft);color:var(--signal-strong);font-weight:600;}
   .segmented{display:inline-flex;background:var(--surface-2);border:1px solid var(--line-strong);border-radius:9px;padding:3px;gap:2px;}
-  .segmented-btn{padding:8px 16px;border-radius:6px;font-size:12.5px;color:var(--ink-2);background:none;font-family:inherit;border:none;cursor:pointer;}
-  .segmented-btn.active{background:var(--signal);color:#06201f;font-weight:600;}
+  .segmented-btn{padding:8px 16px;border-radius:6px;font-size:14px;color:var(--ink-2);background:none;font-family:inherit;border:none;cursor:pointer;}
+  .segmented-btn.active{background:var(--signal);color:#ffffff;font-weight:600;}
   .row{display:flex;gap:14px;flex-wrap:wrap;}
   .field{flex:1;min-width:180px;}
-  .hint{font-size:11px;color:var(--ink-3);margin-top:4px;}
-  .error-box{background:var(--critical);color:#2a0b08;border-radius:8px;padding:12px 14px;font-size:12.5px;margin-bottom:14px;}
-  .run-log{display:none;margin-top:14px;background:#0d1117;color:#c9d1d9;border-radius:8px;padding:10px 12px;font-family:ui-monospace,monospace;font-size:11px;line-height:1.45;max-height:180px;overflow-y:auto;white-space:pre-wrap;}
+  .hint{font-size:12.5px;color:var(--ink-3);margin-top:4px;}
+  .error-box{background:var(--critical);color:#2a0b08;border-radius:8px;padding:12px 14px;font-size:14px;margin-bottom:14px;}
+  .run-log{display:none;margin-top:14px;background:#0d1117;color:#c9d1d9;border-radius:8px;padding:10px 12px;font-family:ui-monospace,monospace;font-size:12.5px;line-height:1.45;max-height:180px;overflow-y:auto;white-space:pre-wrap;}
 
   /* date range picker */
-  .daterange-wrap{position:relative;}
-  .daterange-btn{width:100%;text-align:left;background:var(--surface-2);border:1px solid var(--line-strong);color:var(--ink);border-radius:6px;padding:9px 11px;font-size:13px;font-family:inherit;cursor:pointer;}
-  .daterange-btn.placeholder{color:var(--ink-3);}
-  .cal-popover{display:none;position:absolute;top:calc(100% + 6px);left:0;z-index:20;background:var(--surface-2);border:1px solid var(--line-strong);border-radius:10px;padding:12px;box-shadow:0 12px 30px rgba(0,0,0,.4);width:270px;}
-  .cal-popover.open{display:block;}
-  .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
-  .cal-nav button{background:var(--surface-3);border:1px solid var(--line-strong);color:var(--ink);border-radius:6px;width:24px;height:24px;cursor:pointer;font-size:12px;}
-  .cal-nav-label{font-size:12.5px;font-weight:600;}
-  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
-  .cal-weekday{text-align:center;font-size:10px;color:var(--ink-3);text-transform:uppercase;padding:2px 0;}
-  .cal-day{text-align:center;font-size:12px;padding:6px 0;border-radius:6px;cursor:pointer;color:var(--ink);background:none;border:none;font-family:inherit;}
-  .cal-day:hover{background:var(--surface-3);}
-  .cal-day.outside{color:var(--ink-3);opacity:.4;}
-  .cal-day.before-in{background:var(--signal-soft);border-radius:0;}
-  .cal-day.before-edge{background:var(--signal);color:#06201f;font-weight:700;}
-  .cal-day.after-in{background:var(--accent-2-soft);border-radius:0;}
-  .cal-day.after-edge{background:var(--accent-2);color:#2a1600;font-weight:700;}
-  .cal-footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:11px;color:var(--ink-3);gap:8px;}
-  .cal-footer button{background:var(--signal);color:#06201f;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;}
-  .cal-footer .cal-reset{background:none;color:var(--ink-3);text-decoration:underline;padding:0;font-weight:400;}
-  .cal-step{font-size:11px;color:var(--ink-2);margin-bottom:8px;padding:5px 8px;background:var(--surface-3);border-radius:6px;}
-  .cal-step .b{color:var(--signal-strong);font-weight:600;}
-  .cal-step .a{color:var(--accent-2);font-weight:600;}
-  .cal-legend{display:flex;gap:14px;margin-top:8px;font-size:10.5px;color:var(--ink-2);}
-  .cal-legend span{display:inline-flex;align-items:center;gap:5px;}
-  .cal-legend i{width:8px;height:8px;border-radius:2px;display:inline-block;}
-  .cal-summary{margin-top:10px;display:flex;flex-direction:column;gap:6px;}
-  .cal-summary-row{display:flex;align-items:center;gap:10px;font-size:13px;padding:8px 12px;border-radius:6px;background:var(--surface-2);border:1px solid var(--line-strong);}
-  .cal-summary-row .tag{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 8px;border-radius:999px;flex-shrink:0;}
-  .cal-summary-row.before .tag{background:var(--signal-soft);color:var(--signal-strong);}
-  .cal-summary-row.after .tag{background:var(--accent-2-soft);color:var(--accent-2);}
-  .cal-summary-row .val{color:var(--ink);font-family:"IBM Plex Mono",monospace;}
+  .date-group{border:1px solid var(--line-strong);border-radius:8px;padding:12px;margin-bottom:10px;}
+  .date-group.before{border-left:3px solid var(--signal);}
+  .date-group.after{border-left:3px solid var(--accent-2);}
+  .date-group-tag{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;}
+  .date-group.before .date-group-tag{color:var(--signal-strong);}
+  .date-group.after .date-group-tag{color:var(--accent-2);}
   .chip-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
-  .chip{background:var(--surface-2);border:1px solid var(--line-strong);color:var(--ink-2);border-radius:999px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit;}
+  .chip{background:var(--surface-2);border:1px solid var(--line-strong);color:var(--ink-2);border-radius:999px;padding:6px 12px;font-size:13.5px;cursor:pointer;font-family:inherit;}
   .chip.active{background:var(--signal-soft);border-color:var(--signal);color:var(--signal-strong);font-weight:600;}
   .filter-row{display:flex;gap:10px;align-items:center;margin-top:10px;padding:10px 12px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;}
-  .filter-row label{font-size:12px;color:var(--ink-2);min-width:160px;}
+  .filter-row label{font-size:13.5px;color:var(--ink-2);min-width:160px;}
   .filter-row .input{flex:1;min-width:120px;}
-  .filter-row button{background:none;border:none;color:var(--critical);cursor:pointer;font-size:16px;}
+  .filter-row button{background:none;border:none;color:var(--critical);cursor:pointer;font-size:18px;}
 </style>
 </head>
 <body>
@@ -94,7 +68,7 @@
 <div class="main">
   <span class="eyebrow">Ypervaíno</span>
   <div class="live-pill"><span class="live-dot"></span>Live — real production data (bot_prod)</div>
-  <h1 style="font-size:22px;margin:0 0 4px;">New Study</h1>
+  <h1 style="font-size:25px;margin:0 0 4px;">New Study</h1>
   <p class="desc">Scope a real cohort from production, then Gemini reads a sample and proposes what to measure.</p>
 
   <div id="err"></div>
@@ -114,7 +88,7 @@
   </div>
 
   <div class="card">
-    <div class="card-head">What changed? <span style="font-weight:400;color:var(--ink-3);font-size:11.5px;">(optional — ignored in Pure Discovery)</span></div>
+    <div class="card-head">What changed? <span style="font-weight:400;color:var(--ink-3);font-size:13px;">(optional — ignored in Pure Discovery)</span></div>
     <div class="card-pad" style="display:flex;flex-direction:column;gap:12px;">
       <textarea class="textarea" id="description" placeholder="e.g. Moved traffic to a new model, or leave blank"></textarea>
       <div>
@@ -139,23 +113,44 @@
         </div>
         <div class="field">
           <label class="field-label">Channel</label>
-          <div class="segmented" id="channel-toggle">
-            <button class="segmented-btn active" data-channel="voice" style="padding:8px 20px;">Voice</button>
-            <button class="segmented-btn" data-channel="chat" style="padding:8px 20px;">Chat</button>
+          <div class="segmented">
+            <button class="segmented-btn active" style="padding:8px 20px;" disabled>Voice</button>
           </div>
         </div>
       </div>
 
       <div>
         <label class="field-label">Date range(s) <span class="req">*</span></label>
-        <div id="cal-widget"></div>
-        <div id="cal-summary" class="cal-summary"></div>
+
+        <div id="date-discovery" style="display:none;">
+          <div class="row">
+            <div class="field"><label class="field-label">Start</label><input class="input" type="date" id="date_start"></div>
+            <div class="field"><label class="field-label">End</label><input class="input" type="date" id="date_end"></div>
+          </div>
+        </div>
+
+        <div id="date-comparative">
+          <div class="date-group before">
+            <div class="date-group-tag">Before</div>
+            <div class="row">
+              <div class="field"><label class="field-label">Start</label><input class="input" type="date" id="date_before_start"></div>
+              <div class="field"><label class="field-label">End</label><input class="input" type="date" id="date_before_end"></div>
+            </div>
+          </div>
+          <div class="date-group after">
+            <div class="date-group-tag">After</div>
+            <div class="row">
+              <div class="field"><label class="field-label">Start</label><input class="input" type="date" id="date_after_start"></div>
+              <div class="field"><label class="field-label">End</label><input class="input" type="date" id="date_after_end"></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
   <div class="card">
-    <div class="card-head">Advanced <span style="font-weight:400;color:var(--ink-3);font-size:11.5px;">(all optional)</span></div>
+    <div class="card-head">Advanced <span style="font-weight:400;color:var(--ink-3);font-size:13px;">(all optional)</span></div>
     <div class="card-pad">
       <div class="row">
         <div class="field">
@@ -188,202 +183,36 @@
   <div id="run-log" class="run-log"></div>
 </div>
 <script>
-// ---- one calendar, mode-aware: 1 range for Pure Discovery, 2 (before+after) for Comparative ----
-function createDateRangePicker(containerId, getMode){
-  const container = document.getElementById(containerId);
-  const state = {
-    viewMonth: new Date(),
-    before: { start: null, end: null },
-    after: { start: null, end: null },
-    single: { start: null, end: null },
-    step: 'before-start', // before-start | before-end | after-start | after-end | start | end
-  };
+// ---- date range: plain date inputs, 2 boxes for discovery, 4 for comparative ----
+function toIso(dateStr, endOfDay){
+  return `${dateStr}T${endOfDay ? '23:59:59' : '00:00:00'}`;
+}
 
-  const wrap = document.createElement('div');
-  wrap.className = 'daterange-wrap';
-  wrap.innerHTML = `
-    <button type="button" class="daterange-btn placeholder">Select date range(s)</button>
-    <div class="cal-popover" style="width:300px;">
-      <div class="cal-step"></div>
-      <div class="cal-nav">
-        <button type="button" class="cal-prev">‹</button>
-        <span class="cal-nav-label"></span>
-        <button type="button" class="cal-next">›</button>
-      </div>
-      <div class="cal-grid cal-weekdays">
-        ${['S','M','T','W','T','F','S'].map(d => `<div class="cal-weekday">${d}</div>`).join('')}
-      </div>
-      <div class="cal-grid cal-days"></div>
-      <div class="cal-legend" id="cal-legend"></div>
-      <div class="cal-footer"><button type="button" class="cal-reset">Reset</button><button type="button" class="cal-done">Done</button></div>
-    </div>
-  `;
-  container.appendChild(wrap);
-
-  const btn = wrap.querySelector('.daterange-btn');
-  const popover = wrap.querySelector('.cal-popover');
-  const label = wrap.querySelector('.cal-nav-label');
-  const daysGrid = wrap.querySelector('.cal-days');
-  const stepLabel = wrap.querySelector('.cal-step');
-  const legend = wrap.querySelector('#cal-legend');
-
-  function fmt(d){ return d.toLocaleDateString(undefined, {month:'short', day:'numeric'}); }
-  function fmtFull(d){ return d.toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'}); }
-  function ymd(d){ return d.toISOString().slice(0,10); }
-  const summaryEl = document.getElementById('cal-summary');
-  function firstStepForMode(){ return getMode() === 'discovery' ? 'start' : 'before-start'; }
-
-  function resetForModeIfNeeded(){
-    const mode = getMode();
-    const isComparativeStep = ['before-start','before-end','after-start','after-end'].includes(state.step);
-    if (mode === 'discovery' && isComparativeStep) state.step = 'start';
-    if (mode !== 'discovery' && !isComparativeStep) state.step = 'before-start';
+function getDateRangeResult(mode){
+  if (mode === 'discovery') {
+    const start = document.getElementById('date_start').value;
+    const end = document.getElementById('date_end').value;
+    if (!start || !end) return null;
+    return { start: toIso(start, false), end: toIso(end, true) };
   }
-
-  function updateStepLabel(){
-    const labels = {
-      'before-start': '<span class="b">Before window</span> — pick start day',
-      'before-end': '<span class="b">Before window</span> — pick end day',
-      'after-start': '<span class="a">After window</span> — pick start day',
-      'after-end': '<span class="a">After window</span> — pick end day',
-      'start': 'Pick start day',
-      'end': 'Pick end day',
-    };
-    stepLabel.innerHTML = labels[state.step] || '';
-  }
-
-  function render(){
-    resetForModeIfNeeded();
-    updateStepLabel();
-    const mode = getMode();
-    const y = state.viewMonth.getFullYear(), m = state.viewMonth.getMonth();
-    label.textContent = state.viewMonth.toLocaleDateString(undefined, {month:'long', year:'numeric'});
-    const firstDay = new Date(y, m, 1);
-    const startOffset = firstDay.getDay();
-    const daysInMonth = new Date(y, m+1, 0).getDate();
-    let html = '';
-    for (let i=0;i<startOffset;i++) html += `<button type="button" class="cal-day outside" disabled></button>`;
-    for (let d=1; d<=daysInMonth; d++){
-      const date = new Date(y, m, d);
-      const cls = ['cal-day'];
-      const b = mode === 'discovery' ? state.single : state.before;
-      const a = state.after;
-      if (b.start && ymd(date) === ymd(b.start)) cls.push('before-edge');
-      if (b.end && ymd(date) === ymd(b.end)) cls.push('before-edge');
-      if (b.start && b.end && date > b.start && date < b.end) cls.push('before-in');
-      if (mode !== 'discovery') {
-        if (a.start && ymd(date) === ymd(a.start)) cls.push('after-edge');
-        if (a.end && ymd(date) === ymd(a.end)) cls.push('after-edge');
-        if (a.start && a.end && date > a.start && date < a.end) cls.push('after-in');
-      }
-      html += `<button type="button" class="${cls.join(' ')}" data-date="${date.toISOString()}">${d}</button>`;
-    }
-    daysGrid.innerHTML = html;
-    daysGrid.querySelectorAll('.cal-day:not(.outside)').forEach(el => {
-      el.addEventListener('click', () => onDayClick(new Date(el.dataset.date)));
-    });
-
-    legend.innerHTML = mode === 'discovery'
-      ? `<span><i style="background:var(--signal);"></i>Window</span>`
-      : `<span><i style="background:var(--signal);"></i>Before</span><span><i style="background:var(--accent-2);"></i>After</span>`;
-
-    if (mode === 'discovery') {
-      if (state.single.start && state.single.end) {
-        btn.textContent = `${fmt(state.single.start)} – ${fmt(state.single.end)}`;
-        btn.classList.remove('placeholder');
-      } else {
-        btn.textContent = 'Select date range(s)';
-        btn.classList.add('placeholder');
-      }
-    } else {
-      const bDone = state.before.start && state.before.end;
-      const aDone = state.after.start && state.after.end;
-      if (bDone && aDone) {
-        btn.textContent = `Before ${fmt(state.before.start)}–${fmt(state.before.end)} · After ${fmt(state.after.start)}–${fmt(state.after.end)}`;
-        btn.classList.remove('placeholder');
-      } else {
-        btn.textContent = 'Select date range(s)';
-        btn.classList.add('placeholder');
-      }
-    }
-
-    renderSummary();
-  }
-
-  function renderSummary(){
-    const mode = getMode();
-    const row = (tag, cls, d) => {
-      const val = (d.start && d.end)
-        ? `${fmtFull(d.start)} → ${fmtFull(d.end)}`
-        : (d.start ? `${fmtFull(d.start)} → (pick end day)` : 'not picked yet');
-      return `<div class="cal-summary-row ${cls}"><span class="tag">${tag}</span><span class="val ${d.start && d.end ? '' : 'empty'}">${val}</span></div>`;
-    };
-    summaryEl.innerHTML = mode === 'discovery'
-      ? row('Window', 'before', state.single)
-      : row('Before', 'before', state.before) + row('After', 'after', state.after);
-  }
-
-  function onDayClick(date){
-    switch (state.step) {
-      case 'before-start': state.before = { start: date, end: null }; state.step = 'before-end'; break;
-      case 'before-end':
-        if (date < state.before.start) { state.before = { start: date, end: null }; }
-        else { state.before.end = date; state.step = 'after-start'; }
-        break;
-      case 'after-start': state.after = { start: date, end: null }; state.step = 'after-end'; break;
-      case 'after-end':
-        if (date < state.after.start) { state.after = { start: date, end: null }; }
-        else { state.after.end = date; state.step = 'before-start'; }
-        break;
-      case 'start': state.single = { start: date, end: null }; state.step = 'end'; break;
-      case 'end':
-        if (date < state.single.start) { state.single = { start: date, end: null }; }
-        else { state.single.end = date; state.step = 'start'; }
-        break;
-    }
-    render();
-  }
-
-  btn.addEventListener('click', (e) => { e.stopPropagation(); popover.classList.toggle('open'); render(); });
-  wrap.querySelector('.cal-prev').addEventListener('click', () => { state.viewMonth.setMonth(state.viewMonth.getMonth()-1); render(); });
-  wrap.querySelector('.cal-next').addEventListener('click', () => { state.viewMonth.setMonth(state.viewMonth.getMonth()+1); render(); });
-  wrap.querySelector('.cal-done').addEventListener('click', () => popover.classList.remove('open'));
-  wrap.querySelector('.cal-reset').addEventListener('click', () => {
-    state.before = { start: null, end: null };
-    state.after = { start: null, end: null };
-    state.single = { start: null, end: null };
-    state.step = firstStepForMode();
-    btn.textContent = 'Select date range(s)';
-    btn.classList.add('placeholder');
-    render();
-  });
-  document.addEventListener('click', (e) => { if (!wrap.contains(e.target)) popover.classList.remove('open'); });
-
-  function toIso(d, endOfDay){
-    const c = new Date(d); c.setHours(endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0, 0);
-    return c.toISOString().slice(0,19);
-  }
-
-  render();
-
+  const bs = document.getElementById('date_before_start').value;
+  const be = document.getElementById('date_before_end').value;
+  const as = document.getElementById('date_after_start').value;
+  const ae = document.getElementById('date_after_end').value;
+  if (!bs || !be || !as || !ae) return null;
   return {
-    onModeChange(){ state.step = firstStepForMode(); render(); },
-    getResult(){
-      if (getMode() === 'discovery') {
-        if (!state.single.start || !state.single.end) return null;
-        return { start: toIso(state.single.start, false), end: toIso(state.single.end, true) };
-      }
-      if (!state.before.start || !state.before.end || !state.after.start || !state.after.end) return null;
-      return {
-        before: { start: toIso(state.before.start, false), end: toIso(state.before.end, true) },
-        after: { start: toIso(state.after.start, false), end: toIso(state.after.end, true) },
-      };
-    },
+    before: { start: toIso(bs, false), end: toIso(be, true) },
+    after: { start: toIso(as, false), end: toIso(ae, true) },
   };
 }
 
+function updateDateGroupVisibility(){
+  document.getElementById('date-discovery').style.display = mode === 'discovery' ? '' : 'none';
+  document.getElementById('date-comparative').style.display = mode === 'discovery' ? 'none' : '';
+}
+
 let mode = 'comparative';
-const cal = createDateRangePicker('cal-widget', () => mode);
+updateDateGroupVisibility();
 
 // ---- mode / channel toggles ----
 document.querySelectorAll('#mode-toggle .segmented-btn').forEach(btn => {
@@ -391,18 +220,11 @@ document.querySelectorAll('#mode-toggle .segmented-btn').forEach(btn => {
     document.querySelectorAll('#mode-toggle .segmented-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     mode = btn.dataset.mode;
-    cal.onModeChange();
+    updateDateGroupVisibility();
   });
 });
 
-let channel = 'voice';
-document.querySelectorAll('#channel-toggle .segmented-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('#channel-toggle .segmented-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    channel = btn.dataset.channel;
-  });
-});
+const channel = 'voice'; // Chat option removed -- this product only handles voice for now.
 
 async function loadTenants(){
   try {
@@ -441,43 +263,45 @@ function toggleFilter(atomId, chipEl){
   if (activeFilters.has(atomId)) {
     activeFilters.delete(atomId);
     chipEl.classList.remove('active');
+    document.querySelector(`.filter-row[data-id="${atomId}"]`)?.remove();
   } else {
     const atom = filterAtoms.find(a => a.atom_id === atomId);
-    activeFilters.set(atomId, { atom, value: atom?.default_value ?? '' });
+    activeFilters.set(atomId, { atom });
     chipEl.classList.add('active');
+    document.getElementById('filter-rows').appendChild(createFilterRow(atomId, atom));
   }
-  renderFilterRows();
 }
 
-function renderFilterRows(){
-  const container = document.getElementById('filter-rows');
-  container.innerHTML = '';
-  for (const [atomId, row] of activeFilters.entries()) {
-    const atom = row.atom;
-    const wrap = document.createElement('div');
-    wrap.className = 'filter-row';
-    wrap.dataset.id = atomId;
-    let inputHtml = '';
-    if (atom.ui_control === 'toggle' || atom.value_type === 'boolean') {
-      inputHtml = `<span style="color:var(--ink-3);font-size:12px;">enabled</span>`;
-    } else if (atom.allowed_values?.length) {
-      inputHtml = `<select class="select filter-value">${atom.allowed_values.map(v => `<option value="${v}">${v}</option>`).join('')}</select>`;
-    } else if (atom.value_type === 'integer' || atom.ui_control === 'number') {
-      inputHtml = `<input class="input filter-value" type="number" placeholder="value">`;
-    } else {
-      inputHtml = `<input class="input filter-value" placeholder="value">`;
-    }
-    wrap.innerHTML = `<label>${atom.label}</label>${inputHtml}<button type="button" title="Remove">✕</button>`;
-    wrap.querySelector('button').onclick = () => {
-      activeFilters.delete(atomId);
-      document.querySelector(`.chip[data-id="${atomId}"]`)?.classList.remove('active');
-      renderFilterRows();
-    };
-    if (row.value !== undefined && row.value !== '' && wrap.querySelector('.filter-value')) {
-      wrap.querySelector('.filter-value').value = row.value;
-    }
-    container.appendChild(wrap);
+// Builds one filter row as a standalone DOM node and appends/removes just
+// that node -- never re-renders the whole list. Re-rendering all rows from
+// activeFilters on every toggle used to wipe out whatever the user had
+// already typed into *other* rows' inputs, since typed values were never
+// written back into activeFilters (only collected at submit time).
+function createFilterRow(atomId, atom){
+  const wrap = document.createElement('div');
+  wrap.className = 'filter-row';
+  wrap.dataset.id = atomId;
+  let inputHtml = '';
+  if (atom.ui_control === 'toggle' || atom.value_type === 'boolean') {
+    inputHtml = `<span style="color:var(--ink-3);font-size:13.5px;">enabled</span>`;
+  } else if (atom.allowed_values?.length) {
+    inputHtml = `<select class="select filter-value">${atom.allowed_values.map(v => `<option value="${v}">${v}</option>`).join('')}</select>`;
+  } else if (atom.value_type === 'integer' || atom.ui_control === 'number') {
+    inputHtml = `<input class="input filter-value" type="number" placeholder="value">`;
+  } else {
+    inputHtml = `<input class="input filter-value" placeholder="value">`;
   }
+  wrap.innerHTML = `<label>${atom.label}</label>${inputHtml}<button type="button" title="Remove">✕</button>`;
+  const valueEl = wrap.querySelector('.filter-value');
+  if (valueEl && atom.default_value !== undefined && atom.default_value !== null) {
+    valueEl.value = atom.default_value;
+  }
+  wrap.querySelector('button').onclick = () => {
+    activeFilters.delete(atomId);
+    document.querySelector(`.chip[data-id="${atomId}"]`)?.classList.remove('active');
+    wrap.remove();
+  };
+  return wrap;
 }
 
 function collectCohortFilters(){
@@ -508,11 +332,11 @@ function start(){
   if (!study_title) { showErr('Give this study a name.'); return; }
   if (!tenant || !assistant_origin_id) { showErr('Choose a tenant and enter an Assistant Origin ID.'); return; }
 
-  const r = cal.getResult();
+  const r = getDateRangeResult(mode);
   if (mode === 'discovery') {
-    if (!r) { showErr('Pick a start and end day for the date range.'); return; }
+    if (!r) { showErr('Pick a start and end date.'); return; }
   } else {
-    if (!r) { showErr('Pick both a before window and an after window.'); return; }
+    if (!r) { showErr('Pick all 4 dates: before start/end and after start/end.'); return; }
   }
 
   const n_eval_raw = document.getElementById('n_eval').value.trim();
