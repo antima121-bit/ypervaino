@@ -1,6 +1,6 @@
 # Ypervaíno — HTTP API (v1)
 
-**Related:** [input_schema.md](./input_schema.md) (request bodies), [output_schema.md](./output_schema.md) (response shapes), [architecture.md](./architecture.md) (StudyRunner), [UI_design.md](./UI_design.md) (tab flow)
+**Related:** [input_schema.md](./input_schema.md) (request bodies), [output_schema.md](./output_schema.md) (response shapes), [proposal_contract.md](./proposal_contract.md) (Proposals tab), [architecture.md](./architecture.md) (StudyRunner), [UI_design.md](./UI_design.md) (tab flow)
 
 Thin REST layer over **StudyRunner**. All study artifacts are persisted under `studies/{slug}/` on disk; API endpoints read/write via StudyStore.
 
@@ -38,7 +38,11 @@ All error responses use:
 | 400 | `VALIDATION_ERROR` | Invalid CreateStudyRequest, bad slug, plan not approvable |
 | 404 | `NOT_FOUND` | Unknown study slug |
 | 409 | `CONFLICT` | Duplicate `study_title` |
-| 409 | `INVALID_STATE` | Execute on wrong status, Phase 3 already running |
+| 409 | `INVALID_STATE` | Execute on wrong status, Phase 3 already running, Proposals tab before `complete` |
+| 409 | `GENERATION_IN_PROGRESS` | Duplicate `POST …/proposals/generate` while Phase 4 running |
+| 409 | `PROPOSAL_CONFLICT` | Apply shallow proposal when `target_key` already applied |
+| 409 | `APPLY_FAILED` | Patch anchor/field not found in blueprint |
+| 409 | `PROPOSAL_NOT_PENDING` | Apply/reject on non-pending proposal |
 | 500 | `INTERNAL_ERROR` | Unhandled pipeline failure |
 | 503 | `UPSTREAM_ERROR` | Mongo, BotProbe trace API, Bot API, or LLM unavailable |
 
@@ -52,6 +56,9 @@ Phases 0–2 (submit) and Phase 3 (execute) run **asynchronously** in a backgrou
 |-------|---------|----------------|------------------|------------------|
 | 0–2 | `POST /studies` | `created` | `explored` | `failed` |
 | 3 | `POST /studies/{slug}/execute` | `running` | `complete` | `failed` |
+| 4 | `POST /studies/{slug}/proposals/generate` | `generating`* | `ready`* | `failed`* |
+
+\*Phase 4 job state is in `intermediate/proposal_generation/status.json`; study `meta.status` stays `complete`.
 
 **Poll interval (UI):** 2–5 s. No WebSockets in v1.
 
@@ -64,6 +71,7 @@ Phases 0–2 (submit) and Phase 3 (execute) run **asynchronously** in a backgrou
 | `GET /` or `GET /new-study` | New Study |
 | `GET /explore?study={slug}` | Explore |
 | `GET /results?study={slug}` | Results |
+| `GET /proposals?study={slug}` | Proposals |
 
 Pages call the JSON API below. `study` query param identifies the study slug.
 
@@ -384,11 +392,241 @@ Alternative v1: return JSON listing downloadable paths instead of zip — implem
 
 ---
 
-## 7. Optional debug endpoints (v1.1)
+## 7. Proposals tab
 
-Not required for the 3-tab UI; useful during development against real Mongo data.
+**Contract:** [proposal_contract.md](./proposal_contract.md) — full request/response shapes, storage paths, and error codes.
 
-### 7.1 Session transcript preview
+**Requires:** `meta.status == "complete"` and `output/evaluation_result.json` exist.
+
+Phase 4 runs **on demand** when the user triggers generation. Study status does not change during Phase 4.
+
+### 7.1 Get proposal status + bundle
+
+```
+GET /api/v1/ypervaino/studies/{slug}/proposals
+```
+
+**Response 200:**
+
+```json
+{
+  "meta": {
+    "title": "qwen swap",
+    "slug": "qwen-swap-6",
+    "status": "complete"
+  },
+  "generation": {
+    "status": "not_started",
+    "started_at": null,
+    "finished_at": null,
+    "error": null,
+    "logs_url": "/api/v1/ypervaino/studies/qwen-swap-6/logs?tail=100"
+  },
+  "bundle": null,
+  "blueprint": {
+    "current_version": "v0001",
+    "manifest_url": "/api/v1/ypervaino/studies/qwen-swap-6/blueprint/manifest"
+  }
+}
+```
+
+| `generation.status` | Meaning |
+|---------------------|---------|
+| `not_started` | User has not triggered Phase 4 |
+| `generating` | Phase 4 running — poll this endpoint |
+| `ready` | `bundle` populated (`output/proposal_bundle.json`) |
+| `failed` | `generation.error` set |
+
+When `ready`, `bundle` is a [ProposalBundle](./proposal_contract.md#41-proposalbundle) (`shallow_proposals[]`, `deep_proposals[]`).
+
+**Response 409:** study not `complete` (`INVALID_STATE`).
+
+---
+
+### 7.2 Generate proposals (Phase 4, on demand)
+
+```
+POST /api/v1/ypervaino/studies/{slug}/proposals/generate
+```
+
+**Request body:** empty `{}`.
+
+**Requires:** `status == "complete"`.
+
+If already `generating`, return `202` with current job (no duplicate worker). If already `ready`, return `200` with existing bundle unless `?force=true` (optional).
+
+**Response 202:**
+
+```json
+{
+  "slug": "qwen-swap-6",
+  "generation": {
+    "status": "generating",
+    "started_at": "2026-09-01T17:30:00+05:30",
+    "poll_url": "/api/v1/ypervaino/studies/qwen-swap-6/proposals"
+  }
+}
+```
+
+UI polls §7.1 every 2–3 s until `ready` or `failed`.
+
+---
+
+### 7.3 Blueprint version manifest
+
+```
+GET /api/v1/ypervaino/studies/{slug}/blueprint/manifest
+```
+
+**Response 200:** [BlueprintVersionManifest](./proposal_contract.md#47-blueprintversionmanifest).
+
+---
+
+### 7.4 Get blueprint JSON by version
+
+```
+GET /api/v1/ypervaino/studies/{slug}/blueprint/versions/{version}
+```
+
+| Param | Example |
+|-------|---------|
+| `version` | `v0001`, `v0003`, or `current` |
+
+**Response 200:**
+
+```json
+{
+  "version": "v0003",
+  "created_at": "2026-09-01T17:45:00+05:30",
+  "source": "proposal_apply",
+  "source_proposal_id": "prop-transfer-tool-main-auth",
+  "parent_version": "v0002",
+  "blueprint": { }
+}
+```
+
+`blueprint` is the full VA Blueprint payload (same shape as VA Blueprint API `extract_blueprint`).
+
+---
+
+### 7.5 Apply one shallow proposal
+
+```
+POST /api/v1/ypervaino/studies/{slug}/proposals/{proposal_id}/apply
+```
+
+**Request body:** empty `{}`.
+
+**Requires:** `generation.status == "ready"`, proposal `status == "pending"`, no other `applied` proposal with same `target_key`.
+
+**Response 200:**
+
+```json
+{
+  "proposal_id": "prop-transfer-tool-main-auth",
+  "proposal_status": "applied",
+  "applied_at": "2026-09-01T17:45:00+05:30",
+  "blueprint": {
+    "previous_version": "v0002",
+    "new_version": "v0003",
+    "manifest": { }
+  },
+  "apply_result": {
+    "success": true,
+    "ops_applied": 2,
+    "warnings": []
+  }
+}
+```
+
+Each successful apply writes a new immutable version under `intermediate/blueprint/versions/`.
+
+**Response 409:** `PROPOSAL_CONFLICT`, `APPLY_FAILED`, or `PROPOSAL_NOT_PENDING`.
+
+---
+
+### 7.6 Reject proposal (shallow or deep)
+
+```
+POST /api/v1/ypervaino/studies/{slug}/proposals/{proposal_id}/reject
+```
+
+**Request body (optional):**
+
+```json
+{ "reason": "Already fixed in prod" }
+```
+
+**Response 200:** `{ "proposal_id": "...", "proposal_status": "rejected" }`
+
+---
+
+### 7.7 Acknowledge deep proposal
+
+```
+POST /api/v1/ypervaino/studies/{slug}/proposals/{proposal_id}/acknowledge
+```
+
+**Response 200:** `{ "proposal_id": "...", "proposal_status": "acknowledged" }`
+
+---
+
+### 7.8 Create Jira ticket (stub)
+
+```
+POST /api/v1/ypervaino/studies/{slug}/proposals/{proposal_id}/jira-stub
+```
+
+**Response 200 (v1 — no real Jira API):**
+
+```json
+{
+  "proposal_id": "prop-backend-transfer-signal",
+  "stub": true,
+  "ticket_draft": {
+    "summary": "Add rule-based transfer_tool_invoked primitive",
+    "description": "…",
+    "labels": ["ypervaino", "voice-bot"],
+    "study_slug": "qwen-swap-6",
+    "evidence_session_ids": ["57e2f8b3-6a9f-4cca-ad1e-fcfc22e7f115"]
+  },
+  "message": "Jira integration not configured; copy draft to create ticket manually."
+}
+```
+
+---
+
+### 7.9 Manual blueprint patch (optional)
+
+```
+POST /api/v1/ypervaino/studies/{slug}/blueprint/patch
+```
+
+**Request body:** `{ "target": BlueprintTarget, "patch": BlueprintPatch, "note?": string }` — same shapes as shallow proposals ([proposal_contract.md §4.5–4.6](./proposal_contract.md#45-blueprinttarget)).
+
+**Response 200:** same as §7.5 apply success (`new_version`, `apply_result`).
+
+---
+
+### 7.10 Blueprint diff (optional)
+
+```
+GET /api/v1/ypervaino/studies/{slug}/blueprint/diff?from=v0001&to=v0003&target_key=skill:Main_Auth:instructions
+```
+
+**Response 200:** `{ from_version, to_version, target_key, before_excerpt, after_excerpt, unified_diff? }`
+
+If unimplemented, UI uses `patch.preview` on the proposal card.
+
+**UI mapping:** [UI_design.md](./UI_design.md) §4.
+
+---
+
+## 8. Optional debug endpoints (v1.1)
+
+Not required for the 4-tab UI; useful during development against real Mongo data.
+
+### 8.1 Session transcript preview
 
 ```
 GET /api/v1/ypervaino/sessions/{session_id}/transcript?tenant={tenant}
@@ -396,7 +634,7 @@ GET /api/v1/ypervaino/sessions/{session_id}/transcript?tenant={tenant}
 
 **Response 200:** turn list from Mongo `SessionRequest` ([MONGO_LOOKUP.md](./MONGO_LOOKUP.md) §3). Full event trace for pipeline use comes from BotProbe `/trace` (§4 same doc).
 
-### 7.2 Cohort size estimate (dry run)
+### 8.2 Cohort size estimate (dry run)
 
 ```
 POST /api/v1/ypervaino/cohort/preview
@@ -417,7 +655,7 @@ Runs Phase 0 index query only — no LLM, no plan. Helps validate scope before s
 
 ---
 
-## 8. End-to-end flow (API sequence)
+## 9. End-to-end flow (API sequence)
 
 ```
 New Study tab
@@ -437,11 +675,21 @@ Results tab
   GET  /studies/{slug}/results           → evaluation_result
   GET  /studies/{slug}/artifacts/...     → PNG / CSV
   GET  /studies/{slug}/export            → zip (optional)
+
+Proposals tab  (requires status: complete)
+  GET  /studies/{slug}/proposals         → generation status + bundle
+  POST /studies/{slug}/proposals/generate → 202, generation: generating
+  GET  /studies/{slug}/proposals         → poll until ready | failed
+  GET  /studies/{slug}/blueprint/versions/current → workspace viewer
+  POST /studies/{slug}/proposals/{id}/apply       → new blueprint version (per proposal)
+  POST /studies/{slug}/proposals/{id}/reject
+  POST /studies/{slug}/proposals/{id}/acknowledge  (deep only)
+  POST /studies/{slug}/proposals/{id}/jira-stub    (deep only, stub)
 ```
 
 ---
 
-## 9. Implementation notes
+## 10. Implementation notes
 
 | Topic | Decision |
 |-------|----------|
@@ -457,9 +705,10 @@ Event field paths for primitives and filters: [`config/event_schema.json`](./con
 
 ---
 
-## 10. Document history
+## 11. Document history
 
 | Version | Date | Notes |
 |---------|------|-------|
 | v1 | 2026-08-30 | Initial API contract: lookup, study lifecycle, explore, execute, results, export |
 | v1.1 | 2026-08-30 | Dual-source data: Mongo session index + BotProbe `/trace` for events |
+| v1.2 | 2026-09-01 | Proposals tab (Phase 4): generate, apply, blueprint versioning — see [proposal_contract.md](./proposal_contract.md) |

@@ -1,0 +1,394 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Ypervaíno — Proposals</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f9f8f8;--surface:#ffffff;--surface-2:#fcfcfb;--surface-3:#f3f2f0;
+    --ink:#282624;--ink-2:#7c7972;--ink-3:#b5b1ad;--line:#e1deda;--line-strong:#b5b1ad;
+    --signal:#f07400;--signal-strong:#ff7b00;--signal-soft:rgba(240,116,0,.12);
+    --success:#027a48;--success-soft:#e7fdf3;
+    --critical:#b72d0e;--critical-soft:#fce8e4;
+    --warn:#856404;--warn-soft:#fff8e6;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{background:var(--paper);color:var(--ink);font-family:"Manrope",-apple-system,BlinkMacSystemFont,"Roboto","Oxygen","Ubuntu","Cantarell","Fira Sans","Droid Sans","Helvetica Neue",sans-serif;font-size:15px;}
+  .mono{font-family:"Roboto Mono",ui-monospace,monospace;}
+  .topnav{display:flex;gap:4px;padding:14px 32px;background:#171717;}
+  .topnav-link{color:rgba(255,255,255,.6);text-decoration:none;font-size:14px;padding:6px 12px;border-radius:6px;}
+  .topnav-link:hover{background:rgba(255,255,255,.08);color:#ffffff;}
+  .topnav-link.active{background:rgba(240,116,0,.16);color:var(--signal-strong);font-weight:600;}
+  .main{max-width:1280px;margin:0 auto;padding:28px 32px 60px;}
+  .header-row{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:20px;}
+  h1{font-size:25px;margin:0 0 6px;}
+  .desc{color:var(--ink-2);font-size:14.5px;margin:0;max-width:640px;line-height:1.5;}
+  .btn{background:var(--signal);color:#ffffff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;}
+  .btn:hover{filter:brightness(1.05);}
+  .btn:disabled{opacity:.45;cursor:not-allowed;}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--ink-2);}
+  .btn-sm{padding:6px 12px;font-size:12.5px;}
+  .banner{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 18px;margin-bottom:18px;color:var(--ink-2);line-height:1.55;}
+  .banner strong{color:var(--ink);}
+  .layout{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
+  @media(max-width:960px){.layout{grid-template-columns:1fr;}}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-bottom:16px;}
+  .card-head{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);}
+  .card-title{font-size:15px;font-weight:600;margin:0;}
+  .card-pad{padding:14px 16px;}
+  .proposal-card{background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:14px;margin-bottom:12px;cursor:pointer;transition:border-color .15s;}
+  .proposal-card:hover,.proposal-card.selected{border-color:var(--signal);}
+  .proposal-card.deep-card{border-style:dashed;opacity:.95;}
+  .prop-title{font-size:14.5px;font-weight:600;margin:0 0 6px;}
+  .prop-desc{font-size:13px;color:var(--ink-2);line-height:1.5;margin:0 0 10px;}
+  .prop-meta{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+  .pill{display:inline-flex;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:600;}
+  .pill-high{background:var(--critical-soft);color:var(--critical);}
+  .pill-medium{background:var(--warn-soft);color:var(--warn);}
+  .pill-low{background:var(--surface-3);color:var(--ink-3);}
+  .pill-applied{background:var(--success-soft);color:var(--success);}
+  .pill-rejected{background:var(--surface-3);color:var(--ink-3);}
+  .pill-ack{background:var(--signal-soft);color:var(--signal-strong);}
+  .pill-oos{background:var(--surface-3);color:var(--ink-3);border:1px dashed var(--line-strong);}
+  .breadcrumb{font-size:11.5px;color:var(--ink-3);margin-bottom:8px;}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+  .preview{background:var(--surface-3);border:1px solid var(--line);border-radius:6px;padding:10px;margin-top:10px;font-size:12px;max-height:160px;overflow:auto;}
+  .preview pre{margin:0;white-space:pre-wrap;color:var(--ink-2);}
+  .evidence{margin-top:8px;font-size:12px;color:var(--ink-3);}
+  .workspace{min-height:420px;}
+  .version-select{background:var(--surface-2);border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:6px 10px;font-size:13px;}
+  .skill-block{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:10px;}
+  .skill-name{font-weight:600;font-size:14px;margin-bottom:8px;color:var(--signal-strong);}
+  .instr{font-size:12.5px;color:var(--ink-2);line-height:1.55;white-space:pre-wrap;max-height:200px;overflow:auto;}
+  .loading{color:var(--ink-3);padding:24px;text-align:center;}
+  .error-box{background:var(--critical-soft);color:var(--critical);border-radius:8px;padding:14px 16px;font-size:14px;margin-bottom:16px;}
+  .run-log{background:#0d1117;border-radius:8px;padding:10px;font-family:"Roboto Mono",ui-monospace,monospace;font-size:11px;color:#c9d1d9;max-height:140px;overflow:auto;margin-top:12px;white-space:pre-wrap;}
+  .section-label{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3);margin:24px 0 10px;}
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;}
+  .modal{background:var(--surface);border:1px solid var(--line);border-radius:12px;max-width:560px;width:100%;padding:20px;}
+  .modal h3{margin:0 0 12px;font-size:17px;}
+  .modal textarea{width:100%;min-height:180px;background:var(--surface-2);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:10px;font-family:"Roboto Mono",ui-monospace,monospace;font-size:12px;}
+  .hidden{display:none!important;}
+</style>
+</head>
+<body>
+<div class="topnav">
+  <a href="/" class="topnav-link">New Study</a>
+  <a href="/explore" class="topnav-link">Explore</a>
+  <a href="/results" class="topnav-link">Results</a>
+  <a href="/proposals" class="topnav-link active">Proposals</a>
+  <a href="/sessions" class="topnav-link">Sessions</a>
+</div>
+<div class="main">
+  <div class="header-row">
+    <div>
+      <h1>Proposals</h1>
+      <p class="desc" id="desc">Loading…</p>
+    </div>
+    <button class="btn hidden" id="gen-btn">Generate proposals</button>
+  </div>
+  <div id="alert"></div>
+  <div id="content"><div class="loading">Loading proposals…</div></div>
+</div>
+<div id="modal-root" class="hidden"></div>
+<script>
+const params = new URLSearchParams(location.search);
+const slug = params.get('study');
+const API = '/api/v1/ypervaino';
+
+function navHref(path){
+  return slug ? `${path}?study=${encodeURIComponent(slug)}` : path;
+}
+document.querySelectorAll('.topnav-link').forEach(a => {
+  if (a.getAttribute('href') !== '/') a.href = navHref(a.getAttribute('href'));
+});
+
+function escapeHtml(s){
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+let state = { data: null, selectedProposal: null, blueprintVersion: 'current', blueprintDoc: null };
+
+function confPill(c){
+  const cls = c === 'high' ? 'pill-high' : c === 'medium' ? 'pill-medium' : 'pill-low';
+  return `<span class="pill ${cls}">${escapeHtml(c || 'low')}</span>`;
+}
+
+function statusPill(s){
+  const map = { applied:'pill-applied', rejected:'pill-rejected', acknowledged:'pill-ack', pending:'pill-low' };
+  return `<span class="pill ${map[s]||'pill-low'}">${escapeHtml(s||'pending')}</span>`;
+}
+
+function previewHtml(patch){
+  const p = patch?.preview;
+  if (!p) return '';
+  return `<div class="preview"><pre><b>Before</b>\n${escapeHtml(p.before_excerpt||'')}\n\n<b>After</b>\n${escapeHtml(p.after_excerpt||'')}</pre></div>`;
+}
+
+function evidenceHtml(evidence){
+  if (!evidence?.length) return '';
+  return `<div class="evidence">${evidence.map(e =>
+    `<div>• ${escapeHtml(e.summary||e.finding_id||'')} <span class="mono">(${escapeHtml(e.finding_type||'')})</span></div>`
+  ).join('')}</div>`;
+}
+
+async function loadBlueprintVersion(version){
+  const res = await fetch(`${API}/studies/${encodeURIComponent(slug)}/blueprint/versions/${encodeURIComponent(version)}`);
+  if (!res.ok) return null;
+  state.blueprintDoc = await res.json();
+  state.blueprintVersion = version;
+  renderBlueprintWorkspace();
+}
+
+function renderBlueprintWorkspace(){
+  const el = document.getElementById('bp-workspace');
+  if (!el) return;
+  const doc = state.blueprintDoc;
+  if (!doc?.blueprint) {
+    el.innerHTML = '<div class="loading">Select a version to view blueprint</div>';
+    return;
+  }
+  const info = doc.blueprint.assistant_info || {};
+  const skills = info.skill_list || [];
+  const sel = state.selectedProposal;
+  const highlightSkill = sel?.target?.skill_name;
+  const blocks = skills.map(sk => {
+    const hi = highlightSkill && sk.name === highlightSkill ? ' style="border-color:var(--signal)"' : '';
+    return `<div class="skill-block"${hi}>
+      <div class="skill-name">${escapeHtml(sk.name||sk.id||'Skill')}</div>
+      <div class="instr">${escapeHtml(sk.instructions||'(no instructions)')}</div>
+    </div>`;
+  }).join('') || '<p class="desc">No skills in blueprint.</p>';
+  const welcome = info.welcome_message ? `<div class="skill-block"><div class="skill-name">Welcome message</div><div class="instr">${escapeHtml(info.welcome_message)}</div></div>` : '';
+  el.innerHTML = welcome + blocks;
+}
+
+function shallowCard(p){
+  const selected = state.selectedProposal?.id === p.id ? ' selected' : '';
+  const disabled = p.status !== 'pending' ? 'disabled' : '';
+  return `<div class="proposal-card${selected}" data-id="${escapeHtml(p.id)}" onclick="selectProposal('${escapeHtml(p.id)}','shallow')">
+    <div class="prop-title">${escapeHtml(p.title)}</div>
+    <div class="breadcrumb">${escapeHtml(p.target?.display_label||p.target_key||'')}</div>
+    <div class="prop-meta">${confPill(p.confidence)} ${statusPill(p.status)}</div>
+    <div class="prop-desc">${escapeHtml(p.description)}</div>
+    ${p.expected_impact ? `<div class="evidence"><b>Expected impact:</b> ${escapeHtml(p.expected_impact)}</div>` : ''}
+    ${evidenceHtml(p.evidence)}
+    ${previewHtml(p.patch)}
+    <div class="actions" onclick="event.stopPropagation()">
+      <button class="btn btn-sm" ${disabled} onclick="applyProposal('${escapeHtml(p.id)}')">Apply</button>
+      <button class="btn btn-sm btn-ghost" ${disabled} onclick="rejectProposal('${escapeHtml(p.id)}')">Reject</button>
+    </div>
+  </div>`;
+}
+
+function deepCard(p){
+  const disabled = p.status !== 'pending' ? 'disabled' : '';
+  return `<div class="proposal-card deep-card" data-id="${escapeHtml(p.id)}">
+    <div class="prop-title">${escapeHtml(p.title)}</div>
+    <div class="prop-meta">${confPill(p.confidence)} ${statusPill(p.status)} <span class="pill pill-oos">Out of scope · ${escapeHtml(p.category||'backend')}</span></div>
+    <div class="prop-desc">${escapeHtml(p.description)}</div>
+    ${p.out_of_scope_reason ? `<div class="evidence">${escapeHtml(p.out_of_scope_reason)}</div>` : ''}
+    ${evidenceHtml(p.evidence)}
+    <div class="actions">
+      <button class="btn btn-sm btn-ghost" onclick="jiraStub('${escapeHtml(p.id)}')">Create Jira ticket</button>
+      <button class="btn btn-sm btn-ghost" ${disabled} onclick="ackProposal('${escapeHtml(p.id)}')">Acknowledge</button>
+      <button class="btn btn-sm btn-ghost" ${disabled} onclick="rejectProposal('${escapeHtml(p.id)}')">Reject</button>
+    </div>
+  </div>`;
+}
+
+function selectProposal(id, kind){
+  const bundle = state.data?.bundle;
+  if (!bundle) return;
+  const list = kind === 'shallow' ? bundle.shallow_proposals : bundle.deep_proposals;
+  state.selectedProposal = (list||[]).find(p => p.id === id) || null;
+  document.querySelectorAll('.proposal-card').forEach(c => c.classList.toggle('selected', c.dataset.id === id));
+  renderBlueprintWorkspace();
+}
+
+async function applyProposal(id){
+  const res = await fetch(`${API}/studies/${encodeURIComponent(slug)}/proposals/${encodeURIComponent(id)}/apply`, { method:'POST' });
+  const data = await res.json();
+  if (!res.ok) {
+    showAlert(JSON.stringify(data.detail||data));
+    return;
+  }
+  await load();
+  if (data.blueprint?.new_version) await loadBlueprintVersion(data.blueprint.new_version);
+}
+
+async function rejectProposal(id){
+  await fetch(`${API}/studies/${encodeURIComponent(slug)}/proposals/${encodeURIComponent(id)}/reject`, {
+    method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'
+  });
+  await load();
+}
+
+async function ackProposal(id){
+  await fetch(`${API}/studies/${encodeURIComponent(slug)}/proposals/${encodeURIComponent(id)}/acknowledge`, { method:'POST' });
+  await load();
+}
+
+async function jiraStub(id){
+  const res = await fetch(`${API}/studies/${encodeURIComponent(slug)}/proposals/${encodeURIComponent(id)}/jira-stub`, { method:'POST' });
+  const data = await res.json();
+  const draft = data.ticket_draft || {};
+  const root = document.getElementById('modal-root');
+  root.className = 'modal-backdrop';
+  root.innerHTML = `<div class="modal">
+    <h3>Jira ticket draft (stub)</h3>
+    <p class="desc">${escapeHtml(data.message||'')}</p>
+    <label class="section-label">Summary</label>
+    <textarea readonly>${escapeHtml(draft.summary||'')}</textarea>
+    <label class="section-label">Description</label>
+    <textarea readonly style="margin-top:8px">${escapeHtml(draft.description||'')}</textarea>
+    <div class="actions" style="margin-top:14px"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>
+  </div>`;
+}
+function closeModal(){ document.getElementById('modal-root').className = 'hidden'; }
+
+function showAlert(msg){
+  document.getElementById('alert').innerHTML = `<div class="error-box">${escapeHtml(msg)}</div>`;
+}
+
+let pollTimer = null;
+function stopPoll(){ if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+
+async function refreshLogs(){
+  const el = document.getElementById('run-log');
+  if (!el) return;
+  try {
+    const lr = await fetch(`${API}/studies/${encodeURIComponent(slug)}/logs?tail=40`);
+    const ld = await lr.json();
+    if (ld.lines?.length) { el.textContent = ld.lines.join('\n'); el.scrollTop = el.scrollHeight; }
+  } catch(_){}
+}
+
+async function generate(force=false){
+  const btn = document.getElementById('gen-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+  await fetch(`${API}/studies/${encodeURIComponent(slug)}/proposals/generate${force?'?force=true':''}`, { method:'POST' });
+  pollTimer = setInterval(async () => {
+    await refreshLogs();
+    const d = await fetchData();
+    if (d.generation?.status === 'ready' || d.generation?.status === 'failed') {
+      stopPoll();
+      render(d);
+    }
+  }, 2500);
+  await load();
+}
+
+async function fetchData(){
+  const res = await fetch(`${API}/studies/${encodeURIComponent(slug)}/proposals`);
+  return res.json();
+}
+
+function render(data){
+  state.data = data;
+  document.getElementById('desc').textContent = data.meta?.title || slug;
+  const gen = data.generation || {};
+  const btn = document.getElementById('gen-btn');
+  const st = gen.status || 'not_started';
+
+  if (st === 'not_started' || st === 'failed') {
+    btn.classList.remove('hidden');
+    btn.textContent = st === 'failed' ? 'Retry generation' : 'Generate proposals';
+    btn.disabled = false;
+    btn.onclick = () => generate(st === 'failed');
+  } else if (st === 'generating') {
+    btn.classList.remove('hidden');
+    btn.textContent = 'Generating…';
+    btn.disabled = true;
+  } else {
+    btn.classList.add('hidden');
+  }
+
+  const content = document.getElementById('content');
+
+  if (st === 'not_started') {
+    content.innerHTML = `<div class="banner">No proposals yet. Use <strong>Generate proposals</strong> on the Results page — generation runs there and opens this tab when ready.</div>`;
+    btn.classList.add('hidden');
+    return;
+  }
+  if (st === 'generating') {
+    content.innerHTML = `<div class="banner"><strong>Generating proposals…</strong> Running Phase 4 LLM calls (shallow + deep).</div><div class="run-log" id="run-log"></div>`;
+    refreshLogs();
+    return;
+  }
+  if (st === 'failed') {
+    content.innerHTML = `<div class="error-box">${escapeHtml(gen.error||'Generation failed')}</div>`;
+    return;
+  }
+
+  const bundle = data.bundle || {};
+  const stats = bundle.stats || {};
+  const shallow = bundle.shallow_proposals || [];
+  const deep = bundle.deep_proposals || [];
+
+  content.innerHTML = `
+    <div class="banner"><strong>${escapeHtml(bundle.summary||'')}</strong><br>
+      ${stats.shallow_count||0} shallow · ${stats.deep_count||0} deep proposals</div>
+    <div class="layout">
+      <div>
+        <div class="card"><div class="card-head"><h3 class="card-title">Shallow proposals</h3><span class="pill pill-low">${shallow.length}</span></div>
+          <div class="card-pad">${shallow.length ? shallow.map(shallowCard).join('') : '<p class="desc">No shallow proposals.</p>'}</div>
+        </div>
+      </div>
+      <div>
+        <div class="card workspace"><div class="card-head">
+          <h3 class="card-title">Blueprint workspace</h3>
+          <select class="version-select" id="ver-select" onchange="onVersionChange(this.value)">
+            <option value="current">${escapeHtml(data.blueprint?.current_version||'current')}</option>
+          </select>
+        </div>
+        <div class="card-pad" id="bp-workspace"><div class="loading">Loading blueprint…</div></div></div>
+      </div>
+    </div>
+    <div class="section-label">Deep proposals (out of scope · backend)</div>
+    <div class="card"><div class="card-pad">${deep.length ? deep.map(deepCard).join('') : '<p class="desc">No deep proposals.</p>'}</div></div>`;
+
+  populateVersions(data.blueprint?.current_version);
+  loadBlueprintVersion('current');
+}
+
+async function populateVersions(current){
+  const sel = document.getElementById('ver-select');
+  if (!sel) return;
+  try {
+    const res = await fetch(`${API}/studies/${encodeURIComponent(slug)}/blueprint/manifest`);
+    const manifest = await res.json();
+    sel.innerHTML = (manifest.versions||[]).map(v =>
+      `<option value="${escapeHtml(v.version)}"${v.version===current?' selected':''}>${escapeHtml(v.version)}${v.label?' — '+escapeHtml(v.label):''}</option>`
+    ).join('') || `<option value="current">${escapeHtml(current||'current')}</option>`;
+  } catch(_){}
+}
+
+function onVersionChange(v){ loadBlueprintVersion(v); }
+
+async function load(){
+  if (!slug) {
+    document.getElementById('content').innerHTML = '<div class="error-box">Missing ?study= slug. Complete a study from Results first.</div>';
+    return;
+  }
+  const data = await fetchData();
+  if (data.detail) {
+    showAlert(JSON.stringify(data.detail));
+    return;
+  }
+  render(data);
+  if (data.generation?.status === 'generating' && !pollTimer) {
+    pollTimer = setInterval(async () => {
+      await refreshLogs();
+      const d = await fetchData();
+      if (d.generation?.status !== 'generating') { stopPoll(); render(d); }
+    }, 2500);
+  }
+}
+
+load();
+</script>
+</body>
+</html>

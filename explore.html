@@ -1,147 +1,478 @@
 <!doctype html>
 <html>
-<head>
-<meta charset="utf-8">
-<title>Ypervaíno — Explore &amp; Approve</title>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --paper:#f9f8f8;--surface:#ffffff;--surface-2:#fcfcfb;--surface-3:#f3f2f0;
-    --ink:#282624;--ink-2:#7c7972;--ink-3:#b5b1ad;--line:#e1deda;--line-strong:#b5b1ad;
-    --signal:#f07400;--signal-strong:#ff7b00;--signal-soft:rgba(240,116,0,.12);
-    --success:#027a48;--success-soft:#e7fdf3;
-    --warning:#856404;--critical:#b72d0e;--critical-soft:#fce8e4;--info:#3a91b4;--info-soft:#eaf9fe;
-  }
-  *{box-sizing:border-box;} html,body{margin:0;}
-  body{background:var(--paper);color:var(--ink);font-family:"Manrope",-apple-system,BlinkMacSystemFont,"Roboto","Oxygen","Ubuntu","Cantarell","Fira Sans","Droid Sans","Helvetica Neue",sans-serif;font-size:15px;}
-  .mono{font-family:"Roboto Mono",ui-monospace,monospace;}
-  .main{max-width:900px;margin:0 auto;padding:28px 32px 60px;}
-  .eyebrow{font-family:"Manrope",-apple-system,BlinkMacSystemFont,sans-serif;font-size:22px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;background:linear-gradient(90deg, var(--signal-strong), var(--signal));-webkit-background-clip:text;background-clip:text;color:transparent;display:inline-block;margin-bottom:6px;}
-  .live-pill{display:flex;width:fit-content;align-items:center;gap:6px;background:var(--signal-soft);color:var(--signal-strong);border-radius:999px;padding:4px 10px 4px 8px;font-size:12.5px;font-weight:600;margin-bottom:14px;}
-  .live-dot{width:6px;height:6px;border-radius:50%;background:var(--signal);animation:pulse 1.4s ease-in-out infinite;}
-  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
-  .desc{color:var(--ink-2);font-size:14.5px;margin:6px 0 22px;line-height:1.5;}
-  .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-bottom:16px;}
-  .card-head{display:flex;justify-content:space-between;align-items:center;padding:13px 18px;border-bottom:1px solid var(--line);font-size:15px;font-weight:600;}
-  .card-pad{padding:16px 18px;}
-  .pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;background:var(--info-soft);color:var(--info);}
-  .loading{color:var(--ink-3);padding:24px;text-align:center;}
-  .ai-note{display:flex;gap:12px;}
-  .ai-avatar{width:28px;height:28px;border-radius:8px;background:var(--signal-soft);color:var(--signal-strong);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-  .ai-text{font-size:14.5px;color:var(--ink-2);line-height:1.65;}
-  .row-scroll{display:flex;gap:12px;overflow-x:auto;padding-bottom:2px;}
-  .sample-card{background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:11px 13px;width:250px;flex-shrink:0;}
-  .sample-id{font-size:12px;color:var(--ink-3);}
-  .sample-line{font-size:13px;line-height:1.5;margin-bottom:4px;}
-  .sample-line b{color:var(--ink-3);}
-  .aspect-row{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);align-items:flex-start;}
-  .chart-icon{flex-shrink:0;width:36px;height:28px;display:flex;align-items:center;justify-content:center;background:var(--surface-3);border-radius:6px;}
-  .aspect-row:last-child{border-bottom:none;}
-  .aspect-title{font-size:14.5px;font-weight:600;}
-  .aspect-desc{font-size:13.5px;color:var(--ink-2);margin-top:1px;}
-  .section-label{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:700;}
-  .hyp-card{background:var(--surface-2);border:1px solid var(--line);border-left-width:3px;border-radius:9px;padding:14px 16px;margin-bottom:10px;}
-  .hyp-card.hyp-good{border-left-color:var(--success);}
-  .hyp-card.hyp-bad{border-left-color:var(--critical);}
-  .hyp-title{font-size:15px;font-weight:600;margin-bottom:5px;}
-  .hyp-claim{font-size:14px;color:var(--ink-2);line-height:1.55;}
-  .hyp-guess-tag{display:inline-block;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;margin-top:8px;padding:2px 8px;border-radius:999px;}
-  .hyp-guess-tag.hyp-good{background:var(--success-soft);color:var(--success);}
-  .hyp-guess-tag.hyp-bad{background:var(--critical-soft);color:var(--critical);}
-  .btn{background:var(--signal);color:#ffffff;border:none;border-radius:7px;padding:11px 20px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;text-decoration:none;display:inline-block;}
-  .error-box{background:var(--critical-soft);color:var(--critical);border-radius:8px;padding:14px 16px;font-size:14.5px;}
-  .run-log{display:none;margin-top:14px;background:#0d1117;color:#c9d1d9;border-radius:8px;padding:10px 12px;font-family:ui-monospace,monospace;font-size:12.5px;line-height:1.45;max-height:220px;overflow-y:auto;white-space:pre-wrap;}
-  .topnav{display:flex;gap:4px;padding:14px 32px;background:#171717;}
-  .topnav-link{color:rgba(255,255,255,.6);text-decoration:none;font-size:14px;padding:6px 12px;border-radius:6px;}
-  .topnav-link:hover{background:rgba(255,255,255,.08);color:#ffffff;}
-  .topnav-link.active{background:rgba(240,116,0,.16);color:var(--signal-strong);font-weight:600;}
-</style>
-</head>
-<body>
-<div class="topnav">
-  <a href="/" class="topnav-link">New Study</a>
-  <a href="/explore" class="topnav-link active">Explore</a>
-  <a href="/results" class="topnav-link">Results</a>
-</div>
-<div class="main">
-  <span class="eyebrow">Ypervaíno</span>
-  <div class="live-pill"><span class="live-dot"></span>Live — BotProbe traces + Mongo session index</div>
-  <h1 style="font-size:25px;margin:0 0 4px;">Exploration &amp; Plan Approval</h1>
-  <p class="desc" id="desc">Loading analysis plan…</p>
-  <div id="content"></div>
-</div>
-<script>
-const params = new URLSearchParams(window.location.search);
-const slug = params.get('study');
-function escapeHtml(s){ const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  <head>
+    <meta charset="utf-8" />
+    <title>Ypervaíno — Explore &amp; Approve</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --paper: #f9f8f8;
+        --surface: #ffffff;
+        --surface-2: #fcfcfb;
+        --surface-3: #f3f2f0;
+        --ink: #282624;
+        --ink-2: #7c7972;
+        --ink-3: #b5b1ad;
+        --line: #e1deda;
+        --line-strong: #b5b1ad;
+        --signal: #f07400;
+        --signal-strong: #ff7b00;
+        --signal-soft: rgba(240, 116, 0, 0.12);
+        --success: #027a48;
+        --success-soft: #e7fdf3;
+        --warning: #856404;
+        --critical: #b72d0e;
+        --critical-soft: #fce8e4;
+        --info: #3a91b4;
+        --info-soft: #eaf9fe;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+      }
+      body {
+        background: var(--paper);
+        color: var(--ink);
+        font-family:
+          "Manrope",
+          -apple-system,
+          BlinkMacSystemFont,
+          "Roboto",
+          "Oxygen",
+          "Ubuntu",
+          "Cantarell",
+          "Fira Sans",
+          "Droid Sans",
+          "Helvetica Neue",
+          sans-serif;
+        font-size: 15px;
+      }
+      .mono {
+        font-family: "Roboto Mono", ui-monospace, monospace;
+      }
+      .main {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 28px 32px 60px;
+      }
+      .eyebrow {
+        font-family:
+          "Manrope",
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
+        font-size: 22px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        background: linear-gradient(90deg, var(--signal-strong), var(--signal));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        display: inline-block;
+        margin-bottom: 6px;
+      }
+      .live-pill {
+        display: flex;
+        width: fit-content;
+        align-items: center;
+        gap: 6px;
+        background: var(--signal-soft);
+        color: var(--signal-strong);
+        border-radius: 999px;
+        padding: 4px 10px 4px 8px;
+        font-size: 12.5px;
+        font-weight: 600;
+        margin-bottom: 14px;
+      }
+      .live-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--signal);
+        animation: pulse 1.4s ease-in-out infinite;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.35;
+        }
+      }
+      .desc {
+        color: var(--ink-2);
+        font-size: 14.5px;
+        margin: 6px 0 22px;
+        line-height: 1.5;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        margin-bottom: 16px;
+      }
+      .card-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 13px 18px;
+        border-bottom: 1px solid var(--line);
+        font-size: 15px;
+        font-weight: 600;
+      }
+      .card-pad {
+        padding: 16px 18px;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        background: var(--info-soft);
+        color: var(--info);
+      }
+      .loading {
+        color: var(--ink-3);
+        padding: 24px;
+        text-align: center;
+      }
+      .ai-note {
+        display: flex;
+        gap: 12px;
+      }
+      .ai-avatar {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        background: var(--signal-soft);
+        color: var(--signal-strong);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .ai-text {
+        font-size: 14.5px;
+        color: var(--ink-2);
+        line-height: 1.65;
+      }
+      .row-scroll {
+        display: flex;
+        gap: 12px;
+        overflow-x: auto;
+        padding-bottom: 2px;
+      }
+      .sample-card {
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        padding: 11px 13px;
+        width: 250px;
+        flex-shrink: 0;
+      }
+      .sample-id {
+        font-size: 12px;
+        color: var(--ink-3);
+      }
+      .sample-line {
+        font-size: 13px;
+        line-height: 1.5;
+        margin-bottom: 4px;
+      }
+      .sample-line b {
+        color: var(--ink-3);
+      }
+      .aspect-row {
+        display: flex;
+        gap: 12px;
+        padding: 11px 0;
+        border-bottom: 1px solid var(--line);
+        align-items: flex-start;
+      }
+      .chart-icon {
+        flex-shrink: 0;
+        width: 36px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--surface-3);
+        border-radius: 6px;
+      }
+      .aspect-row:last-child {
+        border-bottom: none;
+      }
+      .aspect-title {
+        font-size: 14.5px;
+        font-weight: 600;
+      }
+      .aspect-desc {
+        font-size: 13.5px;
+        color: var(--ink-2);
+        margin-top: 1px;
+      }
+      .section-label {
+        font-size: 11.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--ink-3);
+        font-weight: 700;
+      }
+      .hyp-card {
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-left-width: 3px;
+        border-radius: 9px;
+        padding: 14px 16px;
+        margin-bottom: 10px;
+      }
+      .hyp-card.hyp-good {
+        border-left-color: var(--success);
+      }
+      .hyp-card.hyp-bad {
+        border-left-color: var(--critical);
+      }
+      .hyp-title {
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 5px;
+      }
+      .hyp-claim {
+        font-size: 14px;
+        color: var(--ink-2);
+        line-height: 1.55;
+      }
+      .hyp-guess-tag {
+        display: inline-block;
+        font-size: 10.5px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        margin-top: 8px;
+        padding: 2px 8px;
+        border-radius: 999px;
+      }
+      .hyp-guess-tag.hyp-good {
+        background: var(--success-soft);
+        color: var(--success);
+      }
+      .hyp-guess-tag.hyp-bad {
+        background: var(--critical-soft);
+        color: var(--critical);
+      }
+      .btn {
+        background: var(--signal);
+        color: #ffffff;
+        border: none;
+        border-radius: 7px;
+        padding: 11px 20px;
+        font-size: 15px;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+      }
+      .error-box {
+        background: var(--critical-soft);
+        color: var(--critical);
+        border-radius: 8px;
+        padding: 14px 16px;
+        font-size: 14.5px;
+      }
+      .run-log {
+        display: none;
+        margin-top: 14px;
+        background: #0d1117;
+        color: #c9d1d9;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-family: "Roboto Mono", ui-monospace, monospace;
+        font-size: 12.5px;
+        line-height: 1.45;
+        max-height: 220px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+      }
+      .topnav {
+        display: flex;
+        gap: 4px;
+        padding: 14px 32px;
+        background: #171717;
+      }
+      .topnav-link {
+        color: rgba(255, 255, 255, 0.6);
+        text-decoration: none;
+        font-size: 14px;
+        padding: 6px 12px;
+        border-radius: 6px;
+      }
+      .topnav-link:hover {
+        background: rgba(255, 255, 255, 0.08);
+        color: #ffffff;
+      }
+      .topnav-link.active {
+        background: rgba(240, 116, 0, 0.16);
+        color: var(--signal-strong);
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="topnav">
+      <a href="/" class="topnav-link">New Study</a>
+      <a href="/explore" class="topnav-link active">Explore</a>
+      <a href="/results" class="topnav-link">Results</a>
+      <a href="/proposals" class="topnav-link">Proposals</a>
+      <a href="/sessions" class="topnav-link">Sessions</a>
+    </div>
+    <div class="main">
+      <span class="eyebrow">Ypervaíno</span>
+      <div class="live-pill">
+        <span class="live-dot"></span>Live — BotProbe traces + Mongo session
+        index
+      </div>
+      <h1 style="font-size: 25px; margin: 0 0 4px">
+        Exploration &amp; Plan Approval
+      </h1>
+      <p class="desc" id="desc">Loading analysis plan…</p>
+      <div id="content"></div>
+    </div>
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const slug = params.get("study");
+      function navHref(path) {
+        return slug ? `${path}?study=${encodeURIComponent(slug)}` : path;
+      }
+      document.querySelectorAll(".topnav-link").forEach((a) => {
+        if (a.getAttribute("href") !== "/")
+          a.href = navHref(a.getAttribute("href"));
+      });
+      function escapeHtml(s) {
+        const d = document.createElement("div");
+        d.textContent = s;
+        return d.innerHTML;
+      }
 
-async function load(){
-  if (!slug) {
-    document.getElementById('content').innerHTML = '<div class="error-box">Missing ?study= slug. Start from New Study.</div>';
-    return;
-  }
-  document.getElementById('content').innerHTML = '<div class="card"><div class="loading">Loading plan…</div></div>';
-  const res = await fetch(`/api/v1/ypervaino/studies/${encodeURIComponent(slug)}/explore`);
-  const data = await res.json();
-  if (!res.ok) {
-    document.getElementById('content').innerHTML = `<div class="error-box">${escapeHtml(JSON.stringify(data.detail || data))}</div>`;
-    return;
-  }
-  const llm = data.llm || {};
-  if (llm.error) {
-    document.getElementById('content').innerHTML = `<div class="error-box">${escapeHtml(llm.error)}</div>`;
-    return;
-  }
-  document.getElementById('desc').textContent = data.meta?.title || slug;
-  const samplesHtml = (data.samples || []).map(s => `
+      async function load() {
+        if (!slug) {
+          document.getElementById("content").innerHTML =
+            '<div class="error-box">Missing ?study= slug. Start from New Study.</div>';
+          return;
+        }
+        document.getElementById("content").innerHTML =
+          '<div class="card"><div class="loading">Loading plan…</div></div>';
+        const res = await fetch(
+          `/api/v1/ypervaino/studies/${encodeURIComponent(slug)}/explore`,
+        );
+        const data = await res.json();
+        if (!res.ok) {
+          document.getElementById("content").innerHTML =
+            `<div class="error-box">${escapeHtml(JSON.stringify(data.detail || data))}</div>`;
+          return;
+        }
+        const llm = data.llm || {};
+        if (llm.error) {
+          document.getElementById("content").innerHTML =
+            `<div class="error-box">${escapeHtml(llm.error)}</div>`;
+          return;
+        }
+        document.getElementById("desc").textContent = data.meta?.title || slug;
+        const samplesHtml = (data.samples || [])
+          .map(
+            (s) => `
     <div class="sample-card">
       <div class="sample-id mono">${s.session_id}</div>
-      ${(s.transcript || []).slice(0,3).map(t => `<div class="sample-line"><b>${t.speaker}:</b> ${escapeHtml(t.text || '')}</div>`).join('')}
-    </div>`).join('');
-  const aspectsHtml = (llm.aspects || []).map(a => `
-    <div class="aspect-row"><div><div class="aspect-title">${escapeHtml(a.name || a.id || '')}</div><div class="aspect-desc">${escapeHtml(a.description || '')}</div></div></div>`).join('');
-  // suggested_plots entries only carry {template, aspect_id} (no title/description --
-  // that shape is only used by aspects), so look the aspect up by id for a readable
-  // label instead of rendering blank title+description rows.
-  const aspectNameById = Object.fromEntries((llm.aspects || []).map(a => [a.id, a.name || a.id]));
-  // Small icon per template so the proposed chart *type* is visible even
-  // though there's no data to actually draw yet (that only exists after
-  // Execute plan runs Phase 3 and ArtifactRenderer produces real PNGs).
-  const CHART_ICONS = {
-    aspect_before_after_bar: '<svg width="20" height="16" viewBox="0 0 20 16"><rect x="1" y="7" width="5" height="8" rx="1" fill="var(--signal)" opacity=".45"/><rect x="10" y="2" width="5" height="13" rx="1" fill="var(--signal)"/></svg>',
-    aspect_single_cohort_bar: '<svg width="20" height="16" viewBox="0 0 20 16"><rect x="2" y="6" width="4" height="9" rx="1" fill="var(--signal)" opacity=".6"/><rect x="8" y="2" width="4" height="13" rx="1" fill="var(--signal)"/><rect x="14" y="9" width="4" height="6" rx="1" fill="var(--signal)" opacity=".4"/></svg>',
-    aspect_delta_lollipop: '<svg width="20" height="16" viewBox="0 0 20 16"><line x1="3" y1="13" x2="16" y2="3" stroke="var(--signal)" stroke-width="2"/><circle cx="3" cy="13" r="2.5" fill="var(--ink-3)"/><circle cx="16" cy="3" r="2.5" fill="var(--signal)"/></svg>',
-    distribution_histogram: '<svg width="20" height="16" viewBox="0 0 20 16"><rect x="0" y="9" width="3" height="7" fill="var(--signal)" opacity=".35"/><rect x="4.5" y="4" width="3" height="12" fill="var(--signal)" opacity=".7"/><rect x="9" y="1" width="3" height="15" fill="var(--signal)"/><rect x="13.5" y="6" width="3" height="10" fill="var(--signal)" opacity=".6"/><rect x="18" y="11" width="2" height="5" fill="var(--signal)" opacity=".3"/></svg>',
-    hypothesis_rate_comparison: '<svg width="20" height="16" viewBox="0 0 20 16"><rect x="1" y="6" width="5" height="9" rx="1" fill="var(--critical)" opacity=".6"/><rect x="10" y="2" width="5" height="13" rx="1" fill="var(--success)" opacity=".8"/></svg>',
-  };
-  const DEFAULT_CHART_ICON = CHART_ICONS.aspect_before_after_bar;
-  const plotsHtml = (llm.suggested_plots || []).map(p => {
-    const templateLabel = (p.title || p.template || '').replace(/_/g, ' ');
-    const aspectLabel = aspectNameById[p.aspect_id] || p.description || '';
-    const icon = CHART_ICONS[p.template] || DEFAULT_CHART_ICON;
-    return `<div class="aspect-row"><div class="chart-icon">${icon}</div><div><div class="aspect-title">${escapeHtml(templateLabel)}</div><div class="aspect-desc">${escapeHtml(aspectLabel)}</div></div></div>`;
-  }).join('') || '<div class="aspect-desc">No plots proposed.</div>';
-  // Nothing has been measured yet at this stage (plan hasn't been executed) --
-  // there's no real pass/fail to color by. This guesses a direction purely
-  // from how the LLM phrased the title/description (negated/reassuring
-  // wording -> looks positive, plain negative-outcome wording -> looks like
-  // a risk) and labels it as a guess, not a result.
-  function guessHypothesisTone(text){
-    const t = (text || '').toLowerCase();
-    const negation = /\b(does not|doesn't|do not|don't|will not|won't|no increase|not increase|not higher|not more|maintains?|remains? stable|no (significant )?change|comparable|similar|rarely|consistently (safe|compliant)|reduce[sd]?|fewer|decrease[sd]?|shorter|lower or comparable)\b/;
-    const negative = /\b(increase[sd]?|higher|worse|more errors?|degrade|fail|risk|regress|persists?|longer)\b/;
-    if (negation.test(t)) return 'hyp-good';
-    if (negative.test(t)) return 'hyp-bad';
-    return '';
-  }
-  const hypHtml = (llm.hypotheses || []).map(h => {
-    const tone = guessHypothesisTone((h.title || '') + ' ' + (h.description || h.claim || ''));
-    const tagHtml = tone ? `<div class="hyp-guess-tag ${tone}">${tone === 'hyp-good' ? 'Looks positive' : 'Potential risk'}</div>` : '';
-    return `<div class="hyp-card ${tone}"><div class="hyp-title">${escapeHtml(h.title || h.id || '')}</div><div class="hyp-claim">${escapeHtml(h.description || h.claim || '')}</div>${tagHtml}</div>`;
-  }).join('');
-  document.getElementById('content').innerHTML = `
+      ${(s.transcript || [])
+        .slice(0, 3)
+        .map(
+          (t) =>
+            `<div class="sample-line"><b>${t.speaker}:</b> ${escapeHtml(t.text || "")}</div>`,
+        )
+        .join("")}
+    </div>`,
+          )
+          .join("");
+        const aspectsHtml = (llm.aspects || [])
+          .map(
+            (a) => `
+    <div class="aspect-row"><div><div class="aspect-title">${escapeHtml(a.name || a.id || "")}</div><div class="aspect-desc">${escapeHtml(a.description || "")}</div></div></div>`,
+          )
+          .join("");
+        // suggested_plots entries only carry {template, aspect_id} (no title/description --
+        // that shape is only used by aspects), so look the aspect up by id for a readable
+        // label instead of rendering blank title+description rows.
+        const aspectNameById = Object.fromEntries(
+          (llm.aspects || []).map((a) => [a.id, a.name || a.id]),
+        );
+        // Small icon per template so the proposed chart *type* is visible even
+        // though there's no data to actually draw yet (that only exists after
+        // Execute plan runs Phase 3 and ArtifactRenderer produces real PNGs).
+        const CHART_ICONS = {
+          aspect_before_after_bar:
+            '<svg width="20" height="16" viewBox="0 0 20 16"><rect x="1" y="7" width="5" height="8" rx="1" fill="var(--signal)" opacity=".45"/><rect x="10" y="2" width="5" height="13" rx="1" fill="var(--signal)"/></svg>',
+          aspect_single_cohort_bar:
+            '<svg width="20" height="16" viewBox="0 0 20 16"><rect x="2" y="6" width="4" height="9" rx="1" fill="var(--signal)" opacity=".6"/><rect x="8" y="2" width="4" height="13" rx="1" fill="var(--signal)"/><rect x="14" y="9" width="4" height="6" rx="1" fill="var(--signal)" opacity=".4"/></svg>',
+          aspect_delta_lollipop:
+            '<svg width="20" height="16" viewBox="0 0 20 16"><line x1="3" y1="13" x2="16" y2="3" stroke="var(--signal)" stroke-width="2"/><circle cx="3" cy="13" r="2.5" fill="var(--ink-3)"/><circle cx="16" cy="3" r="2.5" fill="var(--signal)"/></svg>',
+          distribution_histogram:
+            '<svg width="20" height="16" viewBox="0 0 20 16"><rect x="0" y="9" width="3" height="7" fill="var(--signal)" opacity=".35"/><rect x="4.5" y="4" width="3" height="12" fill="var(--signal)" opacity=".7"/><rect x="9" y="1" width="3" height="15" fill="var(--signal)"/><rect x="13.5" y="6" width="3" height="10" fill="var(--signal)" opacity=".6"/><rect x="18" y="11" width="2" height="5" fill="var(--signal)" opacity=".3"/></svg>',
+          hypothesis_rate_comparison:
+            '<svg width="20" height="16" viewBox="0 0 20 16"><rect x="1" y="6" width="5" height="9" rx="1" fill="var(--critical)" opacity=".6"/><rect x="10" y="2" width="5" height="13" rx="1" fill="var(--success)" opacity=".8"/></svg>',
+        };
+        const DEFAULT_CHART_ICON = CHART_ICONS.aspect_before_after_bar;
+        const plotsHtml =
+          (llm.suggested_plots || [])
+            .map((p) => {
+              const templateLabel = (p.title || p.template || "").replace(
+                /_/g,
+                " ",
+              );
+              const aspectLabel =
+                aspectNameById[p.aspect_id] || p.description || "";
+              const icon = CHART_ICONS[p.template] || DEFAULT_CHART_ICON;
+              return `<div class="aspect-row"><div class="chart-icon">${icon}</div><div><div class="aspect-title">${escapeHtml(templateLabel)}</div><div class="aspect-desc">${escapeHtml(aspectLabel)}</div></div></div>`;
+            })
+            .join("") || '<div class="aspect-desc">No plots proposed.</div>';
+        // Nothing has been measured yet at this stage (plan hasn't been executed) --
+        // there's no real pass/fail to color by. This guesses a direction purely
+        // from how the LLM phrased the title/description (negated/reassuring
+        // wording -> looks positive, plain negative-outcome wording -> looks like
+        // a risk) and labels it as a guess, not a result.
+        function guessHypothesisTone(text) {
+          const t = (text || "").toLowerCase();
+          const negation =
+            /\b(does not|doesn't|do not|don't|will not|won't|no increase|not increase|not higher|not more|maintains?|remains? stable|no (significant )?change|comparable|similar|rarely|consistently (safe|compliant)|reduce[sd]?|fewer|decrease[sd]?|shorter|lower or comparable)\b/;
+          const negative =
+            /\b(increase[sd]?|higher|worse|more errors?|degrade|fail|risk|regress|persists?|longer)\b/;
+          if (negation.test(t)) return "hyp-good";
+          if (negative.test(t)) return "hyp-bad";
+          return "";
+        }
+        const hypHtml = (llm.hypotheses || [])
+          .map((h) => {
+            const tone = guessHypothesisTone(
+              (h.title || "") + " " + (h.description || h.claim || ""),
+            );
+            const tagHtml = tone
+              ? `<div class="hyp-guess-tag ${tone}">${tone === "hyp-good" ? "Looks positive" : "Potential risk"}</div>`
+              : "";
+            return `<div class="hyp-card ${tone}"><div class="hyp-title">${escapeHtml(h.title || h.id || "")}</div><div class="hyp-claim">${escapeHtml(h.description || h.claim || "")}</div>${tagHtml}</div>`;
+          })
+          .join("");
+        document.getElementById("content").innerHTML = `
     <div class="card"><div class="card-head">What we found<span class="pill">AnalysisPlan</span></div>
-      <div class="card-pad ai-note"><div class="ai-avatar">✦</div><div class="ai-text">${escapeHtml(llm.exploration_summary || '')}</div></div></div>
+      <div class="card-pad ai-note"><div class="ai-avatar">✦</div><div class="ai-text">${escapeHtml(llm.exploration_summary || "")}</div></div></div>
     <div class="card"><div class="card-head">Sample conversations</div><div class="card-pad"><div class="row-scroll">${samplesHtml}</div></div></div>
     <div class="card"><div class="card-head">Quantitative analysis</div><div class="card-pad">
       <div class="section-label" style="display:block;margin-bottom:4px;">Aspects to measure</div>
@@ -152,61 +483,81 @@ async function load(){
     <div class="card"><div class="card-head">Qualitative analysis</div><div class="card-pad">${hypHtml}</div></div>
     <button class="btn" id="run-btn">Execute plan →</button>
     <div id="run-log" class="run-log"></div>`;
-  document.getElementById('run-btn').onclick = runPhase3;
-}
+        document.getElementById("run-btn").onclick = runPhase3;
+      }
 
-async function refreshLogs(logEl){
-  try {
-    const lr = await fetch(`/api/v1/ypervaino/studies/${encodeURIComponent(slug)}/logs?tail=50`);
-    const ld = await lr.json();
-    if (ld.lines?.length) {
-      logEl.textContent = ld.lines.join('\n');
-      logEl.scrollTop = logEl.scrollHeight;
-      return;
-    }
-  } catch (_) {}
-  const st = await (await fetch(`/api/v1/ypervaino/studies/${encodeURIComponent(slug)}/status`)).json();
-  const lines = st.progress_hints?.recent_log_lines || [];
-  if (lines.length) {
-    logEl.textContent = lines.join('\n');
-    logEl.scrollTop = logEl.scrollHeight;
-  }
-}
+      async function refreshLogs(logEl) {
+        try {
+          const lr = await fetch(
+            `/api/v1/ypervaino/studies/${encodeURIComponent(slug)}/logs?tail=50`,
+          );
+          const ld = await lr.json();
+          if (ld.lines?.length) {
+            logEl.textContent = ld.lines.join("\n");
+            logEl.scrollTop = logEl.scrollHeight;
+            return;
+          }
+        } catch (_) {}
+        const st = await (
+          await fetch(
+            `/api/v1/ypervaino/studies/${encodeURIComponent(slug)}/status`,
+          )
+        ).json();
+        const lines = st.progress_hints?.recent_log_lines || [];
+        if (lines.length) {
+          logEl.textContent = lines.join("\n");
+          logEl.scrollTop = logEl.scrollHeight;
+        }
+      }
 
-async function runPhase3(){
-  const btn = document.getElementById('run-btn');
-  const logEl = document.getElementById('run-log');
-  btn.disabled = true; btn.textContent = 'Running Phase 3…';
-  logEl.style.display = 'block';
-  logEl.textContent = 'Starting Phase 3 evaluation…';
-  const res = await fetch(`/api/v1/ypervaino/studies/${encodeURIComponent(slug)}/execute`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
-  if (!res.ok) {
-    btn.textContent = 'Execute failed';
-    logEl.textContent = 'Failed to start Phase 3.';
-    return;
-  }
-  for (let i = 0; i < 600; i++) {
-    await refreshLogs(logEl);
-    const st = await (await fetch(`/api/v1/ypervaino/studies/${encodeURIComponent(slug)}/status`)).json();
-    if (st.status === 'complete') {
-      logEl.textContent += '\n=== Phase 3 complete — redirecting to results ===';
-      window.location.href = '/results?study=' + encodeURIComponent(slug);
-      return;
-    }
-    if (st.status === 'failed') {
-      btn.textContent = 'Failed';
-      logEl.textContent += '\n=== FAILED ===\n' + (st.error || 'Phase 3 failed');
-      return;
-    }
-    if (st.status === 'running') {
-      btn.textContent = 'Running Phase 3…';
-    }
-    await new Promise(r => setTimeout(r, 2000));
-  }
-  btn.textContent = 'Timed out';
-  logEl.textContent += '\nTimed out waiting for Phase 3.';
-}
-load();
-</script>
-</body>
+      async function runPhase3() {
+        const btn = document.getElementById("run-btn");
+        const logEl = document.getElementById("run-log");
+        btn.disabled = true;
+        btn.textContent = "Running Phase 3…";
+        logEl.style.display = "block";
+        logEl.textContent = "Starting Phase 3 evaluation…";
+        const res = await fetch(
+          `/api/v1/ypervaino/studies/${encodeURIComponent(slug)}/execute`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: "{}",
+          },
+        );
+        if (!res.ok) {
+          btn.textContent = "Execute failed";
+          logEl.textContent = "Failed to start Phase 3.";
+          return;
+        }
+        for (let i = 0; i < 600; i++) {
+          await refreshLogs(logEl);
+          const st = await (
+            await fetch(
+              `/api/v1/ypervaino/studies/${encodeURIComponent(slug)}/status`,
+            )
+          ).json();
+          if (st.status === "complete") {
+            logEl.textContent +=
+              "\n=== Phase 3 complete — redirecting to results ===";
+            window.location.href = "/results?study=" + encodeURIComponent(slug);
+            return;
+          }
+          if (st.status === "failed") {
+            btn.textContent = "Failed";
+            logEl.textContent +=
+              "\n=== FAILED ===\n" + (st.error || "Phase 3 failed");
+            return;
+          }
+          if (st.status === "running") {
+            btn.textContent = "Running Phase 3…";
+          }
+          await new Promise((r) => setTimeout(r, 2000));
+        }
+        btn.textContent = "Timed out";
+        logEl.textContent += "\nTimed out waiting for Phase 3.";
+      }
+      load();
+    </script>
+  </body>
 </html>
