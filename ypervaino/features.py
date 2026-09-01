@@ -34,21 +34,57 @@ def _norm_name(s: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", (s or "").lower()).strip("_")
 
 
+_UUID_PREFIX = re.compile(r"^[0-9a-f]{8}-", re.I)
+_SKIP_SKILL_NAMES = frozenset({"unknown", "proxy_node", "finish", "fin"})
+
+
+def _is_uuidish(value: str) -> bool:
+    s = (value or "").strip()
+    return bool(s and _UUID_PREFIX.match(s))
+
+
+def _add_skill_name(skills: set[str], value: str) -> None:
+    name = (value or "").strip()
+    if not name or _is_uuidish(name):
+        return
+    if _norm_name(name) in _SKIP_SKILL_NAMES:
+        return
+    skills.add(name)
+
+
+def _add_tool_name(tools: set[str], value: str) -> None:
+    name = (value or "").strip()
+    if not name or _is_uuidish(name):
+        return
+    tools.add(name)
+
+
 def _extract_structured_hits(events: list[dict]) -> dict[str, list[str]]:
     skills, tools, agents, nodes, purposes, event_types = set(), set(), set(), set(), set(), set()
     for e in events:
-        et = e.get("event_type")
+        et = e.get("event_type") or ""
         if et:
             event_types.add(et)
         ev = e.get("event_value") or {}
         if not isinstance(ev, dict):
             continue
+
+        ev_type = str(ev.get("type") or "").lower()
+        ev_name = ev.get("name")
+        if ev_name:
+            if ev_type == "skill" or et == "DEBUG.SKILL_ROUTED":
+                _add_skill_name(skills, str(ev_name))
+            elif ev_type == "tool" or et == "DEBUG.TOOL_INVOKED":
+                _add_tool_name(tools, str(ev_name))
+
         for key in ("skill_name", "skill", "skill_id"):
             if ev.get(key):
-                skills.add(str(ev[key]))
-        for key in ("tool_name", "tool", "tool_id"):
+                _add_skill_name(skills, str(ev[key]))
+        for key in ("tool_name", "tool"):
             if ev.get(key):
-                tools.add(str(ev[key]))
+                _add_tool_name(tools, str(ev[key]))
+        if ev.get("tool_id") and not ev.get("name"):
+            _add_tool_name(tools, str(ev["tool_id"]))
         for key in ("agent_name",):
             if ev.get(key):
                 agents.add(str(ev[key]))
@@ -172,13 +208,19 @@ def compute_features(conversation: dict[str, Any], *, include_embedding: bool = 
     )
 
     searchable_parts = []
+    user_utterance_parts = []
     for e in events:
         if e.get("content"):
-            searchable_parts.append(str(e["content"]))
+            content = str(e["content"])
+            searchable_parts.append(content)
+            if e.get("event_type") == "USER_QUERY":
+                user_utterance_parts.append(content)
         ev = e.get("event_value")
         if ev:
             searchable_parts.append(json.dumps(ev, default=str))
     searchable_text = "\n".join(searchable_parts).lower()
+    user_turns = [t.lower() for t in user_utterance_parts]
+    user_searchable_text = "\n".join(user_turns)
 
     structured_hits = _extract_structured_hits(events)
     turn_count = len(user_queries)
@@ -230,6 +272,8 @@ def compute_features(conversation: dict[str, Any], *, include_embedding: bool = 
         "agent_path": "→".join(agent_names),
         "structured_hits": structured_hits,
         "searchable_text": searchable_text,
+        "user_searchable_text": user_searchable_text,
+        "user_turns": user_turns,
         "traffic_split_variant": traffic_split_variant,
         "opening_text": opening_text,
         "embedding_opening": embedding_opening,

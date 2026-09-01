@@ -156,26 +156,34 @@ def materialize_conversation(session_uuid: str, trace: dict[str, Any], reconnect
     events = dedupe_events(trace.get("events", []), reconnects)
     events.sort(key=lambda e: e.get("timestamp") or "")
 
-    turns = []
     by_request: dict[str, list[dict]] = {}
     for e in events:
         rid = e.get("request_id")
         if rid:
             by_request.setdefault(rid, []).append(e)
 
+    turn_rows: list[tuple[str, dict[str, Any]]] = []
     for rid, evs in by_request.items():
         user_q = next((x for x in evs if x.get("event_type") == "USER_QUERY"), None)
         bot_r = next((x for x in evs if x.get("event_type") == "RESPONSE.FINAL"), None)
         if user_q or bot_r:
-            turns.append({
+            turn_ts = min((x.get("timestamp") or "") for x in evs) if evs else ""
+            turn_rows.append((turn_ts, {
                 "request_id": rid,
                 "user": (user_q or {}).get("content") or "",
                 "bot": (bot_r or {}).get("content") or "",
                 "agent_name": ((bot_r or {}).get("event_value") or {}).get("agent_name"),
-            })
+            }))
 
-    transcript = [{"speaker": "User", "text": t["user"]} for t in turns if t["user"]]
-    transcript += [{"speaker": "Bot", "text": t["bot"]} for t in turns if t["bot"]]
+    turn_rows.sort(key=lambda row: row[0])
+    turns = [row[1] for row in turn_rows]
+
+    transcript: list[dict[str, str]] = []
+    for turn in turns:
+        if turn["user"]:
+            transcript.append({"speaker": "User", "text": turn["user"]})
+        if turn["bot"]:
+            transcript.append({"speaker": "Bot", "text": turn["bot"]})
 
     return {
         "session_id": session_uuid,
