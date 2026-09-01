@@ -62,6 +62,15 @@
   .topnav-link:hover{background:var(--surface-2);color:var(--ink);}
   .topnav-link.active{background:var(--signal-soft);color:var(--signal-strong);font-weight:600;}
   .error-box{background:var(--critical);color:#2a0b08;border-radius:8px;padding:14px 16px;font-size:14.5px;}
+  .hidden{display:none!important;}
+  .btn{background:var(--signal);color:#ffffff;border:none;border-radius:8px;padding:11px 20px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;}
+  .btn:hover{filter:brightness(1.05);}
+  .btn:disabled{opacity:.45;cursor:not-allowed;}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--ink-2);}
+  .proposals-bar{display:flex;align-items:center;gap:12px;margin-top:24px;flex-wrap:wrap;}
+  .proposals-status{font-size:14px;color:var(--ink-2);}
+  .run-log{display:none;margin-top:12px;background:#0d1117;color:#c9d1d9;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;line-height:1.45;max-height:220px;overflow-y:auto;white-space:pre-wrap;}
+  .run-log.visible{display:block;}
 </style>
 </head>
 <body>
@@ -79,6 +88,12 @@
   <p class="desc" id="desc">Loading…</p>
 
   <div id="content"></div>
+
+  <div id="proposals-bar" class="proposals-bar hidden">
+    <button class="btn" id="proposals-btn">Generate proposals</button>
+    <span class="proposals-status" id="proposals-status"></span>
+  </div>
+  <div class="run-log" id="proposals-log"></div>
 
   <p class="footnote">
     Numbers come from BotProbe <code>/trace</code> events (Elasticsearch) for sessions scoped via
@@ -98,6 +113,105 @@ function fmtVal(v){
   return Number(v.toFixed(2));
 }
 function escapeHtml(s){ const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+const API = '/api/v1/ypervaino';
+let proposalPollTimer = null;
+
+function stopProposalPoll(){
+  if (proposalPollTimer) { clearInterval(proposalPollTimer); proposalPollTimer = null; }
+}
+
+async function refreshProposalLogs(slug){
+  const logEl = document.getElementById('proposals-log');
+  if (!logEl) return;
+  try {
+    const lr = await fetch(`${API}/studies/${encodeURIComponent(slug)}/logs?tail=50`);
+    const ld = await lr.json();
+    if (ld.lines?.length) {
+      logEl.textContent = ld.lines.join('\n');
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+  } catch (_) {}
+}
+
+async function fetchProposalStatus(slug){
+  const res = await fetch(`${API}/studies/${encodeURIComponent(slug)}/proposals`);
+  return res.json();
+}
+
+function updateProposalsBar(slug, gen){
+  const bar = document.getElementById('proposals-bar');
+  const btn = document.getElementById('proposals-btn');
+  const status = document.getElementById('proposals-status');
+  const logEl = document.getElementById('proposals-log');
+  if (!bar || !btn) return;
+
+  bar.classList.remove('hidden');
+  const st = gen?.status || 'not_started';
+
+  if (st === 'ready') {
+    btn.textContent = 'View proposals';
+    btn.disabled = false;
+    btn.onclick = () => { window.location.href = navHref('/proposals', slug); };
+    status.textContent = 'Proposals ready.';
+    logEl.classList.remove('visible');
+    stopProposalPoll();
+    return;
+  }
+  if (st === 'generating') {
+    btn.textContent = 'Generating proposals…';
+    btn.disabled = true;
+    status.textContent = 'Phase 4 running — see logs below.';
+    logEl.classList.add('visible');
+    refreshProposalLogs(slug);
+    if (!proposalPollTimer) {
+      proposalPollTimer = setInterval(async () => {
+        await refreshProposalLogs(slug);
+        const data = await fetchProposalStatus(slug);
+        const g = data.generation || {};
+        if (g.status === 'ready') {
+          stopProposalPoll();
+          window.location.href = navHref('/proposals', slug);
+        } else if (g.status === 'failed') {
+          stopProposalPoll();
+          updateProposalsBar(slug, g);
+        }
+      }, 2500);
+    }
+    return;
+  }
+  if (st === 'failed') {
+    btn.textContent = 'Retry proposal generation';
+    btn.disabled = false;
+    btn.onclick = () => startProposalGeneration(slug, true);
+    status.textContent = 'Generation failed.';
+    logEl.classList.add('visible');
+    return;
+  }
+  btn.textContent = 'Generate proposals';
+  btn.disabled = false;
+  btn.onclick = () => startProposalGeneration(slug, false);
+  status.textContent = 'Get VA Blueprint change suggestions from these results.';
+  logEl.classList.remove('visible');
+}
+
+async function startProposalGeneration(slug, force){
+  const btn = document.getElementById('proposals-btn');
+  const logEl = document.getElementById('proposals-log');
+  if (btn) { btn.disabled = true; btn.textContent = 'Starting…'; }
+  if (logEl) logEl.classList.add('visible');
+  await fetch(`${API}/studies/${encodeURIComponent(slug)}/proposals/generate${force ? '?force=true' : ''}`, { method: 'POST' });
+  updateProposalsBar(slug, { status: 'generating' });
+}
+
+async function initProposalsBar(slug){
+  try {
+    const data = await fetchProposalStatus(slug);
+    updateProposalsBar(slug, data.generation || {});
+  } catch (_) {
+    document.getElementById('proposals-bar')?.classList.remove('hidden');
+  }
+}
 
 async function load(){
   const slug = new URLSearchParams(window.location.search).get('study');
@@ -225,7 +339,6 @@ async function load(){
     : '';
 
   document.getElementById('content').innerHTML = `
-    <div style="margin-bottom:16px;"><a href="/proposals?study=${encodeURIComponent(slug)}" style="color:var(--signal-strong);font-size:14px;font-weight:600;text-decoration:none;">View proposals →</a></div>
     <div class="grid-kpi">
       <div class="kpi"><div class="kpi-label">Sessions analyzed</div><div class="kpi-value">${data.cohort_sizes.total}</div></div>
       ${isComparative ? `
@@ -247,6 +360,7 @@ async function load(){
       <div class="card-pad"><div class="grid-hyp">${hypHtml || '<p>No hypotheses evaluated.</p>'}</div></div>
     </div>
   `;
+  initProposalsBar(slug);
 }
 
 load();

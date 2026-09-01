@@ -75,8 +75,8 @@ class CreateStudyRequest(BaseModel):
     date_range: DateRange | None = None
     date_range_before: DateRange | None = None
     date_range_after: DateRange | None = None
-    n_explore: int = 100
-    n_eval: int | str = "all"
+    n_explore: int = 10
+    n_eval: int | str = 10
     min_support: int = 10
     significance_level: float = 0.05
     pairing_turn_tolerance: int = 3

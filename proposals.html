@@ -309,7 +309,8 @@ function render(data){
   const content = document.getElementById('content');
 
   if (st === 'not_started') {
-    content.innerHTML = `<div class="banner">Evaluation complete. <strong>Generate proposals</strong> to get VA Blueprint change suggestions grounded in your aspect and hypothesis results.</div>`;
+    content.innerHTML = `<div class="banner">No proposals yet. Use <strong>Generate proposals</strong> on the Results page — generation runs there and opens this tab when ready.</div>`;
+    btn.classList.add('hidden');
     return;
   }
   if (st === 'generating') {

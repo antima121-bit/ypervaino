@@ -156,12 +156,12 @@
       <div class="row">
         <div class="field">
           <label class="field-label">Exploration dataset size</label>
-          <input class="input" type="number" id="n_explore" value="100" min="2" step="2">
+          <input class="input" type="number" id="n_explore" value="10" min="2" step="2">
           <div class="hint">~100 typical — how many conversations the LLM reads to propose a plan.</div>
         </div>
         <div class="field">
           <label class="field-label">Eval size</label>
-          <input class="input" id="n_eval" placeholder="all" value="">
+          <input class="input" type="number" id="n_eval" placeholder="10" value="10">
           <div class="hint">Leave blank for all matching sessions, or cap it (can be in the thousands).</div>
         </div>
         <div class="field">
@@ -350,8 +350,8 @@ function start(){
     change_description: mode === 'discovery' ? '' : document.getElementById('description').value,
     pr_link: mode === 'discovery' ? null : (document.getElementById('pr_link').value.trim() || null),
     cohort_filters: collectCohortFilters(),
-    n_explore: parseInt(document.getElementById('n_explore').value, 10) || 100,
-    n_eval: n_eval_raw === '' ? 'all' : parseInt(n_eval_raw, 10),
+    n_explore: parseInt(document.getElementById('n_explore').value, 10) || 10,
+    n_eval: n_eval_raw === '' ? 10 : parseInt(n_eval_raw, 10),
     min_support: parseInt(document.getElementById('min_support').value, 10) || 10,
   };
   if (mode === 'discovery') {
