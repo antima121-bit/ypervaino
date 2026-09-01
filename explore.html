@@ -35,6 +35,7 @@
   .sample-line{font-size:13px;line-height:1.5;margin-bottom:4px;}
   .sample-line b{color:var(--ink-3);}
   .aspect-row{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);align-items:flex-start;}
+  .chart-icon{flex-shrink:0;width:36px;height:28px;display:flex;align-items:center;justify-content:center;background:var(--surface-3);border-radius:6px;}
   .aspect-row:last-child{border-bottom:none;}
   .aspect-title{font-size:14.5px;font-weight:600;}
   .aspect-desc{font-size:13.5px;color:var(--ink-2);margin-top:1px;}
@@ -103,10 +104,22 @@ async function load(){
   // that shape is only used by aspects), so look the aspect up by id for a readable
   // label instead of rendering blank title+description rows.
   const aspectNameById = Object.fromEntries((llm.aspects || []).map(a => [a.id, a.name || a.id]));
+  // Small icon per template so the proposed chart *type* is visible even
+  // though there's no data to actually draw yet (that only exists after
+  // Execute plan runs Phase 3 and ArtifactRenderer produces real PNGs).
+  const CHART_ICONS = {
+    aspect_before_after_bar: '<svg width="20" height="16" viewBox="0 0 20 16"><rect x="1" y="7" width="5" height="8" rx="1" fill="var(--signal)" opacity=".45"/><rect x="10" y="2" width="5" height="13" rx="1" fill="var(--signal)"/></svg>',
+    aspect_single_cohort_bar: '<svg width="20" height="16" viewBox="0 0 20 16"><rect x="2" y="6" width="4" height="9" rx="1" fill="var(--signal)" opacity=".6"/><rect x="8" y="2" width="4" height="13" rx="1" fill="var(--signal)"/><rect x="14" y="9" width="4" height="6" rx="1" fill="var(--signal)" opacity=".4"/></svg>',
+    aspect_delta_lollipop: '<svg width="20" height="16" viewBox="0 0 20 16"><line x1="3" y1="13" x2="16" y2="3" stroke="var(--signal)" stroke-width="2"/><circle cx="3" cy="13" r="2.5" fill="var(--ink-3)"/><circle cx="16" cy="3" r="2.5" fill="var(--signal)"/></svg>',
+    distribution_histogram: '<svg width="20" height="16" viewBox="0 0 20 16"><rect x="0" y="9" width="3" height="7" fill="var(--signal)" opacity=".35"/><rect x="4.5" y="4" width="3" height="12" fill="var(--signal)" opacity=".7"/><rect x="9" y="1" width="3" height="15" fill="var(--signal)"/><rect x="13.5" y="6" width="3" height="10" fill="var(--signal)" opacity=".6"/><rect x="18" y="11" width="2" height="5" fill="var(--signal)" opacity=".3"/></svg>',
+    hypothesis_rate_comparison: '<svg width="20" height="16" viewBox="0 0 20 16"><rect x="1" y="6" width="5" height="9" rx="1" fill="var(--critical)" opacity=".6"/><rect x="10" y="2" width="5" height="13" rx="1" fill="var(--success)" opacity=".8"/></svg>',
+  };
+  const DEFAULT_CHART_ICON = CHART_ICONS.aspect_before_after_bar;
   const plotsHtml = (llm.suggested_plots || []).map(p => {
     const templateLabel = (p.title || p.template || '').replace(/_/g, ' ');
     const aspectLabel = aspectNameById[p.aspect_id] || p.description || '';
-    return `<div class="aspect-row"><div><div class="aspect-title">${escapeHtml(templateLabel)}</div><div class="aspect-desc">${escapeHtml(aspectLabel)}</div></div></div>`;
+    const icon = CHART_ICONS[p.template] || DEFAULT_CHART_ICON;
+    return `<div class="aspect-row"><div class="chart-icon">${icon}</div><div><div class="aspect-title">${escapeHtml(templateLabel)}</div><div class="aspect-desc">${escapeHtml(aspectLabel)}</div></div></div>`;
   }).join('') || '<div class="aspect-desc">No plots proposed.</div>';
   // Nothing has been measured yet at this stage (plan hasn't been executed) --
   // there's no real pass/fail to color by. This guesses a direction purely
