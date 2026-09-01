@@ -94,8 +94,15 @@ async function load(){
     </div>`).join('');
   const aspectsHtml = (llm.aspects || []).map(a => `
     <div class="aspect-row"><div><div class="aspect-title">${escapeHtml(a.name || a.id || '')}</div><div class="aspect-desc">${escapeHtml(a.description || '')}</div></div></div>`).join('');
-  const plotsHtml = (llm.suggested_plots || []).map(p => `
-    <div class="aspect-row"><div><div class="aspect-title">${escapeHtml(p.title || p.id || '')}</div><div class="aspect-desc">${escapeHtml(p.description || '')}</div></div></div>`).join('') || '<div class="aspect-desc">No plots proposed.</div>';
+  // suggested_plots entries only carry {template, aspect_id} (no title/description --
+  // that shape is only used by aspects), so look the aspect up by id for a readable
+  // label instead of rendering blank title+description rows.
+  const aspectNameById = Object.fromEntries((llm.aspects || []).map(a => [a.id, a.name || a.id]));
+  const plotsHtml = (llm.suggested_plots || []).map(p => {
+    const templateLabel = (p.title || p.template || '').replace(/_/g, ' ');
+    const aspectLabel = aspectNameById[p.aspect_id] || p.description || '';
+    return `<div class="aspect-row"><div><div class="aspect-title">${escapeHtml(templateLabel)}</div><div class="aspect-desc">${escapeHtml(aspectLabel)}</div></div></div>`;
+  }).join('') || '<div class="aspect-desc">No plots proposed.</div>';
   const hypHtml = (llm.hypotheses || []).map(h => `
     <div class="hyp-card"><div class="hyp-title">${escapeHtml(h.title || h.id || '')}</div><div class="hyp-claim">${escapeHtml(h.description || h.claim || '')}</div></div>`).join('');
   document.getElementById('content').innerHTML = `
