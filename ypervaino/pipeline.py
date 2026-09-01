@@ -258,7 +258,7 @@ def _eval_predicate(node: Any, values: dict[str, Any]) -> bool:
         children = node.get("args") or node.get("nodes") or []
         return any(_eval_predicate(a, values) for a in children)
     if isinstance(node, dict) and node.get("op") == "cmp":
-        name = node.get("name")
+        name = _resolve_field(node.get("name"), values) or node.get("name")
         val = values.get(name)
         cmp = node.get("cmp") or node.get("operator")
         target = node.get("value")
@@ -296,6 +296,28 @@ def _rule_based_signal(spec: dict, fv: dict) -> Any:
     return labels[0] if hits >= int(spec.get("min_hits") or 1) else (labels[-1] if len(labels) > 1 else "other")
 
 
+# PlanSynthesizer's LLM very consistently reaches for these names instead of
+# the real FeatureVector keys (confirmed by auditing every plan.json produced
+# so far -- "outcome" instead of "session_outcome" alone appeared in ~20
+# aspects/predicates across every study). Aliasing them is far cheaper and
+# safer than hoping every future plan happens to use the exact schema name;
+# the prompt should still be tightened separately, but this catches the
+# common case immediately instead of silently returning "no data"/no-match.
+FIELD_ALIASES = {
+    "outcome": "session_outcome",
+    "tools": "tool_invocation_count",
+    "tools_used": "tool_invocation_count",
+    "tool_usage_count": "tool_invocation_count",
+}
+
+
+def _resolve_field(name: str | None, fv: dict[str, Any]) -> str | None:
+    if name in fv:
+        return name
+    alias = FIELD_ALIASES.get(name or "")
+    return alias if alias in fv else None
+
+
 def _aggregate(values: list[float], aggregation: str) -> float:
     if not values:
         return 0.0
@@ -306,9 +328,16 @@ def _aggregate(values: list[float], aggregation: str) -> float:
     if aggregation == "min":
         return float(min(values))
     if aggregation == "count":
-        return float(len(values))
-    if aggregation == "p95":
+        # Count how many components were actually true/nonzero -- NOT how
+        # many components exist. The latter always returns a constant equal
+        # to len(values) regardless of the real values (e.g. a single boolean
+        # primitive like guardrail_triggered always "counted" as 1, even when
+        # every session's real value was False).
+        return float(sum(1 for v in values if v))
+    if aggregation in ("p95", "median"):
         if len(values) >= 2:
+            if aggregation == "median":
+                return float(statistics.median(values))
             return float(statistics.quantiles(values, n=20)[-1])
         return float(values[0])
     return float(statistics.mean(values))
@@ -317,15 +346,15 @@ def _aggregate(values: list[float], aggregation: str) -> float:
 def _aspect_value(aspect: dict, fv: dict[str, Any]) -> float | None:
     components = aspect.get("components") or []
     if not components:
-        name = aspect.get("id") or aspect.get("name")
-        if name in fv and isinstance(fv[name], (int, float)):
+        name = _resolve_field(aspect.get("id") or aspect.get("name"), fv)
+        if name and isinstance(fv[name], (int, float)):
             return float(fv[name])
         return None
     vals = []
     for comp in components:
         ref = comp.get("ref") or {}
-        prim = ref.get("name")
-        if prim is None or prim not in fv:
+        prim = _resolve_field(ref.get("name"), fv)
+        if prim is None:
             continue
         raw = fv[prim]
         if isinstance(raw, bool):
@@ -347,7 +376,11 @@ def phase3_evaluate(store: StudyStore, req: dict, stats: dict, plan: dict) -> di
     per_cohort_aspect: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
     aspect_results = []
     hypothesis_results = []
-    aspects = ((plan.get("quantitative") or {}).get("aspects") or [])
+    # PlanSynthesizer's LLM output isn't schema-validated before this runs
+    # (architecture.md calls for that; not yet built) -- filter out any
+    # malformed (non-dict) entries so one bad item doesn't crash the study.
+    aspects = [a for a in ((plan.get("quantitative") or {}).get("aspects") or []) if isinstance(a, dict)]
+    hypotheses = [h for h in ((plan.get("qualitative") or {}).get("hypotheses") or []) if isinstance(h, dict)]
     per_conversation: dict[str, dict] = {}
 
     for cohort_label, ids in cohort_ids.items():
@@ -365,7 +398,14 @@ def phase3_evaluate(store: StudyStore, req: dict, stats: dict, plan: dict) -> di
 
             values = dict(fv)
             for sig in plan.get("signals_required") or []:
-                if sig.get("method") == "rule_based":
+                # PlanSynthesizer's LLM output isn't schema-validated before
+                # this runs (architecture.md calls for that, not yet built) --
+                # seen in practice emitting plain strings instead of
+                # {"method": ..., "name": ..., "spec": ...} dicts. Skip
+                # anything malformed instead of crashing the whole study.
+                if not isinstance(sig, dict):
+                    continue
+                if sig.get("method") == "rule_based" and sig.get("name"):
                     values[sig["name"]] = _rule_based_signal(sig.get("spec") or {}, fv)
 
             for aspect in aspects:
@@ -375,7 +415,7 @@ def phase3_evaluate(store: StudyStore, req: dict, stats: dict, plan: dict) -> di
                     per_cohort_aspect[cohort_label][key].append(av)
 
             hyp_matches = {}
-            for hyp in (plan.get("qualitative") or {}).get("hypotheses") or []:
+            for hyp in hypotheses:
                 hyp_matches[hyp.get("id")] = _eval_predicate(hyp.get("predicate"), values)
             per_conversation[sid] = {
                 "session_id": sid,
@@ -392,6 +432,20 @@ def phase3_evaluate(store: StudyStore, req: dict, stats: dict, plan: dict) -> di
         if is_comparative:
             before_vals = per_cohort_aspect.get("before", {}).get(name) or []
             after_vals = per_cohort_aspect.get("after", {}).get(name) or []
+            # An empty list here means _aspect_value never resolved for any
+            # session -- usually the LLM referenced a primitive name that
+            # doesn't exist in the FeatureVector schema (seen in practice:
+            # "tools" instead of "tool_invocation_count"). That's "no data",
+            # not "measured zero" -- defaulting to 0 silently shows a
+            # confident-looking but fabricated number, so surface None/no_data
+            # instead and let the UI say so.
+            if not before_vals and not after_vals:
+                aspect_results.append({
+                    "id": name, "name": aspect.get("name") or name,
+                    "before": None, "after": None, "delta_pct": None,
+                    "good_if": "down", "no_data": True,
+                })
+                continue
             b = statistics.mean(before_vals) if before_vals else 0
             a = statistics.mean(after_vals) if after_vals else 0
             delta_pct = 0 if b == 0 else (a - b) / b * 100
@@ -405,18 +459,31 @@ def phase3_evaluate(store: StudyStore, req: dict, stats: dict, plan: dict) -> di
             })
         else:
             vals = per_cohort_aspect.get("all", {}).get(name) or []
-            m = statistics.mean(vals) if vals else 0
+            if not vals:
+                # Same "no data" case as the comparative branch above --
+                # _aspect_value never resolved (usually a nonexistent
+                # primitive name from the LLM plan). Don't fake a 0.
+                aspect_results.append({
+                    "id": name, "name": aspect.get("name") or name,
+                    "value": None, "before": None, "after": None,
+                    "delta_pct": None, "good_if": "down", "no_data": True,
+                })
+                continue
+            m = statistics.mean(vals)
             aspect_results.append({
                 "id": name,
                 "name": aspect.get("name") or name,
                 "value": round(m, 3),
-                "before": round(m, 3),
-                "after": round(m, 3),
-                "delta_pct": 0,
+                # No real before/after split exists for a single-cohort study --
+                # leave these null rather than duplicating `value` into both,
+                # which used to render as a fake "0% change" comparison.
+                "before": None,
+                "after": None,
+                "delta_pct": None,
                 "good_if": "down",
             })
 
-    for hyp in (plan.get("qualitative") or {}).get("hypotheses") or []:
+    for hyp in hypotheses:
         hid = hyp.get("id")
         rates = {}
         for cohort_label, ids in cohort_ids.items():
@@ -445,9 +512,13 @@ def phase3_evaluate(store: StudyStore, req: dict, stats: dict, plan: dict) -> di
     result = {
         "schema_version": "1.0",
         "study_type": req["study_type"],
+        "is_comparative": is_comparative,
         "cohort_sizes": {
-            "before": len(cohort_ids.get("before") or []),
-            "after": len(cohort_ids.get("after") or []),
+            # single_cohort studies store their ids under "all", not
+            # "before"/"after" -- report the true count there instead of
+            # silently showing 0/0 for a non-comparative study.
+            "before": len(cohort_ids.get("before") or []) if is_comparative else None,
+            "after": len(cohort_ids.get("after") or []) if is_comparative else None,
             "total": sum(len(v) for v in cohort_ids.values()),
         },
         "aspects": aspect_results,

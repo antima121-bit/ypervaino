@@ -270,19 +270,29 @@ def results(slug: str):
     if not rp.exists():
         return {"status": meta["status"], "error": "Evaluation still running"}
     data = store.read_json(rp)
-    # UI-friendly shape for dashboard.html
+    is_comparative = data.get("is_comparative", data.get("study_type") == "comparative")
+    # UI-friendly shape for dashboard.html. `before`/`after` are None on a
+    # single-cohort result (no real comparison exists) -- use `.get(k) is None`
+    # rather than `.get(k, default)`, since the key is present but null, not
+    # missing, and `.get` only falls back on a missing key.
     aspects = []
     for a in data.get("aspects") or []:
+        value = a.get("value")
+        before = a.get("before")
+        after = a.get("after")
         aspects.append({
             "name": a.get("name") or a.get("id"),
-            "before": a.get("before", a.get("value", 0)),
-            "after": a.get("after", a.get("value", 0)),
-            "delta_pct": a.get("delta_pct", 0),
+            "value": value,
+            "before": value if before is None else before,
+            "after": value if after is None else after,
+            "delta_pct": a.get("delta_pct") if a.get("delta_pct") is not None else 0,
             "good_if": a.get("good_if", "down"),
+            "no_data": bool(a.get("no_data")),
         })
     cs = data.get("cohort_sizes") or {}
     return {
         "status": meta["status"],
+        "is_comparative": is_comparative,
         "evaluation_result": data,
         "cohort_sizes": cs,
         "aspects": aspects,

@@ -95,10 +95,33 @@ async function load(){
     return;
   }
 
-  document.getElementById("desc").textContent =
-    `${data.cohort_sizes.total} sessions analyzed — ${data.cohort_sizes.before} before / ${data.cohort_sizes.after} after`;
+  const isComparative = !!data.is_comparative;
+
+  document.getElementById("desc").textContent = isComparative
+    ? `${data.cohort_sizes.total} sessions analyzed — ${data.cohort_sizes.before} before / ${data.cohort_sizes.after} after`
+    : `${data.cohort_sizes.total} sessions analyzed`;
 
   const aspectsHtml = (data.aspects || []).map(a => {
+    if (a.no_data) {
+      // The plan referenced a field that doesn't exist in the data (e.g. an
+      // LLM-hallucinated primitive name) -- say so plainly rather than
+      // showing a fabricated 0, which would look like a real measurement.
+      return `
+        <div class="aspect-card">
+          <div class="aspect-card-title">${escapeHtml(a.name)}</div>
+          <div class="compare-row"><span class="compare-label">Value</span><span class="compare-val" style="color:var(--ink-3);">No data</span></div>
+        </div>
+      `;
+    }
+    if (!isComparative) {
+      // Single-cohort study: no before/after comparison exists, show one value.
+      return `
+        <div class="aspect-card">
+          <div class="aspect-card-title">${escapeHtml(a.name)}</div>
+          <div class="compare-row"><span class="compare-label">Value</span><span class="compare-val">${a.value ?? a.before}</span></div>
+        </div>
+      `;
+    }
     const isGood = a.good_if === "down" ? a.delta_pct <= 0 : a.delta_pct >= 0;
     return `
       <div class="aspect-card">
@@ -126,8 +149,10 @@ async function load(){
   document.getElementById('content').innerHTML = `
     <div class="grid-kpi">
       <div class="kpi"><div class="kpi-label">Sessions analyzed</div><div class="kpi-value">${data.cohort_sizes.total}</div></div>
+      ${isComparative ? `
       <div class="kpi"><div class="kpi-label">Before cohort</div><div class="kpi-value">${data.cohort_sizes.before}</div></div>
       <div class="kpi"><div class="kpi-label">After cohort</div><div class="kpi-value">${data.cohort_sizes.after}</div></div>
+      ` : ""}
     </div>
     ${narrative}
     <div class="card">
