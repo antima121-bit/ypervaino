@@ -123,7 +123,7 @@ async function load(){
   }
   const hypHtml = (llm.hypotheses || []).map(h => {
     const tone = guessHypothesisTone((h.title || '') + ' ' + (h.description || h.claim || ''));
-    const tagHtml = tone ? `<div class="hyp-guess-tag ${tone}">${tone === 'hyp-good' ? 'Looks positive' : 'Potential risk'} — unverified</div>` : '';
+    const tagHtml = tone ? `<div class="hyp-guess-tag ${tone}">${tone === 'hyp-good' ? 'Looks positive' : 'Potential risk'}</div>` : '';
     return `<div class="hyp-card ${tone}"><div class="hyp-title">${escapeHtml(h.title || h.id || '')}</div><div class="hyp-claim">${escapeHtml(h.description || h.claim || '')}</div>${tagHtml}</div>`;
   }).join('');
   document.getElementById('content').innerHTML = `
