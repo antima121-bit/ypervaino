@@ -31,6 +31,7 @@
   .kpi-label{font-size:12.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
   .kpi-value{font-size:27px;font-weight:700;font-variant-numeric:tabular-nums;}
   .grid-aspects{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+  .grid-hyp{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;}
   .aspect-card{background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:14px 15px;}
   .aspect-card-title{font-size:14px;font-weight:600;margin-bottom:12px;}
   .compare-row{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;}
@@ -40,6 +41,17 @@
   .delta-badge{font-size:13.5px;font-weight:700;margin-top:6px;}
   .delta-badge.good{color:var(--success);}
   .delta-badge.bad{color:var(--critical);}
+  .hyp-desc{font-size:13.5px;color:var(--ink-2);margin:6px 0 12px;line-height:1.5;}
+  .hyp-rates{display:flex;gap:20px;margin-bottom:10px;}
+  .hyp-rate-label{font-size:10px;text-transform:uppercase;color:var(--ink-3);letter-spacing:.03em;display:block;margin-bottom:2px;}
+  .hyp-rate-val{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .hyp-rate-val .n{font-size:11px;font-weight:400;color:var(--ink-3);}
+  .status-pill{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:600;margin:0 6px 6px 0;}
+  .status-pill.good{background:var(--success-soft);color:var(--success);}
+  .status-pill.bad{background:var(--critical-soft);color:var(--critical);}
+  .hyp-counters{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);}
+  .hyp-counters-label{font-size:10.5px;text-transform:uppercase;color:var(--ink-3);letter-spacing:.03em;margin-bottom:5px;}
+  .hyp-counters .mono{font-size:12px;color:var(--ink-2);line-height:1.6;}
   .footnote{font-size:13px;color:var(--ink-3);margin-top:24px;line-height:1.6;}
   .footnote code{color:var(--ink-2);}
   .topnav{display:flex;gap:4px;padding:14px 32px;border-bottom:1px solid var(--line);background:var(--surface);}
@@ -140,17 +152,41 @@ async function load(){
 
   const hypHtml = (data.hypotheses || []).map(h => {
     const rates = h.rates || {};
+    const isComparativeHyp = !!rates.after;
     const before = rates.before || rates.all || {};
     const after = rates.after || {};
     const sig = (h.proof || {}).significant;
-    const rateStr = rates.after
-      ? `Before ${Math.round((before.rate||0)*100)}% (${before.support||0}) · After ${Math.round((after.rate||0)*100)}% (${after.support||0})${sig !== undefined ? (sig ? ' · significant' : ' · not significant') : ''}`
-      : `${Math.round((before.rate||0)*100)}% match (${before.support||0} sessions)`;
-    const counters = (h.counter_examples || []).slice(0,3).map(id => `<div class="mono" style="font-size:12.5px;color:var(--ink-3);">${escapeHtml(id)}</div>`).join('');
     // Confirmed (enough support, not rejected) reads as positive -> green;
     // rejected (insufficient support) reads as negative -> red.
-    const badgeClass = h.rejected ? 'bad' : 'good';
-    return `<div class="aspect-card"><div class="aspect-card-title">${escapeHtml(h.title||h.id||'')}</div><div style="font-size:13.5px;color:var(--ink-2);margin:6px 0;">${escapeHtml(h.description||'')}</div><div class="delta-badge ${badgeClass}">${rateStr}${h.rejected?' · low support':''}</div>${counters}</div>`;
+    const goodBad = h.rejected ? 'bad' : 'good';
+
+    const ratesHtml = isComparativeHyp ? `
+      <div class="hyp-rates">
+        <div><span class="hyp-rate-label">Before</span><span class="hyp-rate-val">${Math.round((before.rate||0)*100)}% <span class="n">(${before.support||0})</span></span></div>
+        <div><span class="hyp-rate-label">After</span><span class="hyp-rate-val">${Math.round((after.rate||0)*100)}% <span class="n">(${after.support||0})</span></span></div>
+      </div>` : `
+      <div class="hyp-rates">
+        <div><span class="hyp-rate-label">Match rate</span><span class="hyp-rate-val">${Math.round((before.rate||0)*100)}% <span class="n">(${before.support||0} sessions)</span></span></div>
+      </div>`;
+
+    const pills = [];
+    if (sig !== undefined) pills.push(`<span class="status-pill ${sig ? 'good' : 'bad'}">${sig ? 'Significant' : 'Not significant'}</span>`);
+    pills.push(`<span class="status-pill ${goodBad}">${h.rejected ? 'Low support' : 'Confirmed'}</span>`);
+
+    const counterIds = (h.counter_examples || []).slice(0,3);
+    const countersHtml = counterIds.length ? `
+      <div class="hyp-counters">
+        <div class="hyp-counters-label">Counter-examples</div>
+        ${counterIds.map(id => `<div class="mono">${escapeHtml(id)}</div>`).join('')}
+      </div>` : '';
+
+    return `<div class="aspect-card">
+      <div class="aspect-card-title">${escapeHtml(h.title||h.id||'')}</div>
+      <div class="hyp-desc">${escapeHtml(h.description||'')}</div>
+      ${ratesHtml}
+      <div>${pills.join('')}</div>
+      ${countersHtml}
+    </div>`;
   }).join('');
 
   const narrative = data.narrative ? `<div class="card"><div class="card-head"><h3 class="card-title">Summary</h3></div><div class="card-pad" style="color:var(--ink-2);line-height:1.6;">${escapeHtml(data.narrative)}</div></div>` : '';
@@ -173,7 +209,7 @@ async function load(){
     </div>
     <div class="card">
       <div class="card-head"><h3 class="card-title">Hypotheses</h3></div>
-      <div class="card-pad"><div class="grid-aspects">${hypHtml || '<p>No hypotheses evaluated.</p>'}</div></div>
+      <div class="card-pad"><div class="grid-hyp">${hypHtml || '<p>No hypotheses evaluated.</p>'}</div></div>
     </div>
   `;
 }
