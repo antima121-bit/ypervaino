@@ -108,6 +108,16 @@ async function load(){
     : `${data.cohort_sizes.total} sessions analyzed (single cohort)`;
 
   const aspectsHtml = (data.aspects || []).map(a => {
+    if (a.no_data) {
+      // The plan referenced something the resolver couldn't compute (e.g. an
+      // unrecognized component ref/kind) -- say so plainly rather than
+      // showing a fabricated 0 that would look like a real measurement.
+      return `
+      <div class="aspect-card">
+        <div class="aspect-card-title">${escapeHtml(a.name)}</div>
+        <div class="compare-row"><span class="compare-label">Value</span><span class="compare-val" style="color:var(--ink-3);">No data</span></div>
+      </div>`;
+    }
     if (!isComparative) {
       const val = a.after ?? a.before ?? a.value ?? 0;
       return `

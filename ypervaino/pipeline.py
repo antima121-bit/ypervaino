@@ -303,8 +303,12 @@ def phase3_evaluate(store: StudyStore, req: dict, stats: dict, plan: dict, timer
         "schema_version": "1.0",
         "study_type": req["study_type"],
         "cohort_sizes": {
-            "before": len(stats["session_ids"].get("before") or []),
-            "after": len(stats["session_ids"].get("after") or []),
+            # single_cohort studies store their ids under "all", not
+            # "before"/"after" -- report null there instead of a silent 0/0
+            # next to a nonzero total (fixed once already; came back with
+            # this rewrite).
+            "before": len(stats["session_ids"].get("before") or []) if is_comparative else None,
+            "after": len(stats["session_ids"].get("after") or []) if is_comparative else None,
             "total": sum(len(v) for v in stats["session_ids"].values()),
         },
         "quantitative": {"aspects": eval_out["aspects"]},

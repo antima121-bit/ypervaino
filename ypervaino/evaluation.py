@@ -317,14 +317,27 @@ def run_evaluation(
             })
         else:
             vals = per_cohort_aspect.get("all", {}).get(name) or []
-            m = statistics.mean(vals) if vals else 0
+            if not vals:
+                # No session resolved a value for this aspect (usually a
+                # component ref/kind the resolver doesn't recognize) --
+                # that's missing data, not a measured zero. Don't fabricate one.
+                aspect_results.append({
+                    "id": name, "name": aspect.get("name") or name,
+                    "value": None, "before": None, "after": None,
+                    "delta_pct": None, "good_if": "down", "no_data": True,
+                })
+                continue
+            m = statistics.mean(vals)
             aspect_results.append({
                 "id": name,
                 "name": aspect.get("name") or name,
                 "value": round(m, 3),
-                "before": round(m, 3),
-                "after": round(m, 3),
-                "delta_pct": 0,
+                # Single-cohort has no real before/after split -- leave these
+                # null instead of duplicating `value` into both, which used
+                # to render as a fake "0% change" comparison.
+                "before": None,
+                "after": None,
+                "delta_pct": None,
                 "good_if": "down",
             })
 
