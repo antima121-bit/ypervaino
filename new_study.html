@@ -271,43 +271,45 @@ function toggleFilter(atomId, chipEl){
   if (activeFilters.has(atomId)) {
     activeFilters.delete(atomId);
     chipEl.classList.remove('active');
+    document.querySelector(`.filter-row[data-id="${atomId}"]`)?.remove();
   } else {
     const atom = filterAtoms.find(a => a.atom_id === atomId);
-    activeFilters.set(atomId, { atom, value: atom?.default_value ?? '' });
+    activeFilters.set(atomId, { atom });
     chipEl.classList.add('active');
+    document.getElementById('filter-rows').appendChild(createFilterRow(atomId, atom));
   }
-  renderFilterRows();
 }
 
-function renderFilterRows(){
-  const container = document.getElementById('filter-rows');
-  container.innerHTML = '';
-  for (const [atomId, row] of activeFilters.entries()) {
-    const atom = row.atom;
-    const wrap = document.createElement('div');
-    wrap.className = 'filter-row';
-    wrap.dataset.id = atomId;
-    let inputHtml = '';
-    if (atom.ui_control === 'toggle' || atom.value_type === 'boolean') {
-      inputHtml = `<span style="color:var(--ink-3);font-size:13.5px;">enabled</span>`;
-    } else if (atom.allowed_values?.length) {
-      inputHtml = `<select class="select filter-value">${atom.allowed_values.map(v => `<option value="${v}">${v}</option>`).join('')}</select>`;
-    } else if (atom.value_type === 'integer' || atom.ui_control === 'number') {
-      inputHtml = `<input class="input filter-value" type="number" placeholder="value">`;
-    } else {
-      inputHtml = `<input class="input filter-value" placeholder="value">`;
-    }
-    wrap.innerHTML = `<label>${atom.label}</label>${inputHtml}<button type="button" title="Remove">✕</button>`;
-    wrap.querySelector('button').onclick = () => {
-      activeFilters.delete(atomId);
-      document.querySelector(`.chip[data-id="${atomId}"]`)?.classList.remove('active');
-      renderFilterRows();
-    };
-    if (row.value !== undefined && row.value !== '' && wrap.querySelector('.filter-value')) {
-      wrap.querySelector('.filter-value').value = row.value;
-    }
-    container.appendChild(wrap);
+// Builds one filter row as a standalone DOM node and appends/removes just
+// that node -- never re-renders the whole list. Re-rendering all rows from
+// activeFilters on every toggle used to wipe out whatever the user had
+// already typed into *other* rows' inputs, since typed values were never
+// written back into activeFilters (only collected at submit time).
+function createFilterRow(atomId, atom){
+  const wrap = document.createElement('div');
+  wrap.className = 'filter-row';
+  wrap.dataset.id = atomId;
+  let inputHtml = '';
+  if (atom.ui_control === 'toggle' || atom.value_type === 'boolean') {
+    inputHtml = `<span style="color:var(--ink-3);font-size:13.5px;">enabled</span>`;
+  } else if (atom.allowed_values?.length) {
+    inputHtml = `<select class="select filter-value">${atom.allowed_values.map(v => `<option value="${v}">${v}</option>`).join('')}</select>`;
+  } else if (atom.value_type === 'integer' || atom.ui_control === 'number') {
+    inputHtml = `<input class="input filter-value" type="number" placeholder="value">`;
+  } else {
+    inputHtml = `<input class="input filter-value" placeholder="value">`;
   }
+  wrap.innerHTML = `<label>${atom.label}</label>${inputHtml}<button type="button" title="Remove">✕</button>`;
+  const valueEl = wrap.querySelector('.filter-value');
+  if (valueEl && atom.default_value !== undefined && atom.default_value !== null) {
+    valueEl.value = atom.default_value;
+  }
+  wrap.querySelector('button').onclick = () => {
+    activeFilters.delete(atomId);
+    document.querySelector(`.chip[data-id="${atomId}"]`)?.classList.remove('active');
+    wrap.remove();
+  };
+  return wrap;
 }
 
 function collectCohortFilters(){
