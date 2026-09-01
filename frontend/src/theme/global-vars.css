@@ -1,0 +1,17 @@
+:root {
+  --text-color-default: #282624;
+  --text-color-muted: #35312d;
+  --text-color-subtle: #7c7972;
+  --text-color-disabled: #b5b1ad;
+  --text-color-placeholder: #b5b1ad;
+  --text-color-error: #b72d0e;
+  --text-color-white: #fff;
+  --text-color-primary: #ff7b00;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semi-bold: 600;
+  --font-weight-bold: 700;
+
+  --primary-500: #f07400;
+}
