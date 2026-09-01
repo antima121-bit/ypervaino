@@ -115,8 +115,8 @@ async function load(){
   // a risk) and labels it as a guess, not a result.
   function guessHypothesisTone(text){
     const t = (text || '').toLowerCase();
-    const negation = /\b(does not|doesn't|do not|don't|no increase|not increase|not higher|not more|maintains?|comparable|similar|rarely|consistently (safe|compliant)|reduces?|decreases?|lower or comparable)\b/;
-    const negative = /\b(increase|higher|worse|more errors?|degrade|fail|risk|regress|persists?)\b/;
+    const negation = /\b(does not|doesn't|do not|don't|will not|won't|no increase|not increase|not higher|not more|maintains?|remains? stable|no (significant )?change|comparable|similar|rarely|consistently (safe|compliant)|reduce[sd]?|fewer|decrease[sd]?|shorter|lower or comparable)\b/;
+    const negative = /\b(increase[sd]?|higher|worse|more errors?|degrade|fail|risk|regress|persists?|longer)\b/;
     if (negation.test(t)) return 'hyp-good';
     if (negative.test(t)) return 'hyp-bad';
     return '';
