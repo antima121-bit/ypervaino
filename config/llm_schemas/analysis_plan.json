@@ -136,7 +136,6 @@
             "rule_based",
             "intent_classifier",
             "embedding_nearest_neighbor",
-            "zero_shot_llm",
             "llm_extract"
           ]
         },

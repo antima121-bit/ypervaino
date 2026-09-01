@@ -266,6 +266,8 @@ PRIMITIVES vs SIGNALS
 - For transfer / escalation use primitive transfer_completed (boolean) or session_outcome == "transferred", NOT transfer_count.
 
 RULE_BASED SIGNALS (only when truly needed)
+- Allowed signal methods: rule_based, intent_classifier, embedding_nearest_neighbor ONLY.
+- DO NOT use zero_shot_llm or llm_extract in signals_required (not supported in Phase 3 bulk eval).
 - method must be rule_based with a non-empty spec: keywords[] and/or regex[].
 - value_type: boolean for yes/no signals; predicates compare with == 1 or == 0.
 - SEARCH TEXT (critical): Phase 3 searches RAW utterance strings only — what the caller or bot actually said.
