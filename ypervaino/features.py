@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
+import random
 import re
 import statistics
+from collections import defaultdict
 from typing import Any
 
 from ypervaino.config_loader import load_system_knowledge
+from ypervaino.embeddings import embedding_dim
 
 
 def _ev(e: dict, key: str, default=None):
@@ -27,35 +30,104 @@ def _parse_ts(ts: Any) -> float | None:
     return None
 
 
-def compute_features(conversation: dict[str, Any]) -> dict[str, Any]:
+def _norm_name(s: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", (s or "").lower()).strip("_")
+
+
+def _extract_structured_hits(events: list[dict]) -> dict[str, list[str]]:
+    skills, tools, agents, nodes, purposes, event_types = set(), set(), set(), set(), set(), set()
+    for e in events:
+        et = e.get("event_type")
+        if et:
+            event_types.add(et)
+        ev = e.get("event_value") or {}
+        if not isinstance(ev, dict):
+            continue
+        for key in ("skill_name", "skill", "skill_id"):
+            if ev.get(key):
+                skills.add(str(ev[key]))
+        for key in ("tool_name", "tool", "tool_id"):
+            if ev.get(key):
+                tools.add(str(ev[key]))
+        for key in ("agent_name",):
+            if ev.get(key):
+                agents.add(str(ev[key]))
+        for key in ("node_name", "node", "dialog_node"):
+            if ev.get(key):
+                nodes.add(str(ev[key]))
+        if ev.get("purpose"):
+            purposes.add(str(ev["purpose"]))
+    return {
+        "skills": sorted(skills),
+        "tools": sorted(tools),
+        "agent_names": sorted(agents),
+        "nodes": sorted(nodes),
+        "purposes": sorted(purposes),
+        "event_types": sorted(event_types),
+    }
+
+
+def _session_outcome(events: list[dict]) -> str:
+    transfers = [e for e in events if e.get("event_type") == "CALL_TRANSFER_COMPLETED"]
+    if transfers:
+        return "transferred"
+    for e in events:
+        if e.get("event_type") == "SESSION_END":
+            status = (_ev(e, "status") or _ev(e, "end_reason") or "").lower()
+            if "timeout" in status:
+                return "timeout"
+            if status:
+                return status
+    metrics = [e for e in events if e.get("event_type") == "SESSION_METRICS_COMPUTED"]
+    if metrics:
+        return "completed"
+    return "unknown"
+
+
+def _opening_user_text(events: list[dict]) -> str:
+    for e in events:
+        if e.get("event_type") != "USER_QUERY":
+            continue
+        content = (e.get("content") or "").strip()
+        if content and "welcome" not in content.lower()[:40]:
+            return content
+    for e in events:
+        if e.get("event_type") == "USER_QUERY" and e.get("content"):
+            return str(e["content"])
+    return ""
+
+
+def compute_features(conversation: dict[str, Any], *, include_embedding: bool = True) -> dict[str, Any]:
     events = conversation.get("events") or []
     sk = load_system_knowledge()
     zero_cost = set(sk.get("zero_cost_models") or [])
     price_table = sk.get("price_table") or {}
 
     user_queries = [e for e in events if e.get("event_type") == "USER_QUERY"]
-    responses = [e for e in events if e.get("event_type") == "RESPONSE.FINAL"]
     llm_success = [e for e in events if e.get("event_type") == "LLM_INVOCATION_SUCCESS"]
     token_rows = [e for e in events if e.get("event_type") == "TOKEN_USAGE_DETAILS"]
-    tool_results = [e for e in events if e.get("event_type") == "TOOL_CALL_RESULT"]
     guardrails = [e for e in events if e.get("event_type") == "GUARDRAIL_CHECK"]
     transfers = [e for e in events if e.get("event_type") == "CALL_TRANSFER_COMPLETED"]
     interruptions = [e for e in events if e.get("event_type") == "INTERRUPTION_HANDLER_RESULT"]
+    tool_results = [e for e in events if e.get("event_type") == "TOOL_CALL_RESULT"]
 
     timestamps = [_parse_ts(e.get("timestamp")) for e in events]
     timestamps = [t for t in timestamps if t is not None]
     duration_ms = int((max(timestamps) - min(timestamps)) * 1000) if len(timestamps) >= 2 else 0
 
-    main_stream_latencies = [
-        float(_ev(e, "latency_ms") or 0)
-        for e in llm_success
-        if _ev(e, "purpose") == "main_stream" and _ev(e, "latency_ms")
-    ]
-    main_stream_p95 = (
-        statistics.quantiles(main_stream_latencies, n=20)[-1]
-        if len(main_stream_latencies) >= 2
-        else (main_stream_latencies[0] if main_stream_latencies else 0.0)
-    )
+    def latencies(purpose: str) -> list[float]:
+        return [
+            float(_ev(e, "latency_ms") or 0)
+            for e in llm_success
+            if _ev(e, "purpose") == purpose and _ev(e, "latency_ms")
+        ]
+
+    def p95(vals: list[float]) -> float:
+        if not vals:
+            return 0.0
+        if len(vals) >= 2:
+            return float(statistics.quantiles(vals, n=20)[-1])
+        return float(vals[0])
 
     main_stream_model = None
     for e in reversed([x for x in events if x.get("event_type") == "LLM_CONFIG_RESOLVED"]):
@@ -87,13 +159,15 @@ def compute_features(conversation: dict[str, Any]) -> dict[str, Any]:
         )
 
     agent_names = []
-    for e in responses:
+    for e in events:
+        if e.get("event_type") != "RESPONSE.FINAL":
+            continue
         name = _ev(e, "agent_name")
         if name and (not agent_names or agent_names[-1] != name):
             agent_names.append(name)
 
     guardrail_triggered = any(
-        _ev(e, "would_block") is True or (_ev(e, "flagged_categories") or [])
+        _ev(e, "would_block") is True or bool(_ev(e, "flagged_categories"))
         for e in guardrails
     )
 
@@ -106,6 +180,7 @@ def compute_features(conversation: dict[str, Any]) -> dict[str, Any]:
             searchable_parts.append(json.dumps(ev, default=str))
     searchable_text = "\n".join(searchable_parts).lower()
 
+    structured_hits = _extract_structured_hits(events)
     turn_count = len(user_queries)
     if turn_count <= 4:
         length_bucket = "short"
@@ -114,12 +189,24 @@ def compute_features(conversation: dict[str, Any]) -> dict[str, Any]:
     else:
         length_bucket = "long"
 
-    if transfers:
-        outcome = "transferred"
-        outcome_bucket = "transferred"
+    outcome = _session_outcome(events)
+    outcome_bucket = outcome if outcome in ("transferred", "timeout", "completed") else "other"
+
+    traffic_split_variant = None
+    for e in events:
+        if e.get("event_type") == "CANARY_BUCKET_DECISION":
+            traffic_split_variant = _ev(e, "selected_variant_key")
+            break
+
+    opening_text = _opening_user_text(events)
+    dim = embedding_dim()
+    if include_embedding:
+        from ypervaino.embeddings import encode_text
+        embedding_opening = encode_text(opening_text) if opening_text else [0.0] * dim
     else:
-        outcome = "completed"
-        outcome_bucket = "completed"
+        embedding_opening = [0.0] * dim
+
+    tool_latencies = [float(_ev(e, "latency") or 0) for e in tool_results if _ev(e, "latency")]
 
     return {
         "session_id": conversation["session_id"],
@@ -130,31 +217,30 @@ def compute_features(conversation: dict[str, Any]) -> dict[str, Any]:
         "length_bucket": length_bucket,
         "main_stream_model": main_stream_model,
         "main_stream_model_invoked": main_stream_model,
-        "main_stream_latency_p95": round(main_stream_p95, 2),
+        "main_stream_latency_p95": round(p95(latencies("main_stream")), 2),
+        "contextual_query_latency_p95": round(p95(latencies("contextual_query")), 2),
+        "router_latency_p95": round(p95(latencies("router")), 2),
         "main_stream_estimated_cost_usd": round(main_stream_cost, 6),
         "tool_invocation_count": len([e for e in events if e.get("event_type") in ("DEBUG.TOOL_INVOKED", "TOOL_CALL_RESULT")]),
         "tool_error_count": len([e for e in events if e.get("event_type") == "TOOL_CALL_ERROR"]),
+        "avg_tool_latency_ms": round(statistics.mean(tool_latencies), 2) if tool_latencies else 0.0,
         "transfer_completed": bool(transfers),
         "guardrail_triggered": guardrail_triggered,
         "interruption_count": len(interruptions),
         "agent_path": "→".join(agent_names),
+        "structured_hits": structured_hits,
         "searchable_text": searchable_text,
-        "opening_intent_class": classify_opening_intent(searchable_text, agent_names),
-        "opening_intent_score": 1.0,
+        "traffic_split_variant": traffic_split_variant,
+        "opening_text": opening_text,
+        "embedding_opening": embedding_opening,
+        "opening_intent_class": "unknown",
+        "opening_intent_score": 0.0,
     }
 
 
-def classify_opening_intent(text: str, agents: list[str]) -> str:
-    rules = [
-        ("transfer", [r"\btransfer\b", r"\bagent\b", r"\brepresentative\b"]),
-        ("billing", [r"\bbill\b", r"\bpayment\b", r"\bcharge\b"]),
-        ("appointment", [r"\bappointment\b", r"\bschedule\b", r"\breschedule\b"]),
-        ("support", [r"\bhelp\b", r"\bproblem\b", r"\bissue\b"]),
-    ]
-    first_chunk = text[:800]
-    best = ("unknown", 0)
-    for intent, patterns in rules:
-        score = sum(1 for p in patterns if re.search(p, first_chunk))
-        if score > best[1]:
-            best = (intent, score)
-    return best[0] if best[1] >= 1 else "unknown"
+def stratum_key(fv: dict[str, Any]) -> tuple[str, str, str]:
+    return (
+        str(fv.get("opening_intent_class") or "unknown"),
+        str(fv.get("outcome_bucket") or "other"),
+        str(fv.get("length_bucket") or "medium"),
+    )

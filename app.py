@@ -18,14 +18,31 @@ from fetch_filtered_session_ids import fetch_filtered_session_ids
 from lookup_session import get_session_transcript
 from ypervaino.config_loader import load_filter_atoms
 from ypervaino.data_layer import list_assistants, list_tenants
+from ypervaino.log import get_logger, setup_logging
 from ypervaino.settings import ROOT, load_mongo_env
 from ypervaino.study_runner import StudyRunner
 from ypervaino.study_store import StudyStore, slugify
+
+setup_logging()
+log = get_logger("server")
 
 DIR = ROOT
 runner = StudyRunner()
 app = FastAPI(title="Ypervaíno", version="1.0")
 API = "/api/v1/ypervaino"
+
+
+@app.on_event("startup")
+def _warmup_on_startup() -> None:
+    from ypervaino.embeddings import warmup
+    from ypervaino.settings import OPENAI_EMBEDDING_MODEL, OPENAI_EMBEDDING_DIM
+
+    if not os.environ.get("OPENAI_API_KEY"):
+        log.warning("OPENAI_API_KEY not set — embeddings will fail at runtime")
+        return
+    log.info("OpenAI embeddings: model=%s dim=%d", OPENAI_EMBEDDING_MODEL, OPENAI_EMBEDDING_DIM)
+    warmup()
+    log.info("OpenAI embeddings ready")
 
 
 class DateRange(BaseModel):
@@ -49,6 +66,9 @@ class CreateStudyRequest(BaseModel):
     n_explore: int = 100
     n_eval: int | str = "all"
     min_support: int = 10
+    significance_level: float = 0.05
+    pairing_turn_tolerance: int = 3
+    traffic_split: dict[str, Any] | None = None
 
 
 def _mongo():
@@ -117,8 +137,12 @@ def get_filter_atoms():
         atoms.append({
             "atom_id": a["id"],
             "label": a["label"],
-            "value_required": a.get("value_type") not in ("boolean",) and not a.get("value"),
+            "description": a.get("description"),
+            "value_required": a.get("value") is None and a.get("value_type") not in ("boolean",) and a.get("ui_control") not in ("toggle",),
             "value_type": a.get("value_type", "string"),
+            "ui_control": a.get("ui_control", "text"),
+            "default_value": a.get("value"),
+            "allowed_values": a.get("allowed_values"),
         })
     return {"atoms": atoms}
 
@@ -181,6 +205,11 @@ def create_study(body: CreateStudyRequest):
     if body.study_type == "comparative" and body.n_explore % 2 != 0:
         raise HTTPException(400, detail={"error": {"code": "VALIDATION_ERROR", "message": "n_explore must be even for comparative"}})
     req = body.model_dump()
+    log.info(
+        "create study title=%r type=%s tenant=%s assistant=%s n_explore=%s n_eval=%s",
+        body.study_title, body.study_type, body.tenant, body.assistant_origin_id,
+        body.n_explore, body.n_eval,
+    )
     meta = runner.create_study(req)
     slug = meta["slug"]
     return {
@@ -205,6 +234,27 @@ def study_status(slug: str):
         "status": meta["status"],
         "error": meta.get("error"),
         "progress_hints": store.progress_hints(),
+        "logs_url": f"{API}/studies/{slug}/logs",
+    }
+
+
+@app.get(f"{API}/studies/{{slug}}/logs")
+def study_logs(slug: str, tail: int = Query(100, ge=1, le=2000)):
+    store = _study_or_404(slug)
+    log_path = store.intermediate_dir / "pipeline.log"
+    if not log_path.exists():
+        return {
+            "slug": slug,
+            "path": f"studies/{slug}/intermediate/pipeline.log",
+            "total_lines": 0,
+            "lines": [],
+        }
+    all_lines = log_path.read_text(encoding="utf-8", errors="replace").splitlines()
+    return {
+        "slug": slug,
+        "path": f"studies/{slug}/intermediate/pipeline.log",
+        "total_lines": len(all_lines),
+        "lines": all_lines[-tail:],
     }
 
 
@@ -270,29 +320,21 @@ def results(slug: str):
     if not rp.exists():
         return {"status": meta["status"], "error": "Evaluation still running"}
     data = store.read_json(rp)
-    is_comparative = data.get("is_comparative", data.get("study_type") == "comparative")
-    # UI-friendly shape for dashboard.html. `before`/`after` are None on a
-    # single-cohort result (no real comparison exists) -- use `.get(k) is None`
-    # rather than `.get(k, default)`, since the key is present but null, not
-    # missing, and `.get` only falls back on a missing key.
+    # UI-friendly shape for dashboard.html
     aspects = []
     for a in data.get("aspects") or []:
-        value = a.get("value")
-        before = a.get("before")
-        after = a.get("after")
         aspects.append({
             "name": a.get("name") or a.get("id"),
-            "value": value,
-            "before": value if before is None else before,
-            "after": value if after is None else after,
-            "delta_pct": a.get("delta_pct") if a.get("delta_pct") is not None else 0,
+            "before": a.get("before", a.get("value", 0)),
+            "after": a.get("after", a.get("value", 0)),
+            "delta_pct": a.get("delta_pct", 0),
             "good_if": a.get("good_if", "down"),
-            "no_data": bool(a.get("no_data")),
         })
     cs = data.get("cohort_sizes") or {}
+    study_type = data.get("study_type") or "single_cohort"
     return {
         "status": meta["status"],
-        "is_comparative": is_comparative,
+        "study_type": study_type,
         "evaluation_result": data,
         "cohort_sizes": cs,
         "aspects": aspects,
@@ -325,4 +367,5 @@ def page_sessions():
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", "8765"))
-    uvicorn.run("app:app", host="0.0.0.0", port=port, reload=False)
+    log.info("starting Ypervaíno on http://0.0.0.0:%d (LOG_LEVEL=%s)", port, os.environ.get("LOG_LEVEL", "INFO"))
+    uvicorn.run("app:app", host="0.0.0.0", port=port, reload=False, log_level="warning")

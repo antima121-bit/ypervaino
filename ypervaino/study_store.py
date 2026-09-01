@@ -77,12 +77,25 @@ class StudyStore:
     def read_json(self, path: Path) -> Any:
         return json.loads(path.read_text())
 
-    def progress_hints(self) -> dict[str, bool]:
-        return {
+    def progress_hints(self) -> dict[str, Any]:
+        log_path = self.intermediate_dir / "pipeline.log"
+        hints: dict[str, Any] = {
             "cohort_stats_ready": (self.intermediate_dir / "cohort_stats.json").exists(),
             "s_explore_ready": (self.intermediate_dir / "s_explore" / "manifest.json").exists(),
             "analysis_plan_ready": (self.intermediate_dir / "analysis_plan.json").exists(),
+            "evaluation_ready": (self.output_dir / "evaluation_result.json").exists(),
+            "pipeline_log_ready": log_path.exists(),
         }
+        if log_path.exists():
+            hints["recent_log_lines"] = self.tail_pipeline_log(8)
+        return hints
+
+    def tail_pipeline_log(self, n: int = 100) -> list[str]:
+        log_path = self.intermediate_dir / "pipeline.log"
+        if not log_path.exists():
+            return []
+        lines = log_path.read_text(encoding="utf-8", errors="replace").splitlines()
+        return lines[-n:] if n > 0 else lines
 
     @staticmethod
     def slug_exists(slug: str) -> bool:
