@@ -133,6 +133,36 @@ def _opening_user_text(events: list[dict]) -> str:
     return ""
 
 
+def _last_main_stream_invocation_model(llm_success: list[dict]) -> str | None:
+    for e in reversed(llm_success):
+        if _ev(e, "purpose") != "main_stream":
+            continue
+        model_id = _ev(e, "model_id")
+        if model_id:
+            return str(model_id)
+    return None
+
+
+def _canary_resolved_main_stream_model(events: list[dict]) -> str | None:
+    for e in reversed([x for x in events if x.get("event_type") == "CANARY_LLM_RESOLUTION"]):
+        if _ev(e, "purpose") != "main_stream":
+            continue
+        resolved = _ev(e, "resolved_model")
+        if resolved:
+            return str(resolved)
+    return None
+
+
+def _legacy_resolved_main_stream_model(events: list[dict]) -> str | None:
+    for e in reversed([x for x in events if x.get("event_type") == "LLM_CONFIG_RESOLVED"]):
+        if _ev(e, "purpose") != "main_stream":
+            continue
+        final_model_id = _ev(e, "final_model_id")
+        if final_model_id:
+            return str(final_model_id)
+    return None
+
+
 def compute_features(conversation: dict[str, Any], *, include_embedding: bool = True) -> dict[str, Any]:
     events = conversation.get("events") or []
     sk = load_system_knowledge()
@@ -165,16 +195,23 @@ def compute_features(conversation: dict[str, Any], *, include_embedding: bool = 
             return float(statistics.quantiles(vals, n=20)[-1])
         return float(vals[0])
 
-    main_stream_model = None
-    for e in reversed([x for x in events if x.get("event_type") == "LLM_CONFIG_RESOLVED"]):
-        if _ev(e, "purpose") == "main_stream":
-            main_stream_model = _ev(e, "final_model_id")
-            break
+    main_stream_model_invoked = _last_main_stream_invocation_model(llm_success)
+
+    main_stream_model = main_stream_model_invoked
     if not main_stream_model:
-        for e in reversed(llm_success):
-            if _ev(e, "purpose") == "main_stream":
-                main_stream_model = _ev(e, "model_id")
-                break
+        main_stream_model = _canary_resolved_main_stream_model(events)
+    if not main_stream_model:
+        main_stream_model = _legacy_resolved_main_stream_model(events)
+
+    main_stream_models_invoked: list[str] = []
+    seen_main_stream_models: set[str] = set()
+    for e in llm_success:
+        if _ev(e, "purpose") != "main_stream":
+            continue
+        model_id = _ev(e, "model_id")
+        if model_id and model_id not in seen_main_stream_models:
+            main_stream_models_invoked.append(model_id)
+            seen_main_stream_models.add(model_id)
 
     def token_cost_usd(model_id: str, inp: int, out: int) -> float:
         if not model_id or model_id in zero_cost:
@@ -261,7 +298,8 @@ def compute_features(conversation: dict[str, Any], *, include_embedding: bool = 
         "outcome_bucket": outcome_bucket,
         "length_bucket": length_bucket,
         "main_stream_model": main_stream_model,
-        "main_stream_model_invoked": main_stream_model,
+        "main_stream_model_invoked": main_stream_model_invoked,
+        "main_stream_models_invoked": main_stream_models_invoked,
         "main_stream_latency_p95": round(p95(latencies("main_stream")), 2),
         "contextual_query_latency_p95": round(p95(latencies("contextual_query")), 2),
         "router_latency_p95": round(p95(latencies("router")), 2),

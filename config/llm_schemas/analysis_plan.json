@@ -132,12 +132,7 @@
         "name": {"type": "string"},
         "method": {
           "type": "string",
-          "enum": [
-            "rule_based",
-            "intent_classifier",
-            "embedding_nearest_neighbor",
-            "llm_extract"
-          ]
+          "enum": ["rule_based"]
         },
         "value_type": {
           "type": "string",
@@ -154,6 +149,11 @@
         "id": {"type": "string"},
         "title": {"type": "string"},
         "description": {"type": "string"},
+        "polarity": {
+          "type": "string",
+          "enum": ["positive", "negative"]
+        },
+        "scope_predicate": {"type": "string"},
         "predicate": {"type": "string"},
         "signals": {
           "type": "array",
@@ -183,7 +183,7 @@
           "additionalProperties": false
         }
       },
-      "required": ["id", "title", "description", "predicate"],
+      "required": ["id", "title", "description", "polarity", "scope_predicate", "predicate"],
       "additionalProperties": false
     }
   }

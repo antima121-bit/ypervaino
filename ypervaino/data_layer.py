@@ -54,7 +54,7 @@ def list_assistants(mongo_uri: str, db_name: str, tenant: str) -> list[dict[str,
             oid = row["_id"]
             out.append({
                 "assistant_origin_id": oid,
-                "label": f"{oid} ({row['count']} sessions)",
+                "label": oid,
                 "published_versions": [],
             })
         return out
@@ -94,7 +94,7 @@ def fetch_session_id_list(
         client.close()
 
 
-def fetch_trace(session_uuid: str) -> dict[str, Any]:
+def fetch_trace(session_uuid: str, *, max_attempts: int = 3) -> dict[str, Any] | None:
     q = urllib.parse.urlencode({
         "session_id": session_uuid,
         "env": BOTPROBE_TRACE_ENV,
@@ -102,8 +102,22 @@ def fetch_trace(session_uuid: str) -> dict[str, Any]:
     url = f"{BOTPROBE_TRACE_BASE_URL.rstrip('/')}/trace?{q}"
     _log.debug("fetching trace session=%s env=%s", session_uuid, BOTPROBE_TRACE_ENV)
     req = urllib.request.Request(url, headers={"Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=120) as resp:
-        return json.loads(resp.read())
+    last_err: Exception | None = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                return json.loads(resp.read())
+        except Exception as e:
+            last_err = e
+            _log.warning(
+                "trace fetch attempt %d/%d failed session=%s: %s",
+                attempt, max_attempts, session_uuid, e,
+            )
+    _log.warning(
+        "trace fetch gave up session=%s after %d attempts: %s",
+        session_uuid, max_attempts, last_err,
+    )
+    return None
 
 
 def fetch_blueprint(tenant: str, origin_id: str, channel: str = "voice", runtime_mode: str = "DEBUG") -> dict[str, Any]:
@@ -195,13 +209,15 @@ def materialize_conversation(session_uuid: str, trace: dict[str, Any], reconnect
     }
 
 
-def load_or_fetch_conversation(store, session_uuid: str) -> dict[str, Any]:
+def load_or_fetch_conversation(store, session_uuid: str) -> dict[str, Any] | None:
     cache = store.traces_dir / f"{session_uuid}.json"
     if cache.exists():
         _log.debug("trace cache hit session=%s", session_uuid)
         return store.read_json(cache)
     _log.debug("trace cache miss session=%s → BotProbe", session_uuid)
     trace = fetch_trace(session_uuid)
+    if trace is None:
+        return None
     conv = materialize_conversation(session_uuid, trace)
     store.write_json(cache, conv)
     return conv
@@ -244,9 +260,12 @@ def blueprint_routing_context(blueprint: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def blueprint_for_llm(blueprint: dict[str, Any], *, max_chars: int = 120_000) -> str:
-    """Serialize full blueprint for LLM context (truncated)."""
-    return json.dumps(blueprint, default=str, ensure_ascii=False)[:max_chars]
+def blueprint_for_llm(blueprint: dict[str, Any], *, max_chars: int | None = 120_000) -> str:
+    """Serialize full blueprint for LLM context (optionally truncated)."""
+    text = json.dumps(blueprint, default=str, ensure_ascii=False)
+    if max_chars is None:
+        return text
+    return text[:max_chars]
 
 
 def get_reconnects(mongo_uri: str, db_name: str, voice_id: str) -> int:

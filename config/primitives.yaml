@@ -62,13 +62,13 @@ primitives:
   # --- Conversation / routing ---
   main_stream_model:
     value_type: string
-    description: "Resolved model for main_stream purpose"
+    description: "Runtime main_stream model: last LLM invocation, else canary resolved_model, else legacy config"
     source:
-      event_type: LLM_CONFIG_RESOLVED
+      event_type: LLM_INVOCATION_SUCCESS
       filter: { purpose: main_stream }
       scope: session
     reducer: last
-    field: event_value.final_model_id
+    field: event_value.model_id
 
   main_stream_model_invoked:
     value_type: string
@@ -78,6 +78,16 @@ primitives:
       filter: { purpose: main_stream }
       scope: session
     reducer: last
+    field: event_value.model_id
+
+  main_stream_models_invoked:
+    value_type: string_list
+    description: "Distinct model_ids seen on any main_stream LLM invocation"
+    source:
+      event_type: LLM_INVOCATION_SUCCESS
+      filter: { purpose: main_stream }
+      scope: session
+    reducer: distinct
     field: event_value.model_id
 
   agent_path:

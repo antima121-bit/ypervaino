@@ -116,10 +116,10 @@ def validate_plan(plan: dict[str, Any]) -> list[str]:
             errors.append(
                 f"rule_based signal '{sname}' missing spec.keywords or spec.regex"
             )
-        if method == "intent_classifier" and not (spec.get("intent_id") or spec.get("labels")):
-            errors.append(f"intent_classifier signal '{sname}' missing spec.intent_id or spec.labels")
-        if method == "embedding_nearest_neighbor" and not (spec.get("labels") or spec.get("prototypes")):
-            errors.append(f"embedding_nearest_neighbor signal '{sname}' missing spec.labels or spec.prototypes")
+        elif method and method != "rule_based":
+            errors.append(
+                f"Signal '{sname}' uses unsupported method '{method}' — only rule_based is allowed"
+            )
         for pat in spec.get("regex") or []:
             try:
                 re.compile(pat, re.I)
@@ -137,15 +137,19 @@ def validate_plan(plan: dict[str, Any]) -> list[str]:
     allowed_predicate_names = prim_names | signal_names
 
     for hyp in ((plan.get("qualitative") or {}).get("hypotheses") or []):
-        pred = hyp.get("predicate")
-        if pred is None:
-            continue
-        for name in _collect_predicate_var_names(pred):
-            if name not in allowed_predicate_names:
-                errors.append(
-                    f"Hypothesis '{hyp.get('id')}' predicate references '{name}' "
-                    f"not in primitives_required or signals_required"
-                )
+        for field in ("predicate", "scope_predicate"):
+            pred = hyp.get(field)
+            if pred is None:
+                continue
+            for name in _collect_predicate_var_names(pred):
+                if name not in allowed_predicate_names:
+                    errors.append(
+                        f"Hypothesis '{hyp.get('id')}' {field} references '{name}' "
+                        f"not in primitives_required or signals_required"
+                    )
+        polarity = (hyp.get("polarity") or "").strip().lower()
+        if polarity and polarity not in ("positive", "negative"):
+            errors.append(f"Hypothesis '{hyp.get('id')}' polarity must be positive or negative")
 
     for plot in ((plan.get("quantitative") or {}).get("suggested_plots") or []):
         tpl = plot.get("template")

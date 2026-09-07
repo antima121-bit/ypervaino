@@ -82,8 +82,8 @@
   <div class="card card-pad">
     <label class="field-label">Study type</label>
     <div class="segmented" id="mode-toggle">
-      <button class="segmented-btn active" data-mode="comparative">Comparative (Before / After)</button>
-      <button class="segmented-btn" data-mode="discovery">Pure Discovery (Single Cohort)</button>
+      <button class="segmented-btn" data-mode="comparative">Comparative (Before / After)</button>
+      <button class="segmented-btn active" data-mode="discovery">Pure Discovery (Single Cohort)</button>
     </div>
     <div class="hint">Comparative needs 2 date ranges. Single Cohort needs 1.</div>
   </div>
@@ -109,14 +109,10 @@
           <select class="select" id="tenant"><option value="">Loading tenants…</option></select>
         </div>
         <div class="field">
-          <label class="field-label">Assistant Origin ID <span class="req">*</span></label>
-          <input class="input" id="assistant_origin_id" placeholder="e.g. 7b31800c-bba3-4523-9313-adbcbbd1f5e0">
-        </div>
-        <div class="field">
-          <label class="field-label">Channel</label>
-          <div class="segmented">
-            <button class="segmented-btn active" style="padding:8px 20px;" disabled>Voice</button>
-          </div>
+          <label class="field-label">Assistant <span class="req">*</span></label>
+          <select class="select" id="assistant_origin_id" disabled>
+            <option value="">Select tenant first…</option>
+          </select>
         </div>
       </div>
 
@@ -170,6 +166,18 @@
         </div>
       </div>
       <div class="row" style="margin-top:14px;">
+        <div class="field">
+          <label class="field-label">Success bar (positive hypotheses)</label>
+          <input class="input" type="number" id="positive_hypothesis_good_rate_pct" value="70" min="0" max="100" step="1">
+          <div class="hint">Count as working well when at least this % of relevant calls show the behavior.</div>
+        </div>
+        <div class="field">
+          <label class="field-label">Problem bar (negative hypotheses)</label>
+          <input class="input" type="number" id="negative_hypothesis_bad_rate_pct" value="10" min="0" max="100" step="1">
+          <div class="hint">Flag as a problem when more than this % of relevant calls hit the issue.</div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:14px;">
         <div class="field" style="flex:1 1 100%;">
           <label class="field-label">Cohort filters</label>
           <div class="hint" style="margin-top:0;">Optional. Narrow eval cohort after traces are loaded. Click to add a filter.</div>
@@ -212,7 +220,7 @@ function updateDateGroupVisibility(){
   document.getElementById('date-comparative').style.display = mode === 'discovery' ? 'none' : '';
 }
 
-let mode = 'comparative';
+let mode = 'discovery';
 updateDateGroupVisibility();
 
 // ---- mode / channel toggles ----
@@ -232,13 +240,39 @@ async function loadTenants(){
     const res = await fetch('/api/v1/ypervaino/tenants');
     const data = await res.json();
     const sel = document.getElementById('tenant');
-    sel.innerHTML = data.tenants.map(t => `<option value="${t}">${t}</option>`).join('');
+    sel.innerHTML = '<option value="">Select tenant…</option>' +
+      data.tenants.map(t => `<option value="${t}">${t}</option>`).join('');
   } catch(e) {
     document.getElementById('tenant').innerHTML = '<option value="">Failed to load</option>';
   }
 }
-loadTenants();
 
+async function loadAssistants(tenant){
+  const sel = document.getElementById('assistant_origin_id');
+  if (!tenant) {
+    sel.innerHTML = '<option value="">Select tenant first…</option>';
+    sel.disabled = true;
+    return;
+  }
+  sel.disabled = true;
+  sel.innerHTML = '<option value="">Loading assistants…</option>';
+  try {
+    const res = await fetch(`/api/v1/ypervaino/assistants?tenant=${encodeURIComponent(tenant)}`);
+    const data = await res.json();
+    const assistants = data.assistants || [];
+    if (!assistants.length) {
+      sel.innerHTML = '<option value="">No assistants found</option>';
+      return;
+    }
+    sel.innerHTML = '<option value="">Select assistant…</option>' +
+      assistants.map(a => `<option value="${a.assistant_origin_id}">${a.assistant_origin_id}</option>`).join('');
+    sel.disabled = false;
+  } catch (e) {
+    sel.innerHTML = '<option value="">Failed to load</option>';
+  }
+}
+
+document.getElementById('tenant').addEventListener('change', (e) => loadAssistants(e.target.value));
 loadTenants();
 
 let filterAtoms = [];
@@ -328,10 +362,10 @@ function start(){
   document.getElementById('err').innerHTML = '';
   const study_title = document.getElementById('study_title').value.trim();
   const tenant = document.getElementById('tenant').value;
-  const assistant_origin_id = document.getElementById('assistant_origin_id').value.trim();
+  const assistant_origin_id = document.getElementById('assistant_origin_id').value;
 
   if (!study_title) { showErr('Give this study a name.'); return; }
-  if (!tenant || !assistant_origin_id) { showErr('Choose a tenant and enter an Assistant Origin ID.'); return; }
+  if (!tenant || !assistant_origin_id) { showErr('Choose a tenant and assistant.'); return; }
 
   const r = getDateRangeResult(mode);
   if (mode === 'discovery') {
@@ -353,6 +387,8 @@ function start(){
     n_explore: parseInt(document.getElementById('n_explore').value, 10) || 10,
     n_eval: n_eval_raw === '' ? 10 : parseInt(n_eval_raw, 10),
     min_support: parseInt(document.getElementById('min_support').value, 10) || 10,
+    positive_hypothesis_good_rate_pct: parseFloat(document.getElementById('positive_hypothesis_good_rate_pct').value) || 70,
+    negative_hypothesis_bad_rate_pct: parseFloat(document.getElementById('negative_hypothesis_bad_rate_pct').value) || 10,
   };
   if (mode === 'discovery') {
     body.date_range = { start: r.start, end: r.end };

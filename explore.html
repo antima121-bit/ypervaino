@@ -35,10 +35,19 @@
   .sample-line{font-size:13px;line-height:1.5;margin-bottom:4px;}
   .sample-line b{color:var(--ink-3);}
   .aspect-row{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);align-items:flex-start;}
+  .aspect-block{padding:14px 0;border-bottom:1px solid var(--line);}
+  .aspect-block:last-child{border-bottom:none;}
+  .comp-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12.5px;}
+  .comp-table th,.comp-table td{padding:6px 8px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;}
+  .comp-table th{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3);font-weight:700;background:var(--surface-2);}
+  .comp-table td.mono{font-family:"Roboto Mono",ui-monospace,monospace;font-size:11.5px;color:var(--ink-2);}
+  .hyp-predicate{margin:6px 0 0 18px;padding:8px 10px;background:var(--surface-3);border-radius:6px;font-family:"Roboto Mono",ui-monospace,monospace;font-size:12px;color:var(--ink-2);line-height:1.5;white-space:pre-wrap;word-break:break-word;}
+  .hyp-predicate-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3);margin:8px 0 2px 18px;}
   .chart-icon{flex-shrink:0;width:36px;height:28px;display:flex;align-items:center;justify-content:center;background:var(--surface-3);border-radius:6px;}
   .aspect-row:last-child{border-bottom:none;}
   .aspect-title{font-size:14.5px;font-weight:600;}
   .aspect-desc{font-size:13.5px;color:var(--ink-2);margin-top:1px;}
+  .table-meta{font-size:11.5px;color:var(--ink-3);margin-top:4px;}
   .section-label{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:700;}
   .hyp-card{background:var(--surface-2);border:1px solid var(--line);border-left-width:3px;border-radius:9px;padding:14px 16px;margin-bottom:10px;}
   .hyp-card.hyp-good{border-left-color:var(--success);}
@@ -81,6 +90,63 @@ document.querySelectorAll('.topnav-link').forEach(a => {
 });
 function escapeHtml(s){ const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
+function componentLabel(comp){
+  const ref = comp.ref || {};
+  if (ref.kind === 'signal') return ref.name || ref.kind || '—';
+  return ref.name || ref.kind || '—';
+}
+
+function componentEvent(comp, eventMap, signalMethods){
+  const ref = comp.ref || {};
+  if (ref.kind === 'signal') {
+    const method = signalMethods[ref.name] || 'signal';
+    return `semantic signal (${method})`;
+  }
+  return eventMap[ref.name] || '—';
+}
+
+function renderAspectComponents(aspect, eventMap, signalMethods){
+  const components = aspect.components || [];
+  if (!components.length) {
+    return '<div class="aspect-desc" style="margin-top:8px;font-style:italic;">No components defined.</div>';
+  }
+  const rows = components.map(c => `
+    <tr>
+      <td class="mono">${escapeHtml(componentLabel(c))}</td>
+      <td>${escapeHtml(c.aggregation || '—')}</td>
+      <td class="mono">${escapeHtml(componentEvent(c, eventMap, signalMethods))}</td>
+    </tr>`).join('');
+  return `<div class="section-label" style="display:block;margin:10px 0 4px;">Components</div>
+  <table class="comp-table">
+    <thead><tr><th>Component</th><th>Aggregation</th><th>Related event</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function renderHypothesisPredicates(h){
+  const scope = h.scope_predicate || '—';
+  const evalPred = h.predicate || '—';
+  return `
+    <div class="hyp-predicate-label">Scope predicate</div>
+    <div class="hyp-predicate">${escapeHtml(scope)}</div>
+    <div class="hyp-predicate-label">Eval predicate</div>
+    <div class="hyp-predicate">${escapeHtml(evalPred)}</div>`;
+}
+
+function renderSuggestedTables(tables){
+  if (!tables.length) return '<div class="aspect-desc">No tables proposed.</div>';
+  return tables.map(t => {
+    const title = t.title || (t.template || '').replace(/_/g, ' ');
+    const desc = t.description || '';
+    const bindingBits = [];
+    const bindings = t.bindings || {};
+    if (bindings.aspect_ids?.length) bindingBits.push(`aspects: ${bindings.aspect_ids.join(', ')}`);
+    if (bindings.hypothesis_ids?.length) bindingBits.push(`hypotheses: ${bindings.hypothesis_ids.slice(0, 4).join(', ')}${bindings.hypothesis_ids.length > 4 ? '…' : ''}`);
+    const meta = bindingBits.join(' · ') || (t.template || '');
+    return `<div class="aspect-row"><div><div class="aspect-title">${escapeHtml(title)}</div><div class="aspect-desc">${escapeHtml(desc)}</div>${meta ? `<div class="table-meta mono">${escapeHtml(meta)}</div>` : ''}</div></div>`;
+  }).join('');
+}
+
 async function load(){
   if (!slug) {
     document.getElementById('content').innerHTML = '<div class="error-box">Missing ?study= slug. Start from New Study.</div>';
@@ -98,18 +164,28 @@ async function load(){
     document.getElementById('content').innerHTML = `<div class="error-box">${escapeHtml(llm.error)}</div>`;
     return;
   }
+  const plan = data.analysis_plan || {};
+  const quant = plan.quantitative || {};
+  const qual = plan.qualitative || {};
+  const aspects = llm.aspects || quant.aspects || [];
+  const hypotheses = llm.hypotheses || qual.hypotheses || [];
+  const suggestedPlots = llm.suggested_plots || quant.suggested_plots || [];
+  const suggestedTables = llm.suggested_tables || quant.suggested_tables || [];
   document.getElementById('desc').textContent = data.meta?.title || slug;
+  const eventMap = data.primitive_events || {};
+  const signalMethods = data.signal_methods || {};
   const samplesHtml = (data.samples || []).map(s => `
     <div class="sample-card">
       <div class="sample-id mono">${s.session_id}</div>
       ${(s.transcript || []).slice(0,3).map(t => `<div class="sample-line"><b>${t.speaker}:</b> ${escapeHtml(t.text || '')}</div>`).join('')}
     </div>`).join('');
-  const aspectsHtml = (llm.aspects || []).map(a => `
-    <div class="aspect-row"><div><div class="aspect-title">${escapeHtml(a.name || a.id || '')}</div><div class="aspect-desc">${escapeHtml(a.description || '')}</div></div></div>`).join('');
-  // suggested_plots entries only carry {template, aspect_id} (no title/description --
-  // that shape is only used by aspects), so look the aspect up by id for a readable
-  // label instead of rendering blank title+description rows.
-  const aspectNameById = Object.fromEntries((llm.aspects || []).map(a => [a.id, a.name || a.id]));
+  const aspectsHtml = aspects.map(a => `
+    <div class="aspect-block">
+      <div class="aspect-title">${escapeHtml(a.name || a.id || '')}</div>
+      <div class="aspect-desc">${escapeHtml(a.description || '')}</div>
+      ${renderAspectComponents(a, eventMap, signalMethods)}
+    </div>`).join('');
+  const aspectNameById = Object.fromEntries(aspects.map(a => [a.id, a.name || a.id]));
   // Small icon per template so the proposed chart *type* is visible even
   // though there's no data to actually draw yet (that only exists after
   // Execute plan runs Phase 3 and ArtifactRenderer produces real PNGs).
@@ -121,12 +197,14 @@ async function load(){
     hypothesis_rate_comparison: '<svg width="20" height="16" viewBox="0 0 20 16"><rect x="1" y="6" width="5" height="9" rx="1" fill="var(--critical)" opacity=".6"/><rect x="10" y="2" width="5" height="13" rx="1" fill="var(--success)" opacity=".8"/></svg>',
   };
   const DEFAULT_CHART_ICON = CHART_ICONS.aspect_before_after_bar;
-  const plotsHtml = (llm.suggested_plots || []).map(p => {
-    const templateLabel = (p.title || p.template || '').replace(/_/g, ' ');
-    const aspectLabel = aspectNameById[p.aspect_id] || p.description || '';
+  const plotsHtml = suggestedPlots.map(p => {
+    const templateLabel = p.title || (p.template || '').replace(/_/g, ' ');
+    const aspectIds = (p.bindings && p.bindings.aspect_ids) || [];
+    const aspectLabel = p.description || aspectIds.map(id => aspectNameById[id]).filter(Boolean).join(', ');
     const icon = CHART_ICONS[p.template] || DEFAULT_CHART_ICON;
     return `<div class="aspect-row"><div class="chart-icon">${icon}</div><div><div class="aspect-title">${escapeHtml(templateLabel)}</div><div class="aspect-desc">${escapeHtml(aspectLabel)}</div></div></div>`;
   }).join('') || '<div class="aspect-desc">No plots proposed.</div>';
+  const tablesHtml = renderSuggestedTables(suggestedTables);
   // Nothing has been measured yet at this stage (plan hasn't been executed) --
   // there's no real pass/fail to color by. This guesses a direction purely
   // from how the LLM phrased the title/description (negated/reassuring
@@ -140,10 +218,10 @@ async function load(){
     if (negative.test(t)) return 'hyp-bad';
     return '';
   }
-  const hypHtml = (llm.hypotheses || []).map(h => {
+  const hypHtml = hypotheses.map(h => {
     const tone = guessHypothesisTone((h.title || '') + ' ' + (h.description || h.claim || ''));
     const tagHtml = tone ? `<div class="hyp-guess-tag ${tone}">${tone === 'hyp-good' ? 'Looks positive' : 'Potential risk'}</div>` : '';
-    return `<div class="hyp-card ${tone}"><div class="hyp-title">${escapeHtml(h.title || h.id || '')}</div><div class="hyp-claim">${escapeHtml(h.description || h.claim || '')}</div>${tagHtml}</div>`;
+    return `<div class="hyp-card ${tone}"><div class="hyp-title">${escapeHtml(h.title || h.id || '')}</div><div class="hyp-claim">${escapeHtml(h.description || h.claim || '')}</div>${renderHypothesisPredicates(h)}${tagHtml}</div>`;
   }).join('');
   document.getElementById('content').innerHTML = `
     <div class="card"><div class="card-head">What we found<span class="pill">AnalysisPlan</span></div>
@@ -154,6 +232,8 @@ async function load(){
       ${aspectsHtml}
       <div class="section-label" style="display:block;margin:16px 0 4px;">Proposed charts</div>
       ${plotsHtml}
+      <div class="section-label" style="display:block;margin:16px 0 4px;">Proposed tables</div>
+      ${tablesHtml}
     </div></div>
     <div class="card"><div class="card-head">Qualitative analysis</div><div class="card-pad">${hypHtml}</div></div>
     <button class="btn" id="run-btn">Execute plan →</button>

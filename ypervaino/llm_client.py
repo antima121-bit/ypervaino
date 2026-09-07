@@ -21,6 +21,13 @@ DEFAULT_LLM_CONFIG: dict[str, Any] = {
     "max_output_tokens": DEFAULT_MAX_OUTPUT_TOKENS,
 }
 
+PLAN_SYNTHESIZER_LLM_CONFIG: dict[str, Any] = {
+    "model": DEFAULT_MODEL,
+    "reasoning": {"effort": "medium"},
+    "text": {"verbosity": "low"},
+    "max_output_tokens": 64_000,
+}
+
 
 def _strip_fences(text: str) -> str:
     text = text.strip()

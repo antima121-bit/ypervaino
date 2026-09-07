@@ -1,3 +1,4 @@
+tests/
 .env
 .env.mongo
 config/_event_schema_probe.json

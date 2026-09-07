@@ -42,19 +42,50 @@
   .delta-badge.good{color:var(--success);}
   .delta-badge.bad{color:var(--critical);}
   .hyp-desc{font-size:13.5px;color:var(--ink-2);margin:6px 0 12px;line-height:1.5;}
-  .hyp-rates{display:flex;gap:20px;margin-bottom:10px;}
-  .hyp-rate-label{font-size:10px;text-transform:uppercase;color:var(--ink-3);letter-spacing:.03em;display:block;margin-bottom:2px;}
-  .hyp-rate-val{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;}
-  .hyp-rate-val .n{font-size:11px;font-weight:400;color:var(--ink-3);}
-  .status-pill{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:600;margin:0 6px 6px 0;}
-  .status-pill.good{background:var(--success-soft);color:var(--success);}
-  .status-pill.bad{background:var(--critical-soft);color:var(--critical);}
-  .hyp-counters{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);}
-  .hyp-counters-label{font-size:10.5px;text-transform:uppercase;color:var(--ink-3);letter-spacing:.03em;margin-bottom:5px;}
-  .hyp-counters .mono{font-size:12px;color:var(--ink-2);line-height:1.6;}
-  .chart-card{background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:12px;}
-  .chart-card-title{font-size:13px;font-weight:600;margin-bottom:8px;}
+  .hyp-card{background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:14px 15px;}
+  .hyp-card.hyp-outcome-good{background:#f3fbf6;border-color:#d3f0df;}
+  .hyp-card.hyp-outcome-bad{background:#fef5f4;border-color:#f5d6d3;}
+  .hyp-card.hyp-outcome-neutral{background:var(--surface-2);}
+  .hyp-card-title{font-size:14px;font-weight:600;margin-bottom:8px;}
+  .hyp-stat-row{display:flex;gap:18px;flex-wrap:wrap;margin-top:4px;}
+  .hyp-stat-label{font-size:10px;text-transform:uppercase;color:var(--ink-3);letter-spacing:.03em;display:block;margin-bottom:2px;}
+  .hyp-stat-val{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .hyp-stat-val .n{font-size:11px;font-weight:500;color:var(--ink-3);}
+  .chart-card{background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:12px;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+  .chart-card:hover{border-color:var(--signal);box-shadow:0 2px 8px rgba(240,116,0,.12);}
+  .aspect-card{cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+  .aspect-card:hover{border-color:var(--signal);box-shadow:0 2px 8px rgba(240,116,0,.12);}
+  .hyp-card{cursor:pointer;transition:box-shadow .15s;}
+  .hyp-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.06);}
+  .hyp-section-label{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:700;margin:0 0 10px;grid-column:1 / -1;}
+  .hyp-section-label:not(:first-child){margin-top:18px;}
+  .comp-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12.5px;}
+  .comp-table th,.comp-table td{padding:6px 8px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;}
+  .comp-table th{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3);font-weight:700;background:var(--surface-2);}
+  .comp-table td.mono{font-family:"Roboto Mono",ui-monospace,monospace;font-size:11.5px;color:var(--ink-2);}
+  .modal-backdrop{position:fixed;inset:0;background:rgba(24,22,20,.55);display:flex;align-items:center;justify-content:center;padding:24px;z-index:1000;}
+  .modal{background:var(--surface);border:1px solid var(--line);border-radius:12px;width:min(920px,100%);max-height:min(88vh,900px);overflow:hidden;display:flex;flex-direction:column;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.18);}
+  .modal-close{position:absolute;top:10px;right:12px;border:none;background:var(--surface-3);color:var(--ink-2);width:32px;height:32px;border-radius:8px;font-size:20px;line-height:1;cursor:pointer;z-index:2;}
+  .modal-close:hover{background:var(--line);color:var(--ink);}
+  .modal-body{padding:22px 22px 18px;overflow-y:auto;}
+  .modal-title{font-size:18px;font-weight:700;margin:0 28px 8px 0;}
+  .modal-desc{color:var(--ink-2);line-height:1.55;margin-bottom:14px;}
+  .modal-stat-row{display:flex;gap:18px;flex-wrap:wrap;margin:12px 0;}
+  .modal-predicate{margin:8px 0;padding:10px 12px;background:var(--surface-3);border-radius:8px;font-family:"Roboto Mono",ui-monospace,monospace;font-size:12px;color:var(--ink-2);line-height:1.5;word-break:break-word;}
+  .modal-predicate-label{font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3);font-weight:700;margin:10px 0 4px;}
+  .plot-zoom-viewport{overflow:auto;max-height:70vh;background:#fff;border:1px solid var(--line);border-radius:8px;padding:16px;display:flex;align-items:center;justify-content:center;touch-action:none;}
+  .plot-zoom-viewport img{max-width:100%;height:auto;transform-origin:center center;transition:transform .08s ease-out;}
+  .session-columns{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px;}
+  .session-col{border:1px solid var(--line);border-radius:8px;background:var(--surface-2);min-height:120px;display:flex;flex-direction:column;}
+  .session-col-title{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3);font-weight:700;padding:10px 12px;border-bottom:1px solid var(--line);}
+  .session-list{overflow-y:auto;max-height:220px;padding:8px 10px;}
+  .session-list a,.session-list span{display:block;font-family:"Roboto Mono",ui-monospace,monospace;font-size:11.5px;padding:5px 6px;border-radius:5px;color:var(--signal-strong);text-decoration:none;word-break:break-all;}
+  .session-list a:hover{background:var(--signal-soft);}
+  .session-list span{color:var(--ink-3);}
+  .chart-card-title{font-size:13px;font-weight:600;margin-bottom:4px;}
+  .chart-card-desc{font-size:12px;color:var(--ink-3);margin-bottom:8px;line-height:1.45;}
   .chart-card img{width:100%;height:auto;border-radius:6px;display:block;background:#fff;}
+  .charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:14px;}
   .footnote{font-size:13px;color:var(--ink-3);margin-top:24px;line-height:1.6;}
   .footnote code{color:var(--ink-2);}
   .topnav{display:flex;gap:4px;padding:14px 32px;background:#171717;}
@@ -100,6 +131,7 @@
     Mongo <code>AssistantSession</code>. See <code>sample_gothrough.md</code> for the full pipeline.
   </p>
 </div>
+<div id="modal-root"></div>
 
 <script>
 function navHref(path, slug){
@@ -113,9 +145,188 @@ function fmtVal(v){
   return Number(v.toFixed(2));
 }
 function escapeHtml(s){ const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function escapeAttr(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 
 const API = '/api/v1/ypervaino';
 let proposalPollTimer = null;
+let RESULTS = null;
+let plotZoom = 1;
+
+function hypPolarity(h){
+  const p = (h.polarity || '').toLowerCase();
+  if (p === 'negative') return 'negative';
+  if ((h.title || '').toLowerCase().includes('(negative)')) return 'negative';
+  return 'positive';
+}
+
+function componentLabel(comp){
+  const ref = comp.ref || {};
+  if (ref.kind === 'signal') return ref.name || ref.kind || '—';
+  return ref.name || ref.kind || '—';
+}
+
+function componentEvent(comp, eventMap, signalMethods){
+  const ref = comp.ref || {};
+  if (ref.kind === 'signal') {
+    const method = signalMethods[ref.name] || 'signal';
+    return `semantic signal (${method})`;
+  }
+  return eventMap[ref.name] || '—';
+}
+
+function renderAspectComponents(aspect){
+  const eventMap = RESULTS?.primitive_events || {};
+  const signalMethods = RESULTS?.signal_methods || {};
+  const components = aspect.components || [];
+  if (!components.length) {
+    return '<div class="modal-desc" style="font-style:italic;margin-top:0;">No components defined.</div>';
+  }
+  const rows = components.map(c => `
+    <tr>
+      <td class="mono">${escapeHtml(componentLabel(c))}</td>
+      <td>${escapeHtml(c.aggregation || '—')}</td>
+      <td class="mono">${escapeHtml(componentEvent(c, eventMap, signalMethods))}</td>
+    </tr>`).join('');
+  return `<div class="modal-predicate-label" style="margin-top:4px;">Components</div>
+  <table class="comp-table">
+    <thead><tr><th>Component</th><th>Aggregation</th><th>Related event</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function botprobeUrl(sessionId){
+  const base = RESULTS?.botprobe_base_url || '';
+  if (!base) return null;
+  return `${base}?session_id=${encodeURIComponent(sessionId)}`;
+}
+
+function renderSessionList(ids){
+  if (!ids.length) return '<span style="color:var(--ink-3);font-size:12px;">None</span>';
+  return ids.map(id => {
+    const url = botprobeUrl(id);
+    return url
+      ? `<a href="${url}" target="_blank" rel="noopener noreferrer">${escapeHtml(id)}</a>`
+      : `<span>${escapeHtml(id)}</span>`;
+  }).join('');
+}
+
+function onModalEsc(e){
+  if (e.key === 'Escape') closeModal();
+}
+
+function closeModal(){
+  const root = document.getElementById('modal-root');
+  if (root) root.innerHTML = '';
+  document.removeEventListener('keydown', onModalEsc);
+  plotZoom = 1;
+}
+
+function openModal(innerHtml){
+  closeModal();
+  const root = document.getElementById('modal-root');
+  root.innerHTML = `
+    <div class="modal-backdrop" id="modal-backdrop">
+      <div class="modal" role="dialog" aria-modal="true">
+        <button class="modal-close" type="button" aria-label="Close">&times;</button>
+        ${innerHtml}
+      </div>
+    </div>`;
+  root.querySelector('.modal-backdrop').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-backdrop') closeModal();
+  });
+  root.querySelector('.modal-close').addEventListener('click', closeModal);
+  document.addEventListener('keydown', onModalEsc);
+}
+
+function showPlotModal(url, title){
+  plotZoom = 1;
+  openModal(`
+    <div class="modal-body">
+      <h2 class="modal-title">${escapeHtml(title)}</h2>
+      <div class="plot-zoom-viewport" id="plot-zoom-viewport">
+        <img id="plot-zoom-img" src="${url}" alt="${escapeHtml(title)}">
+      </div>
+    </div>`);
+  const viewport = document.getElementById('plot-zoom-viewport');
+  const img = document.getElementById('plot-zoom-img');
+  if (viewport && img) {
+    viewport.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      plotZoom = Math.min(5, Math.max(0.25, plotZoom * (e.deltaY < 0 ? 1.1 : 0.9)));
+      img.style.transform = `scale(${plotZoom})`;
+    }, { passive: false });
+  }
+}
+
+function aspectValueHtml(a, isComparative){
+  if (a.no_data) {
+    return '<div class="compare-row"><span class="compare-label">Value</span><span class="compare-val" style="color:var(--ink-3);">No data</span></div>';
+  }
+  if (!isComparative) {
+    const val = a.after ?? a.before ?? a.value ?? 0;
+    return `<div class="compare-row"><span class="compare-label">Value</span><span class="compare-val">${fmtVal(val)}</span></div>`;
+  }
+  const isGood = a.good_if === 'down' ? a.delta_pct <= 0 : a.delta_pct >= 0;
+  return `
+    <div class="compare-row"><span class="compare-label">Before</span><span class="compare-val">${fmtVal(a.before)}</span></div>
+    <div class="compare-row"><span class="compare-label">After</span><span class="compare-val">${fmtVal(a.after)}</span></div>
+    <div class="compare-divider"></div>
+    <div class="delta-badge ${isGood ? 'good' : 'bad'}">${fmtPct(a.delta_pct)}</div>`;
+}
+
+function showAspectModal(idx){
+  const a = RESULTS?.aspects?.[idx];
+  if (!a) return;
+  openModal(`
+    <div class="modal-body">
+      <h2 class="modal-title">${escapeHtml(a.name)}</h2>
+      ${a.description ? `<div class="modal-desc">${escapeHtml(a.description)}</div>` : ''}
+      ${aspectValueHtml(a, RESULTS._isComparative)}
+      ${renderAspectComponents(a)}
+    </div>`);
+}
+
+function showHypothesisModal(idx){
+  const h = RESULTS?.hypotheses?.[idx];
+  if (!h) return;
+  const total = h.total_samples ?? RESULTS.cohort_sizes?.total ?? 0;
+  const applicable = h.applicable_samples ?? 0;
+  const condPct = h.conditional_rate_pct ?? Math.round((h.conditional_rate || 0) * 1000) / 10;
+  const lists = h.session_lists || { passed: [], failed: [] };
+  openModal(`
+    <div class="modal-body">
+      <h2 class="modal-title">${escapeHtml(h.title || h.id || '')}</h2>
+      ${h.description ? `<div class="modal-desc">${escapeHtml(h.description)}</div>` : ''}
+      <div class="modal-stat-row">
+        <div><span class="hyp-stat-label">Total samples</span><span class="hyp-stat-val">${total}</span></div>
+        <div><span class="hyp-stat-label">Applicable samples</span><span class="hyp-stat-val">${applicable}</span></div>
+        <div><span class="hyp-stat-label">Conditional rate</span><span class="hyp-stat-val">${applicable ? condPct + '%' : '—'} <span class="n">${applicable ? `(${h.rates?.all?.matched ?? '—'}/${applicable})` : ''}</span></span></div>
+      </div>
+      <div class="modal-predicate-label">Scope predicate</div>
+      <div class="modal-predicate">${escapeHtml(h.scope_predicate || '—')}</div>
+      <div class="modal-predicate-label">Eval predicate</div>
+      <div class="modal-predicate">${escapeHtml(h.predicate || '—')}</div>
+      <div class="session-columns">
+        <div class="session-col">
+          <div class="session-col-title">Passed (${lists.passed.length})</div>
+          <div class="session-list">${renderSessionList(lists.passed)}</div>
+        </div>
+        <div class="session-col">
+          <div class="session-col-title">Failed (${lists.failed.length})</div>
+          <div class="session-list">${renderSessionList(lists.failed)}</div>
+        </div>
+      </div>
+    </div>`);
+}
+
+function onResultsClick(e){
+  const aspectEl = e.target.closest('[data-aspect-idx]');
+  if (aspectEl) { showAspectModal(+aspectEl.dataset.aspectIdx); return; }
+  const hypEl = e.target.closest('[data-hyp-idx]');
+  if (hypEl) { showHypothesisModal(+hypEl.dataset.hypIdx); return; }
+  const chartEl = e.target.closest('[data-plot-url]');
+  if (chartEl) { showPlotModal(chartEl.dataset.plotUrl, chartEl.dataset.plotTitle || 'Chart'); }
+}
 
 function stopProposalPoll(){
   if (proposalPollTimer) { clearInterval(proposalPollTimer); proposalPollTimer = null; }
@@ -238,18 +449,13 @@ async function load(){
   }
 
   const isComparative = data.study_type === 'comparative' || ((data.cohort_sizes?.before || 0) > 0 && (data.cohort_sizes?.after || 0) > 0);
+  RESULTS = data;
+  RESULTS._isComparative = isComparative;
 
-  document.getElementById("desc").textContent = isComparative
-    ? `${data.cohort_sizes.total} sessions analyzed — ${data.cohort_sizes.before} before / ${data.cohort_sizes.after} after`
-    : `${data.cohort_sizes.total} sessions analyzed (single cohort)`;
-
-  const aspectsHtml = (data.aspects || []).map(a => {
+  const aspectsHtml = (data.aspects || []).map((a, idx) => {
     if (a.no_data) {
-      // The plan referenced something the resolver couldn't compute (e.g. an
-      // unrecognized component ref/kind) -- say so plainly rather than
-      // showing a fabricated 0 that would look like a real measurement.
       return `
-      <div class="aspect-card">
+      <div class="aspect-card" data-aspect-idx="${idx}" role="button" tabindex="0">
         <div class="aspect-card-title">${escapeHtml(a.name)}</div>
         <div class="compare-row"><span class="compare-label">Value</span><span class="compare-val" style="color:var(--ink-3);">No data</span></div>
       </div>`;
@@ -257,14 +463,14 @@ async function load(){
     if (!isComparative) {
       const val = a.after ?? a.before ?? a.value ?? 0;
       return `
-      <div class="aspect-card">
+      <div class="aspect-card" data-aspect-idx="${idx}" role="button" tabindex="0">
         <div class="aspect-card-title">${escapeHtml(a.name)}</div>
         <div class="compare-row"><span class="compare-label">Value</span><span class="compare-val">${fmtVal(val)}</span></div>
       </div>`;
     }
     const isGood = a.good_if === "down" ? a.delta_pct <= 0 : a.delta_pct >= 0;
     return `
-      <div class="aspect-card">
+      <div class="aspect-card" data-aspect-idx="${idx}" role="button" tabindex="0">
         <div class="aspect-card-title">${escapeHtml(a.name)}</div>
         <div class="compare-row"><span class="compare-label">Before</span><span class="compare-val">${fmtVal(a.before)}</span></div>
         <div class="compare-row"><span class="compare-label">After</span><span class="compare-val">${fmtVal(a.after)}</span></div>
@@ -274,68 +480,51 @@ async function load(){
     `;
   }).join("");
 
-  const hypHtml = (data.hypotheses || []).map(h => {
-    const rates = h.rates || {};
-    const isComparativeHyp = !!rates.after;
-    const before = rates.before || rates.all || {};
-    const after = rates.after || {};
-    const sig = (h.proof || {}).significant;
-    // Confirmed (enough support, not rejected) reads as positive -> green;
-    // rejected (insufficient support) reads as negative -> red.
-    const goodBad = h.rejected ? 'bad' : 'good';
-
-    const ratesHtml = isComparativeHyp ? `
-      <div class="hyp-rates">
-        <div><span class="hyp-rate-label">Before</span><span class="hyp-rate-val">${Math.round((before.rate||0)*100)}% <span class="n">(${before.support||0})</span></span></div>
-        <div><span class="hyp-rate-label">After</span><span class="hyp-rate-val">${Math.round((after.rate||0)*100)}% <span class="n">(${after.support||0})</span></span></div>
-      </div>` : `
-      <div class="hyp-rates">
-        <div><span class="hyp-rate-label">Match rate</span><span class="hyp-rate-val">${Math.round((before.rate||0)*100)}% <span class="n">(${before.support||0} sessions)</span></span></div>
-      </div>`;
-
-    const pills = [];
-    if (sig !== undefined) pills.push(`<span class="status-pill ${sig ? 'good' : 'bad'}">${sig ? 'Significant' : 'Not significant'}</span>`);
-    pills.push(`<span class="status-pill ${goodBad}">${h.rejected ? 'Low support' : 'Confirmed'}</span>`);
-
-    const counterIds = (h.counter_examples || []).slice(0,3);
-    const countersHtml = counterIds.length ? `
-      <div class="hyp-counters">
-        <div class="hyp-counters-label">Counter-examples</div>
-        ${counterIds.map(id => `<div class="mono">${escapeHtml(id)}</div>`).join('')}
-      </div>` : '';
-
-    return `<div class="aspect-card">
-      <div class="aspect-card-title">${escapeHtml(h.title||h.id||'')}</div>
+  function renderHypCard(h, idx){
+    const total = h.total_samples ?? data.cohort_sizes?.total ?? 0;
+    const applicable = h.applicable_samples ?? 0;
+    const condPct = h.conditional_rate_pct ?? Math.round((h.conditional_rate || 0) * 1000) / 10;
+    const outcome = h.outcome || 'neutral';
+    const outcomeClass = outcome === 'good' ? 'hyp-outcome-good' : outcome === 'bad' ? 'hyp-outcome-bad' : 'hyp-outcome-neutral';
+    return `<div class="hyp-card ${outcomeClass}" data-hyp-idx="${idx}" role="button" tabindex="0">
+      <div class="hyp-card-title">${escapeHtml(h.title||h.id||'')}</div>
       <div class="hyp-desc">${escapeHtml(h.description||'')}</div>
-      ${ratesHtml}
-      <div>${pills.join('')}</div>
-      ${countersHtml}
+      <div class="hyp-stat-row">
+        <div><span class="hyp-stat-label">Total samples</span><span class="hyp-stat-val">${total}</span></div>
+        <div><span class="hyp-stat-label">Applicable samples</span><span class="hyp-stat-val">${applicable}</span></div>
+        <div><span class="hyp-stat-label">Conditional rate</span><span class="hyp-stat-val">${applicable ? condPct + '%' : '—'} <span class="n">${applicable ? `(${h.rates?.all?.matched ?? '—'}/${applicable})` : ''}</span></span></div>
+      </div>
     </div>`;
-  }).join('');
+  }
+
+  const hypEntries = (data.hypotheses || []).map((h, idx) => ({ h, idx }));
+  const posHyps = hypEntries.filter(({ h }) => hypPolarity(h) !== 'negative');
+  const negHyps = hypEntries.filter(({ h }) => hypPolarity(h) === 'negative');
+  const hypHtmlPos = posHyps.map(({ h, idx }) => renderHypCard(h, idx)).join('');
+  const hypHtmlNeg = negHyps.map(({ h, idx }) => renderHypCard(h, idx)).join('');
+  const hypHtml = [
+    posHyps.length ? `<div class="hyp-section-label">Positive</div>${hypHtmlPos}` : '',
+    negHyps.length ? `<div class="hyp-section-label">Negative</div>${hypHtmlNeg}` : '',
+  ].join('') || '<p>No hypotheses evaluated.</p>';
 
   const narrative = data.narrative ? `<div class="card"><div class="card-head"><h3 class="card-title">Summary</h3></div><div class="card-pad" style="color:var(--ink-2);line-height:1.6;">${escapeHtml(data.narrative)}</div></div>` : '';
 
-  // ArtifactRenderer already writes real matplotlib PNGs to output/plots/ during
-  // Phase 3 -- they just weren't ever surfaced in the UI. Serve them via the
-  // /plots/{filename} endpoint and show them here now that data actually exists
-  // (unlike Explore's chart-type icons, which run before Phase 3 and have no
-  // real numbers to draw yet).
-  const PLOT_LABELS = {
-    aspect_before_after_bar: 'Before vs After',
-    aspect_single_cohort_bar: 'Cohort Overview',
-    aspect_delta_lollipop: 'Change (Delta)',
-    distribution_histogram: 'Distribution',
-    hypothesis_rate_comparison: 'Hypothesis Match Rate',
-  };
-  const plotsDict = (data.evaluation_result && data.evaluation_result.artifacts && data.evaluation_result.artifacts.plots) || {};
-  const chartsHtml = Object.entries(plotsDict).map(([key, path]) => {
-    const label = PLOT_LABELS[key] || key.replace(/_/g, ' ');
+  document.getElementById("desc").textContent = isComparative
+    ? `${data.cohort_sizes.total} sessions analyzed — ${data.cohort_sizes.before} before / ${data.cohort_sizes.after} after`
+    : `${data.cohort_sizes.total} sessions analyzed (single cohort)`;
+
+  const plotMeta = data.plot_meta || {};
+  const plotsDict = data.plots || (data.evaluation_result && data.evaluation_result.artifacts && data.evaluation_result.artifacts.plots) || {};
+  const chartsHtml = Object.entries(plotsDict).map(([plotId, path]) => {
+    const meta = plotMeta[plotId] || {};
+    const label = meta.title || plotId.replace(/_/g, ' ');
+    const desc = meta.description || '';
     const filename = String(path).split('/').pop();
     const url = `/api/v1/ypervaino/studies/${encodeURIComponent(slug)}/plots/${encodeURIComponent(filename)}`;
-    return `<div class="chart-card"><div class="chart-card-title">${escapeHtml(label)}</div><img src="${url}" alt="${escapeHtml(label)}"></div>`;
+    return `<div class="chart-card" data-plot-url="${escapeAttr(url)}" data-plot-title="${escapeAttr(label)}" role="button" tabindex="0"><div class="chart-card-title">${escapeHtml(label)}</div>${desc ? `<div class="chart-card-desc">${escapeHtml(desc)}</div>` : ''}<img src="${url}" alt="${escapeHtml(label)}" loading="lazy"></div>`;
   }).join('');
   const chartsSection = chartsHtml
-    ? `<div class="card"><div class="card-head"><h3 class="card-title">Charts</h3></div><div class="card-pad"><div class="grid-hyp">${chartsHtml}</div></div></div>`
+    ? `<div class="card"><div class="card-head"><h3 class="card-title">Charts</h3></div><div class="card-pad"><div class="charts-grid">${chartsHtml}</div></div></div>`
     : '';
 
   document.getElementById('content').innerHTML = `
@@ -357,9 +546,12 @@ async function load(){
     </div>
     <div class="card">
       <div class="card-head"><h3 class="card-title">Hypotheses</h3></div>
-      <div class="card-pad"><div class="grid-hyp">${hypHtml || '<p>No hypotheses evaluated.</p>'}</div></div>
+      <div class="card-pad"><div class="grid-hyp">${hypHtml}</div></div>
     </div>
   `;
+  const content = document.getElementById('content');
+  content.removeEventListener('click', onResultsClick);
+  content.addEventListener('click', onResultsClick);
   initProposalsBar(slug);
 }
 

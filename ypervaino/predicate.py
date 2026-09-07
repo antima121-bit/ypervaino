@@ -20,8 +20,16 @@ def parse_predicate(node: Any) -> Any:
     return node
 
 
-def _parse_predicate_string(s: str) -> dict[str, Any]:
+def _normalize_predicate_string(s: str) -> str:
+    """Accept SQL-style boolean operators from plans; parse as and/or."""
     s = s.strip()
+    s = re.sub(r"\s*&&\s*", " and ", s, flags=re.I)
+    s = re.sub(r"\s*\|\|\s*", " or ", s, flags=re.I)
+    return s
+
+
+def _parse_predicate_string(s: str) -> dict[str, Any]:
+    s = _normalize_predicate_string(s)
     if not s:
         return {"op": "CMP", "name": "_", "cmp": "==", "value": True}
     and_parts = re.split(r"\s+and\s+", s, flags=re.I)

@@ -16,10 +16,10 @@ from pydantic import BaseModel, Field
 
 from fetch_filtered_session_ids import fetch_filtered_session_ids
 from lookup_session import get_session_transcript
-from ypervaino.config_loader import load_filter_atoms
+from ypervaino.config_loader import load_filter_atoms, primitive_event_map, signal_method_map
 from ypervaino.data_layer import list_assistants, list_tenants
 from ypervaino.log import get_logger, setup_logging
-from ypervaino.settings import ROOT, load_mongo_env
+from ypervaino.settings import BOTPROBE_BASE_URL, ROOT, load_mongo_env
 from ypervaino.proposals import (
     ProposalError,
     acknowledge_proposal,
@@ -78,6 +78,8 @@ class CreateStudyRequest(BaseModel):
     n_explore: int = 10
     n_eval: int | str = 10
     min_support: int = 10
+    positive_hypothesis_good_rate_pct: float = 70
+    negative_hypothesis_bad_rate_pct: float = 10
     significance_level: float = 0.05
     pairing_turn_tolerance: int = 3
     traffic_split: dict[str, Any] | None = None
@@ -301,6 +303,8 @@ def explore(slug: str):
         "cohort_stats": cohort,
         "analysis_plan": plan,
         "samples": samples,
+        "primitive_events": primitive_event_map(),
+        "signal_methods": signal_method_map(plan),
         "llm": {
             "exploration_summary": plan.get("exploration_summary") or "",
             "aspects": ((plan.get("quantitative") or {}).get("aspects") or []),
@@ -332,6 +336,33 @@ def get_plot(slug: str, filename: str):
     return FileResponse(path, media_type="image/png")
 
 
+def _hypothesis_session_lists(store: StudyStore, hypothesis_id: str) -> dict[str, list[str]]:
+    passed: list[str] = []
+    failed: list[str] = []
+    pc_dir = store.output_dir / "per_conversation"
+    if not pc_dir.exists():
+        return {"passed": passed, "failed": failed}
+    for path in sorted(pc_dir.glob("*.json")):
+        try:
+            row = store.read_json(path)
+        except Exception:
+            continue
+        sid = str(row.get("session_id") or path.stem)
+        raw = (row.get("hypotheses") or {}).get(hypothesis_id)
+        if isinstance(raw, dict):
+            if not raw.get("applicable"):
+                continue
+            if raw.get("matched"):
+                passed.append(sid)
+            else:
+                failed.append(sid)
+        elif raw is True:
+            passed.append(sid)
+        elif raw is False:
+            failed.append(sid)
+    return {"passed": passed, "failed": failed}
+
+
 @app.get(f"{API}/studies/{{slug}}/results")
 def results(slug: str):
     store = _study_or_404(slug)
@@ -342,6 +373,47 @@ def results(slug: str):
     if not rp.exists():
         return {"status": meta["status"], "error": "Evaluation still running"}
     data = store.read_json(rp)
+    plan = {}
+    plan_path = store.intermediate_dir / "analysis_plan.json"
+    if plan_path.exists():
+        plan = store.read_json(plan_path)
+    suggested_plots = ((plan.get("quantitative") or {}).get("suggested_plots") or [])
+    plot_meta = {
+        p.get("id"): {
+            "title": p.get("title") or p.get("id"),
+            "description": p.get("description") or "",
+            "template": p.get("template") or "",
+        }
+        for p in suggested_plots
+        if p.get("id")
+    }
+    predicates = {}
+    scope_predicates = {}
+    polarities = {}
+    for h in ((plan.get("qualitative") or {}).get("hypotheses") or []):
+        if not h.get("id"):
+            continue
+        predicates[h["id"]] = h.get("predicate")
+        scope_predicates[h["id"]] = h.get("scope_predicate")
+        polarities[h["id"]] = h.get("polarity")
+    study_req = {}
+    create_path = store.input_dir / "create_study.json"
+    if create_path.exists():
+        study_req = store.read_json(create_path)
+    hyp_thresholds = {
+        "positive_hypothesis_good_rate_pct": float(
+            study_req.get("positive_hypothesis_good_rate_pct") or 70
+        ),
+        "negative_hypothesis_bad_rate_pct": float(
+            study_req.get("negative_hypothesis_bad_rate_pct") or 10
+        ),
+    }
+    cs = data.get("cohort_sizes") or {}
+    plan_aspects = {
+        a.get("id"): a
+        for a in ((plan.get("quantitative") or {}).get("aspects") or [])
+        if a.get("id")
+    }
     # UI-friendly shape for dashboard.html. `before`/`after`/`value` can be
     # present but null (single-cohort study, or no_data) -- `.get(k, default)`
     # only falls back on a *missing* key, not a null one, so check explicitly.
@@ -351,8 +423,13 @@ def results(slug: str):
         before = a.get("before")
         after = a.get("after")
         delta_pct = a.get("delta_pct")
+        aspect_id = a.get("id") or a.get("name")
+        plan_aspect = plan_aspects.get(aspect_id) or {}
         aspects.append({
-            "name": a.get("name") or a.get("id"),
+            "id": aspect_id,
+            "name": a.get("name") or aspect_id,
+            "description": plan_aspect.get("description") or "",
+            "components": plan_aspect.get("components") or [],
             "value": value,
             "before": value if before is None else before,
             "after": value if after is None else after,
@@ -360,16 +437,69 @@ def results(slug: str):
             "good_if": a.get("good_if", "down"),
             "no_data": bool(a.get("no_data")),
         })
-    cs = data.get("cohort_sizes") or {}
+    hypotheses_out = []
+    pos_thresh = hyp_thresholds["positive_hypothesis_good_rate_pct"]
+    neg_thresh = hyp_thresholds["negative_hypothesis_bad_rate_pct"]
+    for h in data.get("hypotheses") or []:
+        hid = h.get("id")
+        polarity = h.get("polarity") or polarities.get(hid) or "positive"
+        total_samples = h.get("total_samples")
+        if total_samples is None:
+            total_samples = sum((h.get("rates") or {}).get(k, {}).get("total", 0) for k in ("all", "before", "after"))
+            if not total_samples:
+                total_samples = cs.get("total")
+        applicable_samples = h.get("applicable_samples")
+        if applicable_samples is None:
+            applicable_samples = total_samples
+        conditional_rate = h.get("conditional_rate")
+        if conditional_rate is None:
+            conditional_rate = (h.get("rates") or {}).get("all", {}).get("rate", 0)
+        conditional_rate_pct = h.get("conditional_rate_pct")
+        if conditional_rate_pct is None:
+            conditional_rate_pct = round(float(conditional_rate or 0) * 100, 1)
+        outcome = h.get("outcome")
+        if not outcome:
+            from ypervaino.hypothesis_predicate import hypothesis_outcome, infer_polarity
+
+            pol = infer_polarity({"polarity": polarity, "title": h.get("title")})
+            outcome = (
+                "neutral"
+                if not applicable_samples
+                else hypothesis_outcome(
+                    pol,
+                    float(conditional_rate_pct),
+                    positive_good_rate_pct=pos_thresh,
+                    negative_bad_rate_pct=neg_thresh,
+                )
+            )
+        hypotheses_out.append({
+            **h,
+            "predicate": h.get("predicate") or predicates.get(hid),
+            "scope_predicate": h.get("scope_predicate") or scope_predicates.get(hid),
+            "polarity": polarity,
+            "total_samples": total_samples,
+            "applicable_samples": applicable_samples,
+            "conditional_rate": conditional_rate,
+            "conditional_rate_pct": conditional_rate_pct,
+            "outcome": outcome,
+            "session_lists": _hypothesis_session_lists(store, hid) if hid else {"passed": [], "failed": []},
+        })
     study_type = data.get("study_type") or "single_cohort"
+    artifacts = data.get("artifacts") or {}
     return {
         "status": meta["status"],
         "study_type": study_type,
         "evaluation_result": data,
         "cohort_sizes": cs,
         "aspects": aspects,
-        "hypotheses": data.get("hypotheses") or [],
-        "narrative": (data.get("artifacts") or {}).get("narrative_summary"),
+        "hypotheses": hypotheses_out,
+        "narrative": artifacts.get("narrative_summary"),
+        "plots": artifacts.get("plots") or {},
+        "plot_meta": plot_meta,
+        "hypothesis_thresholds": hyp_thresholds,
+        "botprobe_base_url": BOTPROBE_BASE_URL.rstrip("/"),
+        "primitive_events": primitive_event_map(),
+        "signal_methods": signal_method_map(plan),
     }
 
 
@@ -506,12 +636,12 @@ def index():
 
 @app.get("/explore")
 def page_explore():
-    return FileResponse(DIR / "explore.html")
+    return FileResponse(DIR / "explore.html", headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/results")
 def page_results():
-    return FileResponse(DIR / "dashboard.html")
+    return FileResponse(DIR / "dashboard.html", headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/proposals")

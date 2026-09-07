@@ -7,15 +7,21 @@ from typing import Any
 
 from scipy import stats
 
-from ypervaino.hypothesis_predicate import normalize_hypothesis_predicate
+from ypervaino.hypothesis_predicate import (
+    eval_claim_predicate,
+    eval_scope_predicate,
+    hypothesis_outcome,
+    infer_polarity,
+)
 from ypervaino.embeddings import cosine_distance
 from ypervaino.parallel import run_parallel, worker_count
-from ypervaino.signals import SignalExecutor, eval_hypothesis
+from ypervaino.signals import SignalExecutor
 
 
 def _aggregate(values: list[float], aggregation: str) -> float:
     if not values:
         return 0.0
+    aggregation = (aggregation or "mean").lower()
     if aggregation == "sum":
         return float(sum(values))
     if aggregation == "max":
@@ -25,12 +31,19 @@ def _aggregate(values: list[float], aggregation: str) -> float:
     if aggregation == "count":
         return float(len(values))
     if aggregation == "rate":
-        return float(statistics.mean(values))
+        return float(sum(1 for v in values if v > 0) / len(values))
     if aggregation == "p95":
         if len(values) >= 2:
             return float(statistics.quantiles(values, n=20)[-1])
         return float(values[0])
     return float(statistics.mean(values))
+
+
+def _aspect_component_aggregation(aspect: dict[str, Any]) -> str:
+    components = aspect.get("components") or []
+    if not components:
+        return "mean"
+    return (components[0].get("aggregation") or "mean").lower()
 
 
 _PRIMITIVE_KINDS = {
@@ -195,6 +208,19 @@ def _rate_test(before_matches: int, before_n: int, after_matches: int, after_n: 
         return {"p_value": 1.0, "significant": False, "test": "error"}
 
 
+def _hypothesis_cell(row: dict[str, Any] | None, hypothesis_id: str) -> dict[str, Any]:
+    if not row:
+        return {"applicable": False, "matched": False}
+    raw = (row.get("hypotheses") or {}).get(hypothesis_id)
+    if isinstance(raw, dict):
+        return raw
+    if raw is True:
+        return {"applicable": True, "matched": True}
+    if raw is False:
+        return {"applicable": True, "matched": False}
+    return {"applicable": False, "matched": False}
+
+
 def pick_counter_examples(
     per_conversation: dict[str, dict],
     hypothesis_id: str,
@@ -207,7 +233,8 @@ def pick_counter_examples(
             row = per_conversation.get(sid)
             if not row:
                 continue
-            if row.get("hypotheses", {}).get(hypothesis_id):
+            cell = _hypothesis_cell(row, hypothesis_id)
+            if not cell.get("applicable") or cell.get("matched"):
                 continue
             candidates.append((sid, row))
     if not candidates:
@@ -246,6 +273,8 @@ def run_evaluation(
 ) -> dict[str, Any]:
     min_support = int(req.get("min_support") or 30)
     significance_level = float(req.get("significance_level") or 0.05)
+    positive_good_rate_pct = float(req.get("positive_hypothesis_good_rate_pct") or 70)
+    negative_bad_rate_pct = float(req.get("negative_hypothesis_bad_rate_pct") or 10)
     is_comparative = req.get("study_type") == "comparative"
     aspects = ((plan.get("quantitative") or {}).get("aspects") or [])
     hypotheses = ((plan.get("qualitative") or {}).get("hypotheses") or [])
@@ -271,10 +300,12 @@ def run_evaluation(
                 aid = aspect.get("id") or aspect.get("name")
                 aspect_vals[aid] = av
         values = enrich_evaluation_values(values, aspect_vals, cohort_medians)
-        hyp_matches = {
-            h.get("id"): eval_hypothesis(normalize_hypothesis_predicate(h.get("predicate"), h), values)
-            for h in hypotheses
-        }
+        hyp_matches = {}
+        for h in hypotheses:
+            hid = h.get("id")
+            applicable = eval_scope_predicate(h, values)
+            matched = eval_claim_predicate(h, values) if applicable else False
+            hyp_matches[hid] = {"applicable": applicable, "matched": matched}
         row = {
             "session_id": sid,
             "cohort": cohort_label,
@@ -302,8 +333,9 @@ def run_evaluation(
         if is_comparative:
             b_vals = per_cohort_aspect.get("before", {}).get(name) or []
             a_vals = per_cohort_aspect.get("after", {}).get(name) or []
-            b = statistics.mean(b_vals) if b_vals else 0
-            a = statistics.mean(a_vals) if a_vals else 0
+            agg = _aspect_component_aggregation(aspect)
+            b = _aggregate(b_vals, agg) if b_vals else 0
+            a = _aggregate(a_vals, agg) if a_vals else 0
             delta_pct = 0 if b == 0 else (a - b) / b * 100
             sig = _significance_test(b_vals, a_vals, significance_level)
             aspect_results.append({
@@ -327,7 +359,8 @@ def run_evaluation(
                     "delta_pct": None, "good_if": "down", "no_data": True,
                 })
                 continue
-            m = statistics.mean(vals)
+            agg = _aspect_component_aggregation(aspect)
+            m = _aggregate(vals, agg)
             aspect_results.append({
                 "id": name,
                 "name": aspect.get("name") or name,
@@ -342,20 +375,56 @@ def run_evaluation(
             })
 
     hypothesis_results = []
+    all_ids = [sid for ids in cohort_ids.values() for sid in ids]
     for hyp in hypotheses:
         hid = hyp.get("id")
+        polarity = infer_polarity(hyp)
+        total_samples = len(all_ids)
+        applicable_samples = sum(
+            1 for sid in all_ids if _hypothesis_cell(per_conversation.get(sid), hid).get("applicable")
+        )
+        matched_samples = sum(
+            1 for sid in all_ids if _hypothesis_cell(per_conversation.get(sid), hid).get("matched")
+        )
+        conditional_rate = (matched_samples / applicable_samples) if applicable_samples else 0.0
+        conditional_rate_pct = conditional_rate * 100
+        outcome = (
+            "neutral"
+            if applicable_samples == 0
+            else hypothesis_outcome(
+                polarity,
+                conditional_rate_pct,
+                positive_good_rate_pct=positive_good_rate_pct,
+                negative_bad_rate_pct=negative_bad_rate_pct,
+            )
+        )
+
         rates = {}
         for cohort_label, ids in cohort_ids.items():
-            matches = sum(1 for sid in ids if per_conversation.get(sid, {}).get("hypotheses", {}).get(hid))
-            rates[cohort_label] = {"support": matches, "rate": matches / len(ids) if ids else 0}
-        total_support = sum(r["support"] for r in rates.values())
+            cohort_total = len(ids)
+            cohort_applicable = sum(
+                1 for sid in ids if _hypothesis_cell(per_conversation.get(sid), hid).get("applicable")
+            )
+            cohort_matched = sum(
+                1 for sid in ids if _hypothesis_cell(per_conversation.get(sid), hid).get("matched")
+            )
+            cohort_cond = (cohort_matched / cohort_applicable) if cohort_applicable else 0.0
+            rates[cohort_label] = {
+                "total": cohort_total,
+                "applicable": cohort_applicable,
+                "matched": cohort_matched,
+                "conditional_rate": cohort_cond,
+                "support": cohort_matched,
+                "rate": (cohort_matched / cohort_total) if cohort_total else 0,
+            }
+
         proof = {}
         if is_comparative:
-            b = rates.get("before") or {"support": 0}
-            a = rates.get("after") or {"support": 0}
+            b = rates.get("before") or {"matched": 0, "applicable": 0}
+            a = rates.get("after") or {"matched": 0, "applicable": 0}
             proof = _rate_test(
-                b["support"], len(cohort_ids.get("before") or []),
-                a["support"], len(cohort_ids.get("after") or []),
+                b.get("matched", 0), b.get("applicable", 0) or len(cohort_ids.get("before") or []),
+                a.get("matched", 0), a.get("applicable", 0) or len(cohort_ids.get("after") or []),
                 significance_level,
             )
         counter_examples = pick_counter_examples(per_conversation, hid, cohort_ids)
@@ -369,11 +438,25 @@ def run_evaluation(
             "id": hid,
             "title": hyp.get("title"),
             "description": hyp.get("description"),
+            "scope_predicate": hyp.get("scope_predicate"),
+            "predicate": hyp.get("predicate"),
+            "polarity": polarity,
+            "total_samples": total_samples,
+            "applicable_samples": applicable_samples,
+            "conditional_rate": round(conditional_rate, 4),
+            "conditional_rate_pct": round(conditional_rate_pct, 1),
+            "outcome": outcome,
             "rates": rates,
-            "rejected": total_support < min_support,
+            "rejected": applicable_samples < min_support,
             "counter_examples": counter_examples,
             "counter_example_notes": notes,
-            "proof": {"min_support": min_support, "significance_level": significance_level, **proof},
+            "proof": {
+                "min_support": min_support,
+                "significance_level": significance_level,
+                "positive_good_rate_pct": positive_good_rate_pct,
+                "negative_bad_rate_pct": negative_bad_rate_pct,
+                **proof,
+            },
         })
 
     return {

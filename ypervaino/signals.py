@@ -4,8 +4,6 @@ import re
 from typing import Any
 
 from ypervaino.config_loader import load_semantic_methods
-from ypervaino.embeddings import nearest_prototype_label
-from ypervaino.llm_client import LLMClient
 from ypervaino.predicate import eval_predicate
 
 
@@ -85,20 +83,13 @@ class SignalExecutor:
         self.plan = plan
         self.eval_session_count = eval_session_count
         self.methods = {m: cfg for m, cfg in (load_semantic_methods().get("methods") or {}).items()}
-        self._zero_shot_usage: dict[str, int] = {}
 
     @staticmethod
     def _signal_has_spec(sig: dict[str, Any]) -> bool:
         method = sig.get("method")
         spec = sig.get("spec") or {}
-        if method == "intent_classifier":
-            return bool(spec.get("intent_id") or spec.get("labels"))
-        if method == "embedding_nearest_neighbor":
-            return bool(spec.get("labels") or spec.get("prototypes"))
         if method == "rule_based":
             return bool(spec.get("keywords") or spec.get("regex"))
-        if method in ("zero_shot_llm", "llm_extract"):
-            return bool(spec.get("prompt") or spec.get("labels"))
         return False
 
     def compute_values(
@@ -198,60 +189,19 @@ class SignalExecutor:
         counter_example_mode: bool,
     ) -> Any:
         method = sig.get("method")
+        if method != "rule_based":
+            return None
+
         spec = sig.get("spec") or {}
-        cfg = self.methods.get(method) or {}
-
-        if method == "intent_classifier":
-            target = spec.get("intent_id")
-            return fv.get("opening_intent_class") == target if target else fv.get("opening_intent_class")
-
-        if method == "rule_based":
-            spec = sig.get("spec") or {}
-            min_hits = int(spec.get("min_hits") or 1)
-            corpora = _rule_based_corpus(fv, spec, conversation)
-            matched = any(_rule_based_score(text, spec) >= min_hits for text in corpora)
-            labels = spec.get("labels") or ["match", "other"]
-            if _is_boolean_value_type(sig):
-                return 1 if matched else 0
-            if matched:
-                return labels[0]
-            return labels[-1] if len(labels) > 1 else False
-
-        if method == "embedding_nearest_neighbor":
-            prototypes = spec.get("labels") or spec.get("prototypes") or []
-            return nearest_prototype_label(
-                fv.get("searchable_text") or "",
-                prototypes,
-                float(spec.get("min_similarity") or 0.35),
-            )
-
-        if method == "zero_shot_llm":
-            cap = int(cfg.get("max_sessions_per_hypothesis") or 200)
-            hid = hypothesis_id or sig.get("name") or "default"
-            self._zero_shot_usage[hid] = self._zero_shot_usage.get(hid, 0) + 1
-            if not counter_example_mode and self._zero_shot_usage[hid] > cap and cfg.get("error_if_full_deval"):
-                raise ConfigError(f"zero_shot_llm cap exceeded for {hid}")
-            prompt = spec.get("prompt") or "Classify this conversation."
-            labels = spec.get("labels") or ["yes", "no"]
-            snippet = (fv.get("searchable_text") or "")[:3000]
-            out = LLMClient().json_completion(
-                f"{prompt}\nLabels: {labels}\nTranscript excerpt:\n{snippet}\nReturn JSON {{\"label\": one of labels}}",
-                schema_name="zero_shot_label",
-            )
-            return out.get("label") or labels[-1]
-
-        if method == "llm_extract":
-            if not counter_example_mode:
-                return None
-            prompt = spec.get("prompt") or "Extract field from transcript."
-            snippet = (fv.get("searchable_text") or "")[:4000]
-            out = LLMClient().json_completion(
-                f"{prompt}\nReturn JSON {{\"value\": ...}}\nTranscript:\n{snippet}",
-                schema_name="llm_extract_value",
-            )
-            return out.get("value")
-
-        return None
+        min_hits = int(spec.get("min_hits") or 1)
+        corpora = _rule_based_corpus(fv, spec, conversation)
+        matched = any(_rule_based_score(text, spec) >= min_hits for text in corpora)
+        labels = spec.get("labels") or ["match", "other"]
+        if _is_boolean_value_type(sig):
+            return 1 if matched else 0
+        if matched:
+            return labels[0]
+        return labels[-1] if len(labels) > 1 else False
 
 
 def eval_hypothesis(predicate: Any, values: dict[str, Any]) -> bool:
