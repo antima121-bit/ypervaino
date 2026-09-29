@@ -1,0 +1,101 @@
+{
+  "schema_id": "analysis_tool.parsed_trace.ordered_events.v1",
+  "scope": "Hypothesis predicates operate only on parsed_trace.ordered_events. This file documents those shapes after trace_parser.py. Latency, token, and transfer metrics live elsewhere and are out of scope here.",
+
+  "bot_context": {
+    "parse_source": "BotProbe log_traces → parsed_traces/<session_id>.json",
+    "ordered_events_rules": [
+      "Array sorted by raw event timestamp (fallback: trace file order).",
+      "Each element is one object with exactly one top-level key = event_type.",
+      "Only the nine event types listed below appear in ordered_events."
+    ],
+    "tool_events": "TOOL_CALL_RESULT and DEBUG.TOOL_INVOKED use the configured tool name as a dynamic JSON key under the event type—not event_value.tool_name or event_value.name.",
+    "predicate_reference": "See hypothesis_ordered_predicate_schema.json and ops.py for event_exists, meta_value_operation, regex, is_ordered_seq_present."
+  },
+
+  "ordered_event_types": {
+    "USER_QUERY": {
+      "payload": {
+        "content": "User message text (string). Used by regex(user_turn, …).",
+        "event_value": {
+          "query_language": "Optional language/locale tag (string or null)."
+        }
+      }
+    },
+
+    "RESPONSE.FINAL": {
+      "payload": {
+        "content": "Final assistant reply text (string). Used by regex(bot_turn, …).",
+        "event_value": {
+          "agent_name": "Skill/module that produced the reply (string or null)."
+        }
+      }
+    },
+
+    "TOOL_CALL_RESULT": {
+      "payload_pattern": "Single dynamic key = tool name (e.g. Authenticate_Customer, Make_CC_Payment).",
+      "per_tool_entry": {
+        "tool_args": "Object (parsed JSON arguments).",
+        "result": "Object (parsed JSON return). Non-dict JSON may appear as { \"_value\": … }; decode failures as { \"_raw\": \"…\" }."
+      },
+      "predicate_paths": "[\"TOOL_CALL_RESULT\", \"<ToolName>\", …] — tool name is required in the path."
+    },
+
+    "TOOL_CALL_ERROR": {
+      "payload": {
+        "event_value": {
+          "tool_name": "Failed tool identifier (string or null)."
+        }
+      }
+    },
+
+    "DEBUG.TOOL_INVOKED": {
+      "payload_pattern": "Single dynamic key = tool name (from raw name field).",
+      "per_tool_entry": {
+        "input": "Object (arguments at invocation)."
+      },
+      "predicate_paths": "[\"DEBUG.TOOL_INVOKED\", \"<ToolName>\", …]"
+    },
+
+    "DIALOG_FLOW_TRANSITION_COMPLETED": {
+      "payload": {
+        "event_value": {
+          "source_node": "Previous dialog step (string or null).",
+          "target_node": "Next dialog step (string or null)."
+        }
+      }
+    },
+
+    "LLM_INVOCATION_SUCCESS": {
+      "payload": {
+        "event_value": {
+          "model_id": "Model endpoint id (string or null).",
+          "is_fallback": "Boolean or null.",
+          "purpose": "Task label, e.g. main_stream, router, input_guardrail (string or null).",
+          "is_tool_call_decision": "Boolean or null — true when the model returned tool calls instead of user-visible text."
+        }
+      },
+      "note": "latency_ms / turn_latency_ms from raw logs are not included on the ordered row."
+    },
+
+    "LLM_INVOCATION_ERROR": {
+      "payload": {
+        "event_value": {
+          "model_id": "string or null",
+          "is_fallback": "boolean or null",
+          "purpose": "string or null",
+          "error_type": "Failure class, e.g. timeout (string or null)."
+        }
+      }
+    },
+
+    "LLM_CONFIG_RESOLVED": {
+      "payload": {
+        "event_value": {
+          "purpose": "LLM task whose config was resolved (string or null).",
+          "final_model_id": "Resolved model id (string or null)."
+        }
+      }
+    }
+  }
+}

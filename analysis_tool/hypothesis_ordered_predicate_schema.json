@@ -1,0 +1,339 @@
+{
+  "schema_id": "analysis_tool.hypothesis_ordered_predicate.v1",
+  "purpose": "Machine- and human-readable specification of per-session ordered-event predicate operations. Used when authoring hypotheses over parsed_traces (not raw logs). Evaluators read parsed_trace JSON directly; do not assume a normalized or flattened event representation.",
+
+  "session_document": {
+    "description": "One parsed session file under parsed_traces/<session_id>.json.",
+    "root_keys": {
+      "Transcript": "List of {user|bot: string} turn snippets; not used by ordered predicate ops (use ordered_events content instead).",
+      "ordered_events": "Time-ordered array; primary input for all four operations below.",
+      "accumulated_events": "Per-event-type metric lists; not used by these ordered ops (separate cohort metrics pipeline)."
+    },
+    "ordered_events_item_shape": {
+      "rule": "Each element is exactly one object with a single top-level key = event_type string.",
+      "example": { "USER_QUERY": { "content": "...", "event_value": { "query_language": "en" } } }
+    }
+  },
+
+  "ordered_event_types": {
+    "description": "Only these nine event types ever appear as keys in ordered_events (other allowed raw event types are accumulated-only in the parser).",
+    "types": {
+      "USER_QUERY": {
+        "payload_paths_for_predicates": {
+          "content": "User message text (string).",
+          "event_value.query_language": "Optional language tag (string)."
+        }
+      },
+      "RESPONSE.FINAL": {
+        "payload_paths_for_predicates": {
+          "content": "Final assistant reply text (string).",
+          "event_value.agent_name": "Skill/module name that produced the reply (string)."
+        }
+      },
+      "TOOL_CALL_RESULT": {
+        "payload_shape": "Object keyed by tool name (string). Each tool entry has tool_args (object) and result (object). Paths in meta_value_operation and is_ordered_seq_present must include the tool name as the first key after the event type.",
+        "example_payload": {
+          "Authenticate_Customer": {
+            "tool_args": {},
+            "result": {}
+          }
+        }
+      },
+      "TOOL_CALL_ERROR": {
+        "payload_paths_for_predicates": {
+          "event_value.tool_name": "Failed tool identifier (string)."
+        }
+      },
+      "DEBUG.TOOL_INVOKED": {
+        "payload_shape": "Object keyed by tool name. Each entry has input (object).",
+        "example_payload": {
+          "Make_CC_Payment": {
+            "input": {}
+          }
+        }
+      },
+      "DIALOG_FLOW_TRANSITION_COMPLETED": {
+        "payload_paths_for_predicates": {
+          "event_value.source_node": "Previous dialog step (string).",
+          "event_value.target_node": "Next dialog step (string)."
+        }
+      },
+      "LLM_INVOCATION_SUCCESS": {
+        "payload_paths_for_predicates": {
+          "event_value.model_id": "string",
+          "event_value.is_fallback": "boolean",
+          "event_value.purpose": "string (e.g. main_stream, router, input_guardrail)",
+          "event_value.is_tool_call_decision": "boolean"
+        }
+      },
+      "LLM_INVOCATION_ERROR": {
+        "payload_paths_for_predicates": {
+          "event_value.model_id": "string",
+          "event_value.is_fallback": "boolean",
+          "event_value.purpose": "string",
+          "event_value.error_type": "string"
+        }
+      },
+      "LLM_CONFIG_RESOLVED": {
+        "payload_paths_for_predicates": {
+          "event_value.purpose": "string",
+          "event_value.final_model_id": "string"
+        }
+      }
+    }
+  },
+
+  "authoring_aids": {
+    "deep_union_over_parsed_traces.json": "Cohort-wide union of field values and tool names seen in ordered_events; use to pick valid tool names and nested result paths.",
+    "va_blueprint.json": "assistant_info from production blueprint (skills/tools); use for canonical tool and skill names when listing payment, auth, or domain tools.",
+    "hypothesis_structure": {
+      "scope_predicate": "Optional boolean expression; if false, session is excluded from eval (VALID_SKIP pattern).",
+      "claim_predicate": "Required boolean expression; outcome for included sessions.",
+      "composition": "Combine operations with and, or, not. No implicit OR across tools—list each tool explicitly or use helper lists in the hypothesis spec."
+    }
+  },
+
+  "operations": {
+    "event_exists": {
+      "description": "True if at least one row in parsed_trace.ordered_events has the given event type as its sole top-level key.",
+      "parameters": {
+        "event_name": {
+          "type": "string",
+          "enum_ref": "ordered_event_types.types"
+        }
+      },
+      "returns": "boolean",
+      "semantics": [
+        "Scan parsed_trace.ordered_events in array order; existence only—no payload inspection.",
+        "Does not distinguish tool names for TOOL_CALL_RESULT (any tool result counts)."
+      ],
+      "examples": [
+        {
+          "call": { "op": "event_exists", "event_name": "TOOL_CALL_RESULT" },
+          "meaning": "At least one successful tool execution was logged in ordered_events."
+        },
+        {
+          "call": { "op": "event_exists", "event_name": "LLM_INVOCATION_ERROR" },
+          "meaning": "At least one LLM failure row exists."
+        }
+      ]
+    },
+
+    "meta_value_operation": {
+      "description": "True if ANY matching row in ordered_events satisfies a path predicate on that row's payload. Operates only on ordered_events—not accumulated_events.",
+      "parameters": {
+        "path": {
+          "type": "array",
+          "items": "string",
+          "min_items": 1,
+          "structure": "[event_type, k1, k2, ...] where event_type is the ordered_events key; k1,k2,... walk nested dict keys inside item[event_type]."
+        },
+        "value": {
+          "description": "Right-hand side for comparison ops; ignored when op is exists (may be null)."
+        },
+        "op": {
+          "type": "string",
+          "enum": ["==", "!=", "<", "<=", ">", ">=", "in", "exists"]
+        }
+      },
+      "returns": "boolean",
+      "semantics": [
+        "For each item in parsed_trace.ordered_events: if item does not contain path[0], skip.",
+        "Resolve payload = item[path[0]]; follow path[1..] through dict keys only.",
+        "If any key missing on a row, skip that row (do not treat as false for whole op until all rows exhausted).",
+        "op exists: True for that row if the full path resolves to any value (including scalar or nested object).",
+        "Other ops: leaf must be scalar (string, int, float, bool). Dict or list leaf → skip row.",
+        "Numeric: int values are coerced to float before ==, !=, <, <=, >, >=.",
+        "op in: value must be a list/set of scalars; True if leaf is in that set.",
+        "Match policy: ANY row matching → True; if no row matches → False."
+      ],
+      "path_examples": [
+        ["LLM_INVOCATION_SUCCESS", "event_value", "purpose"],
+        ["TOOL_CALL_RESULT", "Authenticate_Customer", "result"],
+        ["DEBUG.TOOL_INVOKED", "Make_CC_Payment", "input"],
+        ["DIALOG_FLOW_TRANSITION_COMPLETED", "event_value", "target_node"]
+      ],
+      "examples": [
+        {
+          "call": {
+            "op": "meta_value_operation",
+            "path": ["LLM_INVOCATION_SUCCESS", "event_value", "purpose"],
+            "value": "main_stream",
+            "compare_op": "=="
+          },
+          "meaning": "Some LLM success row was for purpose main_stream."
+        },
+        {
+          "call": {
+            "op": "meta_value_operation",
+            "path": ["TOOL_CALL_RESULT", "Make_CC_Payment"],
+            "value": null,
+            "compare_op": "exists"
+          },
+          "meaning": "Some row contains a Make_CC_Payment tool result object (any args/result shape)."
+        }
+      ]
+    },
+
+    "regex": {
+      "description": "True if the regex matches the content field of at least one user or bot turn in ordered_events.",
+      "parameters": {
+        "turn_type": {
+          "type": "string",
+          "enum": ["user_turn", "bot_turn"]
+        },
+        "pattern": {
+          "type": "string",
+          "description": "Python regular expression passed to re.search (substring match, not full-string anchor unless ^ $ used)."
+        }
+      },
+      "returns": "boolean",
+      "semantics": [
+        "user_turn: for each item with key USER_QUERY, test pattern against item.USER_QUERY.content if non-empty string.",
+        "bot_turn: for each item with key RESPONSE.FINAL, test pattern against item.RESPONSE.FINAL.content if non-empty string.",
+        "Skip missing content, non-strings, and empty strings.",
+        "ANY matching turn → True; else False.",
+        "Does not read Transcript or accumulated_events."
+      ],
+      "examples": [
+        {
+          "call": { "op": "regex", "turn_type": "user_turn", "pattern": "\\b(pay|payment|card)\\b" },
+          "meaning": "User mentioned payment-related terms in at least one turn."
+        },
+        {
+          "call": {
+            "op": "regex",
+            "turn_type": "bot_turn",
+            "pattern": "(payment (was )?(successful|processed|complete)|you('re| are) all set)"
+          },
+          "meaning": "Bot claimed payment success or completion in at least one final response."
+        }
+      ]
+    },
+
+    "is_ordered_seq_present": {
+      "description": "True if a sequence of conditions matches in order within parsed_trace.ordered_events, with a moving start index (later steps only search after the prior match).",
+      "parameters": {
+        "sequences": {
+          "type": "array",
+          "items": {
+            "one_of": [
+              {
+                "form": "event_type_only",
+                "shape": ["event_type_string"],
+                "meaning": "Next row (from current start index) whose sole key is event_type."
+              },
+              {
+                "form": "event_type_with_path_predicate",
+                "shape": ["event_type_string", ["k1", "k2", "..."], "value", "op"],
+                "meaning": "Same row must satisfy path predicate on item[event_type] with same rules as meta_value_operation (exists or scalar compare)."
+              }
+            ]
+          }
+        }
+      },
+      "returns": "boolean",
+      "semantics": [
+        "Let events = parsed_trace.ordered_events, start = 0.",
+        "For each seq in sequences: find smallest index j >= start such that events[j] matches seq; if none, return False; else start = j + 1.",
+        "All seq match → True.",
+        "event_type_only: events[j] is dict and event_type in events[j].",
+        "Path form: same matching as meta_value_operation but only on events[j] (single row), not ANY row.",
+        "TOOL_CALL_RESULT / DEBUG.TOOL_INVOKED: path keys after event_type begin with tool name."
+      ],
+      "examples": [
+        {
+          "call": {
+            "op": "is_ordered_seq_present",
+            "sequences": [
+              ["TOOL_CALL_RESULT", ["Authenticate_Customer"], null, "exists"],
+              ["TOOL_CALL_RESULT", ["Make_CC_Payment"], null, "exists"]
+            ]
+          },
+          "meaning": "Authenticate_Customer result appears in the timeline before some later Make_CC_Payment result."
+        },
+        {
+          "call": {
+            "op": "is_ordered_seq_present",
+            "sequences": [["USER_QUERY"], ["RESPONSE.FINAL"]]
+          },
+          "meaning": "Some user query is followed later by some final response (weak ordering smoke test)."
+        }
+      ]
+    }
+  },
+
+  "composite_hypothesis_examples": {
+    "payment_hallucination_bot_success_no_payment_tool": {
+      "intent": "Bot language claims payment success but no payment tool result appears in ordered_events.",
+      "scope": {
+        "op": "regex",
+        "turn_type": "user_turn",
+        "pattern": "\\b(pay|payment|make a payment)\\b"
+      },
+      "claim": {
+        "and": [
+          {
+            "op": "regex",
+            "turn_type": "bot_turn",
+            "pattern": "(payment (was )?(successful|processed|complete)|successfully paid)"
+          },
+          {
+            "not": {
+              "or": [
+                {
+                  "op": "meta_value_operation",
+                  "path": ["TOOL_CALL_RESULT", "Make_CC_Payment"],
+                  "value": null,
+                  "compare_op": "exists"
+                },
+                {
+                  "op": "meta_value_operation",
+                  "path": ["TOOL_CALL_RESULT", "Make_Payment_ACH"],
+                  "value": null,
+                  "compare_op": "exists"
+                },
+                {
+                  "op": "meta_value_operation",
+                  "path": ["DEBUG.TOOL_INVOKED", "Make_CC_Payment"],
+                  "value": null,
+                  "compare_op": "exists"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "notes": "Replace tool names with names from va_blueprint.json and deep_union union.TOOL_CALL_RESULT keys."
+    },
+    "auth_occurred_payment_tool_never_after_auth": {
+      "intent": "Customer was authenticated via tool result, and no payment tool result appears after that auth row in the timeline.",
+      "claim": {
+        "and": [
+          {
+            "op": "is_ordered_seq_present",
+            "sequences": [
+              ["TOOL_CALL_RESULT", ["Authenticate_Customer"], null, "exists"]
+            ]
+          },
+          {
+            "not": {
+              "op": "is_ordered_seq_present",
+              "sequences": [
+                ["TOOL_CALL_RESULT", ["Authenticate_Customer"], null, "exists"],
+                ["TOOL_CALL_RESULT", ["Make_CC_Payment"], null, "exists"]
+              ]
+            }
+          }
+        ]
+      },
+      "notes": "Second conjunct fails if Make_CC_Payment appears anywhere after the first Authenticate_Customer match. Payment before auth does not satisfy the two-step seq."
+    }
+  },
+
+  "evaluator_contract": {
+    "input": "parsed_trace object (dict)",
+    "output": "boolean per operation; hypothesis combines with and/or/not",
+    "errors": "Invalid event_type, unknown op, or malformed path should fail hypothesis validation at author time—not at per-session eval time when possible."
+  }
+}

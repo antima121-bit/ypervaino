@@ -1,0 +1,87 @@
+# Logical keys for config.yaml `model_name`.
+# api_model is the OpenAI Responses API model id (no -none/-low suffix on the id).
+# Reasoning depth is set via reasoning.effort only.
+
+defaults:
+  max_output_tokens: 128000
+  text:
+    verbosity: low
+
+models:
+  luna_none:
+    api_model: gpt-5.6-luna
+    reasoning:
+      effort: none
+  luna_low:
+    api_model: gpt-5.6-luna
+    reasoning:
+      effort: low
+  luna_high:
+    api_model: gpt-5.6-luna
+    reasoning:
+      effort: high
+
+  sol_none:
+    api_model: gpt-5.6-sol
+    reasoning:
+      effort: none
+  sol_low:
+    api_model: gpt-5.6-sol
+    reasoning:
+      effort: low
+  sol_high:
+    api_model: gpt-5.6-sol
+    reasoning:
+      effort: high
+
+  terra_none:
+    api_model: gpt-5.6-terra
+    reasoning:
+      effort: none
+  terra_low:
+    api_model: gpt-5.6-terra
+    reasoning:
+      effort: low
+  terra_high:
+    api_model: gpt-5.6-terra
+    reasoning:
+      effort: high
+
+  gpt54_none:
+    api_model: gpt-5.4
+    reasoning:
+      effort: none
+  gpt54_low:
+    api_model: gpt-5.4
+    reasoning:
+      effort: low
+  gpt54_high:
+    api_model: gpt-5.4
+    reasoning:
+      effort: high
+
+  gpt54_mini_none:
+    api_model: gpt-5.4-mini
+    reasoning:
+      effort: none
+  gpt54_mini_low:
+    api_model: gpt-5.4-mini
+    reasoning:
+      effort: low
+  gpt54_mini_high:
+    api_model: gpt-5.4-mini
+    reasoning:
+      effort: high
+
+  gpt54_nano_none:
+    api_model: gpt-5.4-nano
+    reasoning:
+      effort: none
+  gpt54_nano_low:
+    api_model: gpt-5.4-nano
+    reasoning:
+      effort: low
+  gpt54_nano_high:
+    api_model: gpt-5.4-nano
+    reasoning:
+      effort: high

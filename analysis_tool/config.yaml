@@ -1,0 +1,17 @@
+# Analysis tool run configuration
+# Required: study_name, tenant_name, assistant_origin_id, date_range_start, date_range_end
+# Optional: hypothesis (multiline string), model_name (key in llm_specs.yaml)
+
+model_name: luna_high
+concurrency: 10
+
+study_name: uown_study
+
+tenant_name: uown
+assistant_origin_id: f4b7ae50-c9e3-4971-a9c2-5e05bf3dde3e
+
+date_range_start: 10-09-2026
+date_range_end: 29-09-2026
+
+hypothesis: |
+  Check payment hallucinations: the bot claimed the payment was successful (or otherwise stated that payment went through / was processed / completed) but no payment-related tool was called (e.g. Make_CC_Payment, Make_Payment_ACH, Make_Payment_with_New_CC, Make_Payment_with_New_Bank).

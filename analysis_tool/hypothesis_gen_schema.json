@@ -1,0 +1,185 @@
+{
+  "_meta": {
+    "name": "analysis_tool_generated_hypotheses",
+    "strict": false
+  },
+  "type": "object",
+  "properties": {
+    "hypotheses": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "hypothesis_id": {
+            "type": "string",
+            "description": "Stable snake_case id derived from the user-provided title."
+          },
+          "title": {
+            "type": "string",
+            "description": "Short title aligned with the user-provided hypothesis."
+          },
+          "user_provided_text": {
+            "type": "string",
+            "description": "Verbatim or lightly normalized user hypothesis text from config."
+          },
+          "summary": {
+            "type": "string",
+            "description": "One paragraph explaining scope and claim in plain language."
+          },
+          "polarity": {
+            "type": "string",
+            "enum": ["positive", "negative"],
+            "description": "negative = higher matched rate is bad (e.g. hallucination); positive = higher rate is good."
+          },
+          "scope_predicate": {
+            "$ref": "#/$defs/predicate"
+          },
+          "claim_predicate": {
+            "$ref": "#/$defs/predicate"
+          },
+          "tool_names_referenced": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Payment/auth tools explicitly referenced in predicates (from blueprint/deep_union)."
+          }
+        },
+        "required": [
+          "hypothesis_id",
+          "title",
+          "user_provided_text",
+          "summary",
+          "polarity",
+          "scope_predicate",
+          "claim_predicate",
+          "tool_names_referenced"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["hypotheses"],
+  "additionalProperties": false,
+  "$defs": {
+    "predicate": {
+      "description": "Boolean expression over parsed_trace.ordered_events using only approved ops.",
+      "oneOf": [
+        { "$ref": "#/$defs/event_exists" },
+        { "$ref": "#/$defs/meta_value_operation" },
+        { "$ref": "#/$defs/regex" },
+        { "$ref": "#/$defs/is_ordered_seq_present" },
+        { "$ref": "#/$defs/and" },
+        { "$ref": "#/$defs/or" },
+        { "$ref": "#/$defs/not" }
+      ]
+    },
+    "event_exists": {
+      "type": "object",
+      "properties": {
+        "op": { "const": "event_exists" },
+        "event_name": { "type": "string" }
+      },
+      "required": ["op", "event_name"],
+      "additionalProperties": false
+    },
+    "meta_value_operation": {
+      "type": "object",
+      "properties": {
+        "op": { "const": "meta_value_operation" },
+        "path": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "value": {
+          "anyOf": [
+            { "type": "string" },
+            { "type": "number" },
+            { "type": "boolean" },
+            { "type": "null" },
+            {
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "number" },
+                  { "type": "boolean" }
+                ]
+              }
+            }
+          ]
+        },
+        "compare_op": {
+          "type": "string",
+          "enum": ["==", "!=", "<", "<=", ">", ">=", "in", "exists"]
+        }
+      },
+      "required": ["op", "path", "compare_op"],
+      "additionalProperties": false
+    },
+    "regex": {
+      "type": "object",
+      "properties": {
+        "op": { "const": "regex" },
+        "turn_type": { "type": "string", "enum": ["user_turn", "bot_turn"] },
+        "pattern": { "type": "string" }
+      },
+      "required": ["op", "turn_type", "pattern"],
+      "additionalProperties": false
+    },
+    "sequence_step": {
+      "description": "Either [event_type] or [event_type, [keys...], value, compare_op].",
+      "type": "array",
+      "minItems": 1,
+      "items": {}
+    },
+    "is_ordered_seq_present": {
+      "type": "object",
+      "properties": {
+        "op": { "const": "is_ordered_seq_present" },
+        "sequences": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/sequence_step" }
+        }
+      },
+      "required": ["op", "sequences"],
+      "additionalProperties": false
+    },
+    "and": {
+      "type": "object",
+      "properties": {
+        "op": { "const": "and" },
+        "operands": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/predicate" }
+        }
+      },
+      "required": ["op", "operands"],
+      "additionalProperties": false
+    },
+    "or": {
+      "type": "object",
+      "properties": {
+        "op": { "const": "or" },
+        "operands": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/predicate" }
+        }
+      },
+      "required": ["op", "operands"],
+      "additionalProperties": false
+    },
+    "not": {
+      "type": "object",
+      "properties": {
+        "op": { "const": "not" },
+        "operand": { "$ref": "#/$defs/predicate" }
+      },
+      "required": ["op", "operand"],
+      "additionalProperties": false
+    }
+  }
+}

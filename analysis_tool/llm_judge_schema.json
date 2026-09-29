@@ -1,0 +1,20 @@
+{
+  "_meta": {
+    "name": "analysis_tool_llm_judge",
+    "strict": true
+  },
+  "type": "object",
+  "properties": {
+    "result": {
+      "type": "string",
+      "enum": ["pass", "fail"],
+      "description": "Whether this session passes the hypothesis under the polarity rules."
+    },
+    "description": {
+      "type": "string",
+      "description": "Plain-language explanation citing evidence from ordered_events."
+    }
+  },
+  "required": ["result", "description"],
+  "additionalProperties": false
+}
