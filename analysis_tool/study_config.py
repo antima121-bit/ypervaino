@@ -5,12 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, time as dt_time, timezone
 from pathlib import Path
+from typing import Any
 
 import yaml
 
 TOOL_DIR = Path(__file__).resolve().parent
 DEFAULT_CONFIG_PATH = TOOL_DIR / "config.yaml"
-DEFAULT_MODEL_NAME = "luna_none"
+DEFAULT_MODEL_NAME = "sol_high"
 DEFAULT_CONCURRENCY = 10
 
 
@@ -76,6 +77,54 @@ def load_config(path: Path | str = DEFAULT_CONFIG_PATH) -> AnalysisConfig:
         date_range_end=_parse_date_dd_mm_yyyy(str(raw["date_range_end"]), end_of_day=True),
         hypothesis=hypothesis,
         model_name=model_name,
+        concurrency=concurrency,
+    )
+
+
+def config_to_yaml_dict(cfg: AnalysisConfig) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "study_name": cfg.study_name,
+        "tenant_name": cfg.tenant_name,
+        "assistant_origin_id": cfg.assistant_origin_id,
+        "date_range_start": cfg.date_range_start.strftime("%d-%m-%Y"),
+        "date_range_end": cfg.date_range_end.strftime("%d-%m-%Y"),
+        "model_name": cfg.model_name,
+        "concurrency": cfg.concurrency,
+    }
+    if cfg.hypothesis:
+        payload["hypothesis"] = cfg.hypothesis
+    return payload
+
+
+def config_to_yaml(cfg: AnalysisConfig) -> str:
+    return yaml.safe_dump(config_to_yaml_dict(cfg), sort_keys=False, allow_unicode=True)
+
+
+def write_config(path: Path | str, cfg: AnalysisConfig) -> None:
+    """Serialize AnalysisConfig to YAML (dates as DD-MM-YYYY strings)."""
+    config_path = Path(path)
+    config_path.write_text(config_to_yaml(cfg), encoding="utf-8")
+
+
+def config_from_form(
+    *,
+    study_name: str,
+    tenant_name: str,
+    assistant_origin_id: str,
+    date_range_start: str,
+    date_range_end: str,
+    hypothesis: str,
+    model_name: str,
+    concurrency: int,
+) -> AnalysisConfig:
+    return AnalysisConfig(
+        study_name=study_name.strip(),
+        tenant_name=tenant_name.strip(),
+        assistant_origin_id=assistant_origin_id.strip(),
+        date_range_start=_parse_date_dd_mm_yyyy(date_range_start, end_of_day=False),
+        date_range_end=_parse_date_dd_mm_yyyy(date_range_end, end_of_day=True),
+        hypothesis=hypothesis.strip(),
+        model_name=model_name.strip(),
         concurrency=concurrency,
     )
 

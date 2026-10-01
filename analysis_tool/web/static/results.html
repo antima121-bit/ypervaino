@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Results — Analysis Tool</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div id="error-banner" class="error-banner" hidden></div>
+  <div class="results-header">
+    <h1>Study results</h1>
+    <p id="run-meta" class="status-line"></p>
+  </div>
+  <div class="tabs" role="tablist">
+    <button type="button" class="tab active" data-tab="dashboard">Dashboard</button>
+    <button type="button" class="tab" data-tab="rule_engine">Rule engine results</button>
+    <button type="button" class="tab" data-tab="llm_judge">LLM judge results</button>
+    <button type="button" class="tab" data-tab="information">Information</button>
+  </div>
+  <div id="panel-dashboard" class="tab-panel active"></div>
+  <div id="panel-rule_engine" class="tab-panel"></div>
+  <div id="panel-llm_judge" class="tab-panel"></div>
+  <div id="panel-information" class="tab-panel"></div>
+  <script src="/static/results.js"></script>
+</body>
+</html>

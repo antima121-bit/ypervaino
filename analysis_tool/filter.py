@@ -227,13 +227,23 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Override config concurrency for trace fetch (default: config concurrency).",
     )
+    parser.add_argument(
+        "--study-dir",
+        type=Path,
+        default=None,
+        help="Write study artifacts here (default: studies/{study_name}_{timestamp}/).",
+    )
     args = parser.parse_args(argv)
     from log_setup import configure_logging
 
     configure_logging(logging.INFO)
 
     cfg = load_config(args.config)
-    study_dir = study_output_dir(cfg.study_name)
+    if args.study_dir is not None:
+        study_dir = args.study_dir.resolve()
+        study_dir.mkdir(parents=True, exist_ok=True)
+    else:
+        study_dir = study_output_dir(cfg.study_name)
     logger.info("Study output directory: %s", study_dir)
 
     env = load_env()

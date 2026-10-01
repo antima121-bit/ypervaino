@@ -9,7 +9,7 @@ import yaml
 
 TOOL_DIR = Path(__file__).resolve().parent
 DEFAULT_LLM_SPECS_PATH = TOOL_DIR / "llm_specs.yaml"
-DEFAULT_MODEL_NAME = "luna_none"
+DEFAULT_MODEL_NAME = "sol_high"
 
 
 def load_llm_specs(path: Path | str = DEFAULT_LLM_SPECS_PATH) -> dict[str, Any]:

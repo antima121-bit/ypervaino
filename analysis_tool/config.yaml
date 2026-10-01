@@ -2,7 +2,7 @@
 # Required: study_name, tenant_name, assistant_origin_id, date_range_start, date_range_end
 # Optional: hypothesis (multiline string), model_name (key in llm_specs.yaml)
 
-model_name: luna_high
+model_name: sol_high
 concurrency: 10
 
 study_name: uown_study

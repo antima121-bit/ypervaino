@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Analysis Tool</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="layout">
+    <div class="panel">
+      <h1>Hypothesis evaluation</h1>
+      <form id="eval-form" novalidate>
+        <label for="study_name">Study name *</label>
+        <input id="study_name" name="study_name" required pattern="[A-Za-z0-9_-]+" autocomplete="off" />
+
+        <label for="tenant_name">Tenant name *</label>
+        <input id="tenant_name" name="tenant_name" required autocomplete="off" />
+
+        <label for="assistant_origin_id">Assistant origin ID *</label>
+        <input id="assistant_origin_id" name="assistant_origin_id" required autocomplete="off" />
+
+        <div class="row-2">
+          <div>
+            <label for="date_range_start">Date start (DD-MM-YYYY) *</label>
+            <input id="date_range_start" name="date_range_start" required placeholder="01-09-2026" />
+          </div>
+          <div>
+            <label for="date_range_end">Date end (DD-MM-YYYY) *</label>
+            <input id="date_range_end" name="date_range_end" required placeholder="29-09-2026" />
+          </div>
+        </div>
+
+        <label for="hypothesis">Hypothesis (natural language) *</label>
+        <textarea id="hypothesis" name="hypothesis" required></textarea>
+
+        <label for="api_model">LLM model</label>
+        <select id="api_model" name="api_model"></select>
+
+        <label for="reasoning_effort">Reasoning effort</label>
+        <select id="reasoning_effort" name="reasoning_effort">
+          <option value="none">none</option>
+          <option value="low">low</option>
+          <option value="high" selected>high</option>
+        </select>
+
+        <label for="concurrency">Concurrency</label>
+        <input id="concurrency" name="concurrency" type="number" min="1" max="256" value="10" />
+
+        <label for="limit">Session limit (max Mongo session IDs)</label>
+        <input id="limit" name="limit" type="number" min="1" max="1000000" value="10000" />
+
+        <div class="actions">
+          <button type="submit" class="primary" id="btn-evaluate" disabled>Evaluate</button>
+          <button type="button" class="secondary" id="btn-results" disabled>See results</button>
+        </div>
+        <button type="button" class="danger-btn" id="btn-delete-all">Delete all studies</button>
+
+        <section class="runs-section" aria-labelledby="runs-heading">
+          <h2 id="runs-heading">Existing runs</h2>
+          <div id="runs-list" class="runs-list"></div>
+        </section>
+      </form>
+    </div>
+    <div class="panel logs-panel">
+      <h1>Logs</h1>
+      <div id="run-status" class="status-line">Fill mandatory fields to enable Evaluate.</div>
+      <div id="log-output"></div>
+    </div>
+  </div>
+  <script src="/static/index.js"></script>
+</body>
+</html>
