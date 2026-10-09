@@ -97,36 +97,64 @@ def write_json(path: Path, payload: Any) -> None:
     path.write_text(json.dumps(payload, indent=2) + "\n")
 
 
-def _fetch_one_trace(
+def _http_get_json(url: str, *, request_timeout_s: float) -> tuple[dict[str, Any], int]:
+    with urlopen(url, timeout=request_timeout_s) as resp:
+        body = resp.read()
+        http_status = resp.status
+    payload = json.loads(body)
+    if not isinstance(payload, dict):
+        raise ValueError("trace response root must be a JSON object")
+    return payload, http_status
+
+
+def _write_trace_payload(
+    log_traces_dir: Path,
     session_id: str,
+    payload: dict[str, Any],
     *,
-    trace_base_url: str,
-    trace_env: str,
+    trace_source: str,
+) -> Path:
+    out_path = log_traces_dir / f"{session_id}.json"
+    to_write = dict(payload)
+    to_write["trace_source"] = trace_source
+    write_json(out_path, to_write)
+    return out_path
+
+
+def _fetch_trace_from_url(
+    session_id: str,
+    url: str,
+    *,
+    trace_source: str,
     log_traces_dir: Path,
     retry_count: int,
     request_timeout_s: float,
-) -> dict[str, Any]:
-    base = trace_base_url.rstrip("/")
-    url = f"{base}/trace?session_id={session_id}&env={trace_env}"
+) -> tuple[dict[str, Any] | None, str | None]:
     last_error: str | None = None
     for attempt in range(1, retry_count + 1):
         t0 = time.perf_counter()
         try:
-            with urlopen(url, timeout=request_timeout_s) as resp:
-                body = resp.read()
-                http_status = resp.status
-            payload = json.loads(body)
-            out_path = log_traces_dir / f"{session_id}.json"
-            write_json(out_path, payload)
-            return {
-                "session_id": session_id,
-                "ok": True,
-                "http_status": http_status,
-                "attempt": attempt,
-                "duration_sec": round(time.perf_counter() - t0, 3),
-                "event_count": len(payload.get("events") or []),
-                "path": str(out_path),
-            }
+            payload, http_status = _http_get_json(url, request_timeout_s=request_timeout_s)
+            events = payload.get("events")
+            if not isinstance(events, list) or not events:
+                last_error = "empty events array"
+            else:
+                out_path = _write_trace_payload(
+                    log_traces_dir, session_id, payload, trace_source=trace_source
+                )
+                return (
+                    {
+                        "session_id": session_id,
+                        "ok": True,
+                        "http_status": http_status,
+                        "attempt": attempt,
+                        "duration_sec": round(time.perf_counter() - t0, 3),
+                        "event_count": len(events),
+                        "path": str(out_path),
+                        "trace_source": trace_source,
+                    },
+                    None,
+                )
         except HTTPError as exc:
             last_error = f"HTTP {exc.code}"
         except URLError as exc:
@@ -137,11 +165,53 @@ def _fetch_one_trace(
             last_error = str(exc)
         if attempt < retry_count:
             time.sleep(attempt)
+    return None, last_error
+
+
+def _fetch_one_trace(
+    session_id: str,
+    *,
+    trace_base_url: str,
+    trace_env: str,
+    log_traces_dir: Path,
+    retry_count: int,
+    request_timeout_s: float,
+) -> dict[str, Any]:
+    base = trace_base_url.rstrip("/")
+    q = f"session_id={session_id}&env={trace_env}"
+    elastic_url = f"{base}/trace?{q}"
+    mongo_url = f"{base}/mongo-trace?{q}"
+
+    elastic_result, elastic_error = _fetch_trace_from_url(
+        session_id,
+        elastic_url,
+        trace_source="elastic",
+        log_traces_dir=log_traces_dir,
+        retry_count=retry_count,
+        request_timeout_s=request_timeout_s,
+    )
+    if elastic_result is not None:
+        return elastic_result
+
+    mongo_result, mongo_error = _fetch_trace_from_url(
+        session_id,
+        mongo_url,
+        trace_source="mongo",
+        log_traces_dir=log_traces_dir,
+        retry_count=retry_count,
+        request_timeout_s=request_timeout_s,
+    )
+    if mongo_result is not None:
+        mongo_result["elastic_error"] = elastic_error
+        return mongo_result
+
     return {
         "session_id": session_id,
         "ok": False,
         "attempt": retry_count,
-        "error": last_error,
+        "error": mongo_error or elastic_error,
+        "elastic_error": elastic_error,
+        "mongo_error": mongo_error,
     }
 
 
@@ -198,10 +268,14 @@ def fetch_traces_parallel(
     results.sort(key=lambda r: r["session_id"])
     ok = sum(1 for r in results if r.get("ok"))
     failed = len(results) - ok
+    ok_elastic = sum(1 for r in results if r.get("ok") and r.get("trace_source") == "elastic")
+    ok_mongo = sum(1 for r in results if r.get("ok") and r.get("trace_source") == "mongo")
     return {
         "total": len(session_ids),
         "ok": ok,
         "failed": failed,
+        "ok_elastic": ok_elastic,
+        "ok_mongo_fallback": ok_mongo,
         "retry_count": retry_count,
         "max_workers": workers,
         "trace_env": trace_env,
@@ -311,10 +385,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     trace_fetch_sec = round(time.perf_counter() - t_traces, 3)
     logger.info(
-        "Parallel trace fetch completed in %.3fs (%s ok, %s failed)",
+        "Parallel trace fetch completed in %.3fs (%s ok, %s failed; elastic=%s, mongo_fallback=%s)",
         trace_fetch_sec,
         trace_summary["ok"],
         trace_summary["failed"],
+        trace_summary.get("ok_elastic", 0),
+        trace_summary.get("ok_mongo_fallback", 0),
     )
 
     write_json(
